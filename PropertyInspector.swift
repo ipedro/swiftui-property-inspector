@@ -156,13 +156,15 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
     let icon: (Value) -> Icon
     let label: (Value) -> Label
     let detail: (Value) -> Detail
-    @State 
+
+    @State
     private var searchQuery = ""
 
     private var filteredData: [PropertyInspectorItem<Value>] {
-        guard searchQuery.count > 1 else { return data }
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard query.count > 1 else { return data }
         return data.filter { item in
-            "\(item.value)".contains(searchQuery.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
+            "\(type(of: item))-\(item.value)".localizedCaseInsensitiveContains(query)
         }
     }
 
@@ -176,11 +178,7 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
                     )
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: 200,
-                        maxHeight: .infinity
-                    )
+                    .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                 } else {
@@ -209,21 +207,34 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
     }
 
     private var header: some View {
-        VStack {
+        VStack(spacing: 6) {
             if let title {
-                Toggle(sources: data, isOn: \.isHighlighted) {
+                Toggle(sources: filteredData, isOn: \.isHighlighted) {
                     Text(title)
                         .bold()
                         .font(.title2)
                 }
             }
 
-            TextField(
-                "Search \(filteredData.count) \(title ?? "items")",
-                text: $searchQuery
-            )
-            .padding(.trailing, 42)
+            HStack {
+                TextField(
+                    "Search \(filteredData.count) \(title ?? "items")",
+                    text: $searchQuery
+                )
+
+                if !searchQuery.isEmpty {
+                    Button {
+                        searchQuery.removeAll()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
         }
+        .tint(.primary)
         .padding(
             EdgeInsets(
                 top: 16,
@@ -273,7 +284,6 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
                 Spacer()
                 Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
             }
-            .tint(.primary)
         }
     }
 }
