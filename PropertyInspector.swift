@@ -267,6 +267,11 @@ public extension View {
             PropertyInspectorViewModifier(data: value)
         )
     }
+
+    func disablePropertyInspector() -> some View {
+        // TODO: implement
+        self
+    }
 }
 
 struct PropertyInspectorViewModifier<Value>: ViewModifier  {
