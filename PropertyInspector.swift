@@ -21,17 +21,18 @@
 import SwiftUI
 
 @available(iOS 16.4, *)
-public struct PropertyInspector<Content: View, Value, Label: View, Detail: View, Icon: View>: View {
-    private let content: Content
-    private let icon: (Value) -> Icon
-    private let label: (Value) -> Label
-    private let detail: (Value) -> Detail
+public struct PropertyInspector<Value, Content: View, Label: View, Detail: View, Icon: View>: View {
+    let content: Content
+    let icon: (Value) -> Icon
+    let label: (Value) -> Label
+    let detail: (Value) -> Detail
+    let sort: (Value, Value) -> Bool
 
     @State
-    private var data: [PropertyInspectorItem<Value>] = []
+    var data: [PropertyInspectorItem<Value>] = []
 
     @Binding
-    private var isPresented: Bool
+    var isPresented: Bool
 
     let title: String?
 
@@ -39,13 +40,15 @@ public struct PropertyInspector<Content: View, Value, Label: View, Detail: View,
         _ title: String? = nil,
         _ value: Value.Type,
         isPresented: Binding<Bool>,
+        sort: @escaping (Value, Value) -> Bool,
         @ViewBuilder content: () -> Content,
         @ViewBuilder icon: @escaping (Value) -> Icon,
         @ViewBuilder label: @escaping (Value) -> Label,
         @ViewBuilder detail: @escaping (Value) -> Detail
     ) {
-        self._isPresented = isPresented
         self.title = title
+        self._isPresented = isPresented
+        self.sort = sort
         self.content = content()
         self.icon = icon
         self.label = label
@@ -57,42 +60,25 @@ public struct PropertyInspector<Content: View, Value, Label: View, Detail: View,
         _ value: Value.Type,
         isPresented: Binding<Bool>,
         @ViewBuilder content: () -> Content,
-        @ViewBuilder label: @escaping (Value) -> Label
-    ) where Icon == EmptyView, Detail == EmptyView {
-        self.init(
-            title,
-            value,
-            isPresented: isPresented,
-            content: content,
-            icon: { _ in EmptyView() },
-            label: label,
-            detail: { _ in EmptyView() }
-        )
-    }
-
-    public init(
-        _ title: String? = nil,
-        _ value: Value.Type,
-        isPresented: Binding<Bool>,
-        @ViewBuilder content: () -> Content,
+        @ViewBuilder icon: @escaping (Value) -> Icon,
         @ViewBuilder label: @escaping (Value) -> Label,
         @ViewBuilder detail: @escaping (Value) -> Detail
-    ) where Icon == EmptyView {
-        self.init(
-            title,
-            value,
-            isPresented: isPresented,
-            content: content,
-            icon: { _ in EmptyView() },
-            label: label,
-            detail: detail
-        )
+    ) where Value: Comparable {
+        self.title = title
+        self._isPresented = isPresented
+        self.sort = { $0 < $1 }
+        self.content = content()
+        self.icon = icon
+        self.label = label
+        self.detail = detail
     }
 
     public var body: some View {
         content
-            .onPreferenceChange(InspectorPreferenceKey<Value>.self) {
-                data = $0
+            .onPreferenceChange(InspectorPreferenceKey<Value>.self) { newValue in
+                data = newValue.sorted {
+                    sort($0.wrappedValue, $1.wrappedValue)
+                }
             }
             .safeAreaInset(edge: .bottom) {
                 if isPresented {
@@ -123,7 +109,7 @@ public struct PropertyInspector<Content: View, Value, Label: View, Detail: View,
 }
 
 @available(iOS 16.4, *)
-private struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon: View>: View {
+struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon: View>: View {
     typealias Data = [PropertyInspectorItem<Value>]
     let title: String?
     let data: Data
@@ -180,7 +166,7 @@ private struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon:
         .toggleStyle(_ToggleStyle(alignment: .firstTextBaseline))
     }
 
-    private struct _ToggleStyle: ToggleStyle {
+    struct _ToggleStyle: ToggleStyle {
         let alignment: VerticalAlignment
 
         func makeBody(configuration: Configuration) -> some View {
@@ -201,17 +187,17 @@ private struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon:
     }
 }
 
-private struct PropertyInspectorItem<Value>: Identifiable, Equatable {
+struct PropertyInspectorItem<Value>: Identifiable, Equatable {
     let id = UUID()
     let wrappedValue: Value
     let isHighlighted: Binding<Bool>
 
-    static func == (lhs: PropertyInspectorItem, rhs: PropertyInspectorItem) -> Bool {
+    static func == (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
         lhs.id == rhs.id
     }
 }
 
-private struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
+struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
     let label: Label
     let detail: Detail
 
@@ -232,24 +218,24 @@ private struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
     }
 }
 public extension View {
-    func propertyInspectorValue<Value>(_ token: Value) -> some View {
+    func propertyInspector<Value>(_ value: Value) -> some View {
         modifier(
-            PropertyInspectorViewModifier(data: token)
+            PropertyInspectorViewModifier(data: value)
         )
     }
 }
 
-private struct PropertyInspectorViewModifier<Value>: ViewModifier  {
-    private typealias Key = InspectorPreferenceKey<Value>
+struct PropertyInspectorViewModifier<Value>: ViewModifier  {
+    typealias Key = InspectorPreferenceKey<Value>
 
     @State
-    private var animationValue = UUID()
+    var animationValue = UUID()
 
     /// The current selection state of the dynamic value, observed for changes to update the view.
     let data: Value
 
     @State
-    private var highlight = false
+    var highlight = false
 
     /// The body of the `PropertyInspectorContentView`, rendering the content based on the current selection.
     /// It uses a clear background view to capture preference changes, allowing the dynamic property picker system to react.
@@ -291,27 +277,27 @@ private struct PropertyInspectorViewModifier<Value>: ViewModifier  {
             }
     }
 
-    private var highlightColor: Color {
+    var highlightColor: Color {
         highlight ? .blue.opacity(0.75) : .clear
     }
 
     @ViewBuilder
-    private var highlightView: some View {
+    var highlightView: some View {
         Rectangle().stroke(highlightColor)
     }
 
-    private var item: PropertyInspectorItem<Value> {
+    var item: PropertyInspectorItem<Value> {
         PropertyInspectorItem(wrappedValue: data, isHighlighted: $highlight)
     }
 
     /// A helper view for capturing and forwarding preference changes without altering the main content's appearance.
-    private var background: some View {
+    var background: some View {
         Color.clear.preference(key: Key.self, value: [item])
     }
 
 }
 
-private struct InspectorPreferenceKey<Value>: PreferenceKey {
+struct InspectorPreferenceKey<Value>: PreferenceKey {
     /// The default value for the dynamic value entries.
     static var defaultValue: [PropertyInspectorItem<Value>] { [] }
 
@@ -325,7 +311,5 @@ private struct InspectorPreferenceKey<Value>: PreferenceKey {
         nextValue: () -> [PropertyInspectorItem<Value>]
     ) {
         value = value + nextValue()
-        // TODO: re-introduce sorting
-        //value.sort()
     }
 }
