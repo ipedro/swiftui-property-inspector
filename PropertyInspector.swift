@@ -27,7 +27,7 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
     let icon: (Value) -> Icon
     let label: (Value) -> Label
     let detail: (Value) -> Detail
-    let sort: PropertyInspectorComparator<Value>
+    var comparator: SortComparator?
 
     @State
     private var data: [PropertyInspectorItem<Value>] = []
@@ -39,7 +39,6 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
         _ title: String? = nil,
         _ value: Value.Type = Value.self,
         isPresented: Binding<Bool>,
-        sort: @escaping (Value, Value) -> Bool,
         @ViewBuilder content: () -> Content,
         @ViewBuilder icon: @escaping (Value) -> Icon,
         @ViewBuilder label: @escaping (Value) -> Label,
@@ -47,7 +46,6 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
     ) {
         self.title = title
         self._isPresented = isPresented
-        self.sort = .init(sort: sort)
         self.content = content()
         self.icon = icon
         self.label = label
@@ -60,34 +58,12 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
         isPresented: Binding<Bool>,
         @ViewBuilder content: () -> Content,
         @ViewBuilder icon: @escaping (Value) -> Icon,
-        @ViewBuilder label: @escaping (Value) -> Label,
-        @ViewBuilder detail: @escaping (Value) -> Detail
-    ) where Value: Comparable {
-        self.init(
-            title,
-            value,
-            isPresented: isPresented,
-            sort: { $0 < $1 },
-            content: content,
-            icon: icon,
-            label: label,
-            detail: detail
-        )
-    }
-
-    public init(
-        _ title: String? = nil,
-        _ value: Value.Type = Value.self,
-        isPresented: Binding<Bool>,
-        @ViewBuilder content: () -> Content,
-        @ViewBuilder icon: @escaping (Value) -> Icon,
         @ViewBuilder label: @escaping (Value) -> Label
-    ) where Value: Comparable, Detail == EmptyView {
+    ) where Detail == EmptyView {
         self.init(
             title,
             value,
             isPresented: isPresented,
-            sort: { $0 < $1 },
             content: content,
             icon: icon,
             label: label,
@@ -101,12 +77,11 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
         isPresented: Binding<Bool>,
         @ViewBuilder content: () -> Content,
         @ViewBuilder label: @escaping (Value) -> Label
-    ) where Value: Comparable, Detail == EmptyView, Icon == EmptyView {
+    ) where Detail == EmptyView, Icon == EmptyView {
         self.init(
             title,
             value,
             isPresented: isPresented,
-            sort: { $0 < $1 },
             content: content,
             icon: { _ in EmptyView() },
             label: label,
@@ -117,7 +92,13 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
     public var body: some View {
         content
             .onPreferenceChange(PropertyInspectorPreferenceKey<Value>.self) { newValue in
-                data = newValue.sorted(using: sort)
+                guard let comparator else {
+                    data = newValue
+                    return
+                }
+                data = newValue.sorted(by: { lhs, rhs in
+                    comparator(lhs.value, rhs.value)
+                })
             }
             .safeAreaInset(edge: .bottom) {
                 if isPresented {
@@ -144,6 +125,27 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
                     )
                 }
             }
+    }
+}
+
+extension EnvironmentValues {
+    var propertyInspectorDisabled: Bool {
+        get { self[PropertyInspectorDisabledKey.self] }
+        set { self[PropertyInspectorDisabledKey.self] = newValue }
+    }
+}
+
+struct PropertyInspectorDisabledKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+@available(iOS 16.4, *)
+public extension PropertyInspector {
+    typealias SortComparator = (_ lhs: Value, _ rhs: Value) -> Bool
+    func sort(by comparator: @escaping SortComparator) -> Self {
+        var copy = self
+        copy.comparator = comparator
+        return copy
     }
 }
 
@@ -268,9 +270,8 @@ public extension View {
         )
     }
 
-    func disablePropertyInspector() -> some View {
-        // TODO: implement
-        self
+    func disablePropertyInspector(_ disabled: Bool = true) -> some View {
+        environment(\.propertyInspectorDisabled, disabled)
     }
 }
 
@@ -343,29 +344,5 @@ struct PropertyInspectorPreferenceKey<Value>: PreferenceKey {
     ///   - nextValue: A closure that returns the next set of dynamic value entries.
     static func reduce(value: inout [PropertyInspectorItem<Value>], nextValue: () -> [PropertyInspectorItem<Value>]) {
         value = value + nextValue()
-    }
-}
-
-struct PropertyInspectorComparator<Value>: SortComparator {
-    let id = UUID()
-    var order: SortOrder = .forward
-    let sort: (_ lhs: Value, _ rhs: Value) -> Bool
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(order)
-    }
-
-    func compare(_ lhs: PropertyInspectorItem<Value>, _ rhs: PropertyInspectorItem<Value>) -> ComparisonResult {
-        switch order {
-        case .forward:
-            sort(lhs.value, rhs.value) ? .orderedDescending : .orderedAscending
-        case .reverse:
-            sort(lhs.value, rhs.value) ? .orderedAscending : .orderedDescending
-        }
-    }
-
-    static func == (lhs: PropertyInspectorComparator<Value>, rhs: PropertyInspectorComparator<Value>) -> Bool {
-        lhs.id == rhs.id
     }
 }
