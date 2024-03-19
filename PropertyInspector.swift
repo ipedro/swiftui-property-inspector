@@ -93,7 +93,7 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
         content
             .onPreferenceChange(PropertyInspectorItemKey<Value>.self) { newValue in
                 guard let comparator else {
-                    data = newValue
+                    data = newValue.sorted()
                     return
                 }
                 data = newValue.sorted(by: { lhs, rhs in
@@ -166,7 +166,13 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
                             icon(item.value).drawingGroup()
                             PropertyInspectorItemLabel(
                                 label: label(item.value),
-                                detail: detail(item.value)
+                                detail: {
+                                    if Detail.self == EmptyView.self {
+                                        Text(item.callSite)
+                                    } else {
+                                        detail(item.value)
+                                    }
+                                }
                             )
                         }
                         .contentShape(Rectangle())
@@ -232,25 +238,37 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
     }
 }
 
-struct PropertyInspectorItem<Value>: Identifiable, Equatable {
+struct PropertyInspectorItem<Value>: Identifiable, Comparable {
     let id = UUID()
     let value: Value
     let isHighlighted: Binding<Bool>
+    let function: String
+    let line: Int
+    let file: String
+
+    var callSite: String {
+        let displayName: String = {
+            if function.contains(#"("#) {
+                return "func \(function)"
+            }
+            return "var \(function)"
+        }()
+        return "\(displayName)\n\(file.split(separator: "/").last!):\(line)"
+    }
 
     static func == (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
         lhs.id == rhs.id
     }
-}
-
-extension PropertyInspectorItem: Comparable where Value: Comparable {
+    
     static func < (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
-        lhs.value < rhs.value
+        lhs.callSite < rhs.callSite
     }
+
 }
 
 struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
     let label: Label
-    let detail: Detail
+    @ViewBuilder var detail: Detail
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -270,9 +288,19 @@ struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
 }
 
 public extension View {
-    func propertyInspector<Value>(_ value: Value) -> some View {
+    func propertyInspector<Value>(
+        _ value: Value,
+        function: String = #function,
+        line: Int = #line,
+        file: String = #file
+    ) -> some View {
         modifier(
-            PropertyInspectorViewModifier(data: value)
+            PropertyInspectorViewModifier(
+                value: value,
+                function: function,
+                line: line,
+                file: file
+            )
         )
     }
 
@@ -282,7 +310,10 @@ public extension View {
 }
 
 struct PropertyInspectorViewModifier<Value>: ViewModifier  {
-    let data: Value
+    let value: Value
+    let function: String
+    let line: Int
+    let file: String
 
     @State
     private var isHighlighted = false
@@ -290,8 +321,14 @@ struct PropertyInspectorViewModifier<Value>: ViewModifier  {
     @Environment(\.propertyInspectorDisabled)
     private var disabled
 
-    var item: PropertyInspectorItem<Value> {
-        PropertyInspectorItem(value: data, isHighlighted: $isHighlighted)
+    var data: PropertyInspectorItem<Value> {
+        PropertyInspectorItem(
+            value: value,
+            isHighlighted: $isHighlighted,
+            function: function,
+            line: line,
+            file: file
+        )
     }
 
     func body(content: Content) -> some View {
@@ -302,7 +339,7 @@ struct PropertyInspectorViewModifier<Value>: ViewModifier  {
                 content.background(
                     Color.clear.preference(
                         key: PropertyInspectorItemKey<Value>.self,
-                        value: [item]
+                        value: [data]
                     )
                 )
             }
