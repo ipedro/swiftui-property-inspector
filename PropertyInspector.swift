@@ -156,50 +156,38 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
     let icon: (Value) -> Icon
     let label: (Value) -> Label
     let detail: (Value) -> Detail
+    @State 
+    private var searchQuery = ""
+
+    private var filteredData: [PropertyInspectorItem<Value>] {
+        guard searchQuery.count > 1 else { return data }
+        return data.filter { item in
+            "\(item.value)".contains(searchQuery.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+    }
 
     var body: some View {
         List {
             Section {
-                ForEach(data) { item in
-                    Toggle(isOn: item.isHighlighted) {
-                        HStack {
-                            icon(item.value).drawingGroup()
-                            PropertyInspectorItemLabel(
-                                label: label(item.value),
-                                detail: {
-                                    if Detail.self == EmptyView.self {
-                                        Text(item.callSite)
-                                    } else {
-                                        detail(item.value)
-                                    }
-                                }
-                            )
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .listRowBackground(Color.clear)
-                    .toggleStyle(
-                        PropertyInspectorToggleStyle(
-                            alignment: .center
-                        )
+                if filteredData.isEmpty {
+                    Text(searchQuery.isEmpty ? 
+                         "No \(title ?? "items")" :
+                         "No results for '\(searchQuery)'"
                     )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: 200,
+                        maxHeight: .infinity
+                    )
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                } else {
+                    ForEach(filteredData, content: row(_ :))
                 }
             } header: {
-                if let title {
-                    Toggle(sources: data, isOn: \.isHighlighted) {
-                        Text(title)
-                            .bold()
-                            .font(.title2)
-                            .padding(
-                                EdgeInsets(
-                                    top: 16,
-                                    leading: 0,
-                                    bottom: 8,
-                                    trailing: 0
-                                )
-                            )
-                    }
-                }
+                header
             }
         }
         .listStyle(.plain)
@@ -219,6 +207,58 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
             )
         )
     }
+
+    private var header: some View {
+        VStack {
+            if let title {
+                Toggle(sources: data, isOn: \.isHighlighted) {
+                    Text(title)
+                        .bold()
+                        .font(.title2)
+                }
+            }
+
+            TextField(
+                "Search \(filteredData.count) \(title ?? "items")",
+                text: $searchQuery
+            )
+            .padding(.trailing, 42)
+        }
+        .padding(
+            EdgeInsets(
+                top: 16,
+                leading: 0,
+                bottom: 8,
+                trailing: 0
+            )
+        )
+    }
+
+    private func row(_ item: PropertyInspectorItem<Value>) -> some View {
+        Toggle(isOn: item.isHighlighted) {
+            HStack {
+                icon(item.value).drawingGroup()
+                PropertyInspectorItemLabel(
+                    label: label(item.value),
+                    detail: {
+                        if Detail.self == EmptyView.self {
+                            Text(item.callSite)
+                        } else {
+                            detail(item.value)
+                        }
+                    }
+                )
+            }
+            .contentShape(Rectangle())
+        }
+        .listRowBackground(Color.clear)
+        .toggleStyle(
+            PropertyInspectorToggleStyle(
+                alignment: .center
+            )
+        )
+    }
+
 }
 
 struct PropertyInspectorToggleStyle: ToggleStyle {
@@ -238,7 +278,7 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
     }
 }
 
-struct PropertyInspectorItem<Value>: Identifiable, Comparable {
+final class PropertyInspectorItem<Value>: Identifiable, Comparable {
     let id = UUID()
     let value: Value
     let isHighlighted: Binding<Bool>
@@ -246,14 +286,20 @@ struct PropertyInspectorItem<Value>: Identifiable, Comparable {
     let line: Int
     let file: String
 
-    var callSite: String {
-        let displayName: String = {
-            if function.contains(#"("#) {
-                return "func \(function)"
-            }
-            return "var \(function)"
-        }()
-        return "\(displayName)\n\(file.split(separator: "/").last!):\(line)"
+    private(set) lazy var callSite = "\(file.split(separator: "/").last!):\(line)"
+
+    private lazy var sortString = [
+        file,
+        String(line),
+        function
+    ].joined(separator: "-")
+
+    init(value: Value, isHighlighted: Binding<Bool>, function: String, line: Int, file: String) {
+        self.value = value
+        self.isHighlighted = isHighlighted
+        self.function = function
+        self.line = line
+        self.file = file
     }
 
     static func == (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
@@ -261,7 +307,7 @@ struct PropertyInspectorItem<Value>: Identifiable, Comparable {
     }
     
     static func < (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
-        lhs.callSite < rhs.callSite
+        lhs.sortString < rhs.sortString
     }
 
 }
