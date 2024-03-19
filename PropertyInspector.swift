@@ -91,7 +91,7 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
 
     public var body: some View {
         content
-            .onPreferenceChange(PropertyInspectorPreferenceKey<Value>.self) { newValue in
+            .onPreferenceChange(PropertyInspectorItemKey<Value>.self) { newValue in
                 guard let comparator else {
                     data = newValue
                     return
@@ -164,7 +164,7 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
                     Toggle(isOn: item.isHighlighted) {
                         HStack {
                             icon(item.value).drawingGroup()
-                            PropertyInspectorListItemLabel(
+                            PropertyInspectorItemLabel(
                                 label: label(item.value),
                                 detail: detail(item.value)
                             )
@@ -172,7 +172,11 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
                         .contentShape(Rectangle())
                     }
                     .listRowBackground(Color.clear)
-                    .toggleStyle(_ToggleStyle(alignment: .center))
+                    .toggleStyle(
+                        PropertyInspectorToggleStyle(
+                            alignment: .center
+                        )
+                    )
                 }
             } header: {
                 if let title {
@@ -203,25 +207,27 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
         .presentationContentInteraction(.scrolls)
         .presentationCornerRadius(20)
         .presentationBackground(Material.ultraThin)
-        .toggleStyle(_ToggleStyle(alignment: .firstTextBaseline))
+        .toggleStyle(
+            PropertyInspectorToggleStyle(
+                alignment: .firstTextBaseline
+            )
+        )
     }
+}
 
-    struct _ToggleStyle: ToggleStyle {
-        let alignment: VerticalAlignment
+struct PropertyInspectorToggleStyle: ToggleStyle {
+    let alignment: VerticalAlignment
 
-        func makeBody(configuration: Configuration) -> some View {
-            Button {
-                configuration.isOn.toggle()
-            } label: {
-                HStack(alignment: alignment) {
-                    configuration.label
-
-                    Spacer()
-
-                    Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
-                }
-                .tint(.primary)
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            configuration.isOn.toggle()
+        } label: {
+            HStack(alignment: alignment) {
+                configuration.label
+                Spacer()
+                Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
             }
+            .tint(.primary)
         }
     }
 }
@@ -242,7 +248,7 @@ extension PropertyInspectorItem: Comparable where Value: Comparable {
     }
 }
 
-struct PropertyInspectorListItemLabel<Label: View, Detail: View>: View {
+struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
     let label: Label
     let detail: Detail
 
@@ -293,18 +299,18 @@ struct PropertyInspectorViewModifier<Value>: ViewModifier  {
             content
         } else {
             PropertyInspectorHighlightView(isOn: $isHighlighted) {
-                content.background {
+                content.background(
                     Color.clear.preference(
-                        key: PropertyInspectorPreferenceKey<Value>.self,
+                        key: PropertyInspectorItemKey<Value>.self,
                         value: [item]
                     )
-                }
+                )
             }
         }
     }
 }
 
-struct PropertyInspectorPreferenceKey<Value>: PreferenceKey {
+struct PropertyInspectorItemKey<Value>: PreferenceKey {
     /// The default value for the dynamic value entries.
     static var defaultValue: [PropertyInspectorItem<Value>] { [] }
 
