@@ -37,7 +37,7 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
 
     public init(
         _ title: String? = nil,
-        _ value: Value.Type,
+        _ value: Value.Type = Value.self,
         isPresented: Binding<Bool>,
         sort: @escaping (Value, Value) -> Bool,
         @ViewBuilder content: () -> Content,
@@ -56,20 +56,62 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
 
     public init(
         _ title: String? = nil,
-        _ value: Value.Type,
+        _ value: Value.Type = Value.self,
         isPresented: Binding<Bool>,
         @ViewBuilder content: () -> Content,
         @ViewBuilder icon: @escaping (Value) -> Icon,
         @ViewBuilder label: @escaping (Value) -> Label,
         @ViewBuilder detail: @escaping (Value) -> Detail
     ) where Value: Comparable {
-        self.title = title
-        self._isPresented = isPresented
-        self.sort = .init(sort: { $0 < $1 })
-        self.content = content()
-        self.icon = icon
-        self.label = label
-        self.detail = detail
+        self.init(
+            title,
+            value,
+            isPresented: isPresented,
+            sort: { $0 < $1 },
+            content: content,
+            icon: icon,
+            label: label,
+            detail: detail
+        )
+    }
+
+    public init(
+        _ title: String? = nil,
+        _ value: Value.Type = Value.self,
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder icon: @escaping (Value) -> Icon,
+        @ViewBuilder label: @escaping (Value) -> Label
+    ) where Value: Comparable, Detail == EmptyView {
+        self.init(
+            title,
+            value,
+            isPresented: isPresented,
+            sort: { $0 < $1 },
+            content: content,
+            icon: icon,
+            label: label,
+            detail: { _ in EmptyView() }
+        )
+    }
+
+    public init(
+        _ title: String? = nil,
+        _ value: Value.Type = Value.self,
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder label: @escaping (Value) -> Label
+    ) where Value: Comparable, Detail == EmptyView, Icon == EmptyView {
+        self.init(
+            title,
+            value,
+            isPresented: isPresented,
+            sort: { $0 < $1 },
+            content: content,
+            icon: { _ in EmptyView() },
+            label: label,
+            detail: { _ in EmptyView() }
+        )
     }
 
     public var body: some View {
