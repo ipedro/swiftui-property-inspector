@@ -29,11 +29,11 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
     let detail: (Value) -> Detail
     var comparator: SortComparator?
 
-    @State
-    private var data: [PropertyInspectorItem<Value>] = []
-
     @Binding
     var isPresented: Bool
+
+    @State
+    private var data: [PropertyInspectorItem<Value>] = []
 
     public init(
         _ title: String? = nil,
@@ -116,7 +116,7 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
             .animation(.snappy, value: isPresented)
             .overlay {
                 Spacer().sheet(isPresented: $isPresented) {
-                    PropertyInspectorItemList(
+                    PropertyInspectorList(
                         title: title,
                         data: data,
                         icon: icon,
@@ -150,7 +150,7 @@ public extension PropertyInspector {
 }
 
 @available(iOS 16.4, *)
-struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon: View>: View {
+struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View {
     let title: String?
     let data: [PropertyInspectorItem<Value>]
     let icon: (Value) -> Icon
@@ -164,7 +164,7 @@ struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon: View>: 
                     Toggle(isOn: item.isHighlighted) {
                         HStack {
                             icon(item.value).drawingGroup()
-                            PropertyInspectorItemLabel(
+                            PropertyInspectorListItemLabel(
                                 label: label(item.value),
                                 detail: detail(item.value)
                             )
@@ -242,7 +242,7 @@ extension PropertyInspectorItem: Comparable where Value: Comparable {
     }
 }
 
-struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
+struct PropertyInspectorListItemLabel<Label: View, Detail: View>: View {
     let label: Label
     let detail: Detail
 
@@ -279,57 +279,28 @@ struct PropertyInspectorViewModifier<Value>: ViewModifier  {
     let data: Value
 
     @State
-    private var animationToken = UUID()
-
-    @State
     private var isHighlighted = false
 
-    func body(content: Content) -> some View {
-        content
-            .zIndex(isHighlighted ? 999 : 0)
-            .background(background)
-            .overlay {
-                if isHighlighted {
-                    highlightView
-                }
-            }
-            .compositingGroup()
-            .animation(animation, value: animationToken)
-            .onChange(of: isHighlighted) { newValue in
-                guard newValue else { return }
-                animationToken = UUID()
-            }
-    }
-
-    var animation: Animation {
-        .snappy(
-            duration: .random(in: 0.2 ... 0.6),
-            extraBounce: .random(in: 0 ... 0.1))
-        .delay(.random(in: 0 ... 0.2))
-    }
-
-    var highlightTransition: AnyTransition {
-        .asymmetric(
-            insertion: .opacity.combined(with: .scale(scale: .random(in: 2 ... 2.5))),
-            removal: .identity
-        )
-    }
-
-    var highlightView: some View {
-        Rectangle()
-            .stroke(lineWidth: 1.5)
-            .fill(Color.blue)
-            .id(animationToken)
-            .transition(highlightTransition)
-    }
+    @Environment(\.propertyInspectorDisabled)
+    private var disabled
 
     var item: PropertyInspectorItem<Value> {
         PropertyInspectorItem(value: data, isHighlighted: $isHighlighted)
     }
 
-    /// A helper view for capturing and forwarding preference changes without altering the main content's appearance.
-    var background: some View {
-        Color.clear.preference(key: PropertyInspectorPreferenceKey<Value>.self, value: [item])
+    func body(content: Content) -> some View {
+        if disabled {
+            content
+        } else {
+            PropertyInspectorHighlightView(isOn: $isHighlighted) {
+                content.background {
+                    Color.clear.preference(
+                        key: PropertyInspectorPreferenceKey<Value>.self,
+                        value: [item]
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -343,6 +314,50 @@ struct PropertyInspectorPreferenceKey<Value>: PreferenceKey {
     ///   - value: The current value of dynamic value entries.
     ///   - nextValue: A closure that returns the next set of dynamic value entries.
     static func reduce(value: inout [PropertyInspectorItem<Value>], nextValue: () -> [PropertyInspectorItem<Value>]) {
-        value = value + nextValue()
+        value.append(contentsOf: nextValue())
+    }
+}
+
+struct PropertyInspectorHighlightView<Content: View>: View {
+    @State
+    private var animationToken = UUID()
+
+    @Binding
+    var isOn: Bool
+
+    @ViewBuilder var content: Content
+
+    var transition: AnyTransition {
+        .asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: .random(in: 2 ... 2.5))),
+            removal: .identity
+        )
+    }
+
+    var body: some View {
+        content
+            .zIndex(isOn ? 999 : 0)
+            .overlay {
+                if isOn {
+                    Rectangle()
+                        .stroke(lineWidth: 1.5)
+                        .fill(Color.blue)
+                        .id(animationToken)
+                        .transition(transition)
+                }
+            }
+            .compositingGroup()
+            .onChange(of: isOn) { newValue in
+                guard newValue else { return }
+                animationToken = UUID()
+            }
+            .animation(animation, value: animationToken)
+    }
+
+    var animation: Animation {
+        .snappy(
+            duration: .random(in: 0.2 ... 0.6),
+            extraBounce: .random(in: 0 ... 0.1))
+        .delay(.random(in: 0 ... 0.2))
     }
 }
