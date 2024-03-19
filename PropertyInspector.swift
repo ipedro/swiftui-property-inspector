@@ -21,11 +21,11 @@
 import SwiftUI
 
 @available(iOS 16.4, *)
-public struct PropertyInspector<Content: View, Value>: View {
+public struct PropertyInspector<Content: View, Value, Label: View, Detail: View, Icon: View>: View {
     private let content: Content
-    private let propertyTitle: (Value) -> Text
-    private let propertyDetail: (Value) -> Text?
-    private let propertyIcon: (Value) -> Image?
+    private let icon: (Value) -> Icon
+    private let label: (Value) -> Label
+    private let detail: (Value) -> Detail
 
     @State
     private var data: [PropertyInspectorItem<Value>] = []
@@ -37,50 +37,55 @@ public struct PropertyInspector<Content: View, Value>: View {
 
     public init(
         _ title: String? = nil,
+        _ value: Value.Type,
         isPresented: Binding<Bool>,
         @ViewBuilder content: () -> Content,
-        @ViewBuilder propertyIcon: @escaping (Value) -> Image?,
-        @ViewBuilder propertyTitle: @escaping (Value) -> Text,
-        @ViewBuilder propertyDetail: @escaping (Value) -> Text?
+        @ViewBuilder icon: @escaping (Value) -> Icon,
+        @ViewBuilder label: @escaping (Value) -> Label,
+        @ViewBuilder detail: @escaping (Value) -> Detail
     ) {
-        self.title = title
         self._isPresented = isPresented
+        self.title = title
         self.content = content()
-        self.propertyIcon = propertyIcon
-        self.propertyTitle = propertyTitle
-        self.propertyDetail = propertyDetail
+        self.icon = icon
+        self.label = label
+        self.detail = detail
     }
 
     public init(
         _ title: String? = nil,
+        _ value: Value.Type,
         isPresented: Binding<Bool>,
         @ViewBuilder content: () -> Content,
-        @ViewBuilder propertyTitle: @escaping (Value) -> Text
-    ) {
+        @ViewBuilder label: @escaping (Value) -> Label
+    ) where Icon == EmptyView, Detail == EmptyView {
         self.init(
             title,
+            value,
             isPresented: isPresented,
             content: content,
-            propertyIcon: { _ in Optional<Image>.none },
-            propertyTitle: propertyTitle,
-            propertyDetail: { _ in Optional<Text>.none }
+            icon: { _ in EmptyView() },
+            label: label,
+            detail: { _ in EmptyView() }
         )
     }
 
     public init(
         _ title: String? = nil,
+        _ value: Value.Type,
         isPresented: Binding<Bool>,
         @ViewBuilder content: () -> Content,
-        @ViewBuilder propertyTitle: @escaping (Value) -> Text,
-        @ViewBuilder propertyDetail: @escaping (Value) -> Text?
-    ) {
+        @ViewBuilder label: @escaping (Value) -> Label,
+        @ViewBuilder detail: @escaping (Value) -> Detail
+    ) where Icon == EmptyView {
         self.init(
             title,
+            value,
             isPresented: isPresented,
             content: content,
-            propertyIcon: { _ in Optional<Image>.none },
-            propertyTitle: propertyTitle,
-            propertyDetail: propertyDetail
+            icon: { _ in EmptyView() },
+            label: label,
+            detail: detail
         )
     }
 
@@ -105,12 +110,12 @@ public struct PropertyInspector<Content: View, Value>: View {
             .animation(.snappy, value: isPresented)
             .overlay {
                 Spacer().sheet(isPresented: $isPresented) {
-                    PropertyInepctorItemList(
+                    PropertyInspectorItemList(
                         title: title,
                         data: data,
-                        propertyIcon: propertyIcon,
-                        propertyTitle: propertyTitle,
-                        propertyDetail: propertyDetail
+                        icon: icon,
+                        label: label,
+                        detail: detail
                     )
                 }
             }
@@ -118,23 +123,28 @@ public struct PropertyInspector<Content: View, Value>: View {
 }
 
 @available(iOS 16.4, *)
-private struct PropertyInepctorItemList<Value>: View {
+private struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon: View>: View {
+    typealias Data = [PropertyInspectorItem<Value>]
     let title: String?
-    let data: [PropertyInspectorItem<Value>]
-    let propertyIcon: (Value) -> Image?
-    let propertyTitle: (Value) -> Text
-    let propertyDetail: (Value) -> Text?
+    let data: Data
+    let icon: (Value) -> Icon
+    let label: (Value) -> Label
+    let detail: (Value) -> Detail
 
     var body: some View {
         List {
             Section {
                 ForEach(data) { item in
-                    PropertyInspectorItemView(
-                        highlight: item.isHighlighted,
-                        icon: propertyIcon(item.wrappedValue),
-                        title: propertyTitle(item.wrappedValue),
-                        detail: propertyDetail(item.wrappedValue)
-                    )
+                    Toggle(isOn: item.isHighlighted) {
+                        HStack {
+                            icon(item.wrappedValue).drawingGroup()
+                            PropertyInspectorItemLabel(
+                                label: label(item.wrappedValue),
+                                detail: detail(item.wrappedValue)
+                            )
+                        }
+                        .contentShape(Rectangle())
+                    }
                     .listRowBackground(Color.clear)
                     .toggleStyle(_ToggleStyle(alignment: .center))
                 }
@@ -201,46 +211,27 @@ private struct PropertyInspectorItem<Value>: Identifiable, Equatable {
     }
 }
 
-private struct PropertyInspectorItemView: View {
-    @Binding var highlight: Bool
-    let icon: Image?
-    let title: Text
-    let detail: Text?
+private struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
+    let label: Label
+    let detail: Detail
 
     var body: some View {
-        Toggle(isOn: $highlight) {
-            HStack {
-                icon.drawingGroup()
-                TitleView(title: title, detail: detail)
-            }
-            .contentShape(Rectangle())
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer().frame(height: 3) // padding doesn't work
+
+            label
+                .foregroundStyle(.primary)
+                .font(.body)
+
+            detail
+
+            Spacer().frame(height: 3) // padding doesn't work
         }
+        .foregroundStyle(.secondary)
+        .font(.caption2)
     }
-
-    private struct TitleView: View {
-        let title: Text
-        let detail: Text?
-
-        var body: some View {
-            VStack(alignment: .leading, spacing: 0) {
-                Spacer().frame(height: 3) // padding doesn't work
-
-                title
-                    .foregroundStyle(.primary)
-                    .font(.body)
-
-                detail
-
-                Spacer().frame(height: 3) // padding doesn't work
-            }
-            .foregroundStyle(.secondary)
-            .font(.caption2)
-        }
-    }
-
 }
-
-extension View {
+public extension View {
     func propertyInspectorValue<Value>(_ token: Value) -> some View {
         modifier(
             PropertyInspectorViewModifier(data: token)
