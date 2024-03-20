@@ -341,7 +341,7 @@ struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
     @ViewBuilder var detail: Detail
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 1) {
             Spacer().frame(height: 3) // padding doesn't work
 
             label
@@ -432,6 +432,23 @@ struct PropertyInspectorItemKey<Value>: PreferenceKey {
     }
 }
 
+struct PropertyInspectorCornerRadiusKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    var propertyInspectorCornerRadius: CGFloat {
+        get { self[PropertyInspectorCornerRadiusKey.self] }
+        set { self[PropertyInspectorCornerRadiusKey.self] = newValue }
+    }
+}
+
+public extension View {
+    func propertyInspectorCornerRadius(_ radius: CGFloat) -> some View {
+        environment(\.propertyInspectorCornerRadius, radius)
+    }
+}
+
 struct PropertyInspectorHighlightView<Content: View>: View {
     @State
     private var animationToken = UUID()
@@ -439,11 +456,17 @@ struct PropertyInspectorHighlightView<Content: View>: View {
     @Binding
     var isOn: Bool
 
-    @ViewBuilder var content: Content
+    @ViewBuilder 
+    var content: Content
+
+    @Environment(\.propertyInspectorCornerRadius)
+    private var cornerRadius
 
     var transition: AnyTransition {
         .asymmetric(
-            insertion: .opacity.combined(with: .scale(scale: .random(in: 2 ... 2.5))),
+            insertion: .opacity
+                .combined(with: .scale(scale:
+                        .random(in: 2 ... 2.5))),
             removal: .identity
         )
     }
@@ -453,7 +476,7 @@ struct PropertyInspectorHighlightView<Content: View>: View {
             .zIndex(isOn ? 999 : 0)
             .overlay {
                 if isOn {
-                    Rectangle()
+                    RoundedRectangle(cornerRadius: cornerRadius)
                         .stroke(lineWidth: 1.5)
                         .fill(Color.blue)
                         .id(animationToken)
