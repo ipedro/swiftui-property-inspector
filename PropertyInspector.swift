@@ -198,7 +198,7 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
         .presentationBackgroundInteraction(.enabled)
         .presentationContentInteraction(.scrolls)
         .presentationCornerRadius(20)
-        .presentationBackground(Material.ultraThin)
+        .presentationBackground(Material.ultraThinMaterial)
         .toggleStyle(
             PropertyInspectorToggleStyle(
                 alignment: .firstTextBaseline
@@ -296,7 +296,13 @@ final class PropertyInspectorItem<Value>: Identifiable, Comparable {
     let line: Int
     let file: String
 
-    private(set) lazy var callSite = "\(file.split(separator: "/").last!):\(line)"
+    private(set) lazy var callSite = {
+        let functionName = {
+            if function.contains("(") { return "func \(function)" }
+            return "var \(function)"
+        }()
+        return "\(functionName) — \(file.split(separator: "/").last!):\(line)"
+    }()
 
     private lazy var sortString = [
         file,
@@ -322,17 +328,19 @@ final class PropertyInspectorItem<Value>: Identifiable, Comparable {
 
 }
 
+@available(iOS 16.0, *)
 struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
     let label: Label
     @ViewBuilder var detail: Detail
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 3) {
             Spacer().frame(height: 3) // padding doesn't work
 
             label
+                .font(.callout)
                 .foregroundStyle(.primary)
-                .font(.body)
+                .bold()
 
             detail
 
