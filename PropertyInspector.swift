@@ -21,16 +21,23 @@
 import SwiftUI
 
 @available(iOS 16.4, *)
-public struct PropertyInspector<Value, Content: View, Label: View, Detail: View, Icon: View>: View {
-    let title: String?
-    let content: Content
-    let icon: (Value) -> Icon
-    let label: (Value) -> Label
-    let detail: (Value) -> Detail
-    var comparator: SortComparator?
+public struct PropertyInspector<
+    Value,
+    Content: View,
+    Label: View,
+    Detail: View,
+    Icon: View
+>: View {
+    private let title: String?
+    private let content: Content
+    private let icon: (Value) -> Icon
+    private let label: (Value) -> Label
+    private let detail: (Value) -> Detail
+
+    private var comparator: SortComparator?
 
     @Binding
-    var isPresented: Bool
+    private var isPresented: Bool
 
     @State
     private var data: [PropertyInspectorItem<Value>] = []
@@ -172,18 +179,18 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
         List {
             Section {
                 if filteredData.isEmpty {
-                    Text(searchQuery.isEmpty ? 
+                    Text(searchQuery.isEmpty ?
                          "No \(title ?? "items")" :
-                         "No results for '\(searchQuery)'"
+                            "No results for '\(searchQuery)'"
                     )
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
-                } else {
-                    ForEach(filteredData, content: row(_ :))
                 }
+
+                ForEach(filteredData, content: row(_ :))
             } header: {
                 header
             }
