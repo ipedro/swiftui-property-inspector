@@ -222,7 +222,7 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
             .animation(.snappy, value: isPresented)
             .overlay {
                 Spacer().sheet(isPresented: $isPresented) {
-                    PropertyInspectorList(
+                    PropertyInspectorItemList(
                         title: title,
                         data: data,
                         icon: icon,
@@ -373,7 +373,7 @@ struct PropertyInspectorDisabledKey: EnvironmentKey {
 }
 
 @available(iOS 16.4, *)
-struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View {
+struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon: View>: View {
     let title: String?
     let data: [PropertyInspectorItem<Value>]
     let icon: (Value) -> Icon
@@ -395,10 +395,7 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
         List {
             Section {
                 if filteredData.isEmpty {
-                    Text(searchQuery.isEmpty ?
-                         "No \(title ?? "items")" :
-                            "No results for '\(searchQuery)'"
-                    )
+                    Text(emptyMessage)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
@@ -422,11 +419,13 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
         .presentationContentInteraction(.scrolls)
         .presentationCornerRadius(20)
         .presentationBackground(Material.thinMaterial)
-        .toggleStyle(
-            PropertyInspectorToggleStyle(
-                alignment: .firstTextBaseline
-            )
-        )
+        .toggleStyle(PropertyInspectorToggleStyle(alignment: .firstTextBaseline))
+    }
+
+    private var emptyMessage: String {
+        searchQuery.isEmpty ?
+            "No \(title ?? "items")" :
+            "No results for '\(searchQuery)'"
     }
 
     private var header: some View {
@@ -470,33 +469,25 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
 
     private func row(_ item: PropertyInspectorItem<Value>) -> some View {
         Toggle(isOn: item.isHighlighted) {
-            HStack {
-                icon(item.value).drawingGroup()
-                PropertyInspectorItemLabel(
-                    label: label(item.value),
-                    detail: {
-                        if Detail.self == EmptyView.self {
-                            Text(item.callSite)
-                        } else {
-                            detail(item.value)
-                        }
+            PropertyInspectorItemRow(
+                icon: icon(item.value),
+                label: label(item.value),
+                detail: {
+                    if Detail.self == EmptyView.self {
+                        Text(item.callSite)
+                    } else {
+                        detail(item.value)
                     }
-                )
-            }
-            .contentShape(Rectangle())
+                }
+            )
         }
         .listRowBackground(Color.clear)
-        .toggleStyle(
-            PropertyInspectorToggleStyle(
-                alignment: .center
-            )
-        )
+        .toggleStyle(PropertyInspectorToggleStyle())
     }
-
 }
 
 struct PropertyInspectorToggleStyle: ToggleStyle {
-    let alignment: VerticalAlignment
+    var alignment: VerticalAlignment = .center
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
@@ -552,25 +543,31 @@ final class PropertyInspectorItem<Value>: Identifiable, Comparable {
 }
 
 @available(iOS 16.0, *)
-struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
+struct PropertyInspectorItemRow<Icon: View, Label: View, Detail: View>: View {
+    let icon: Icon
     let label: Label
     @ViewBuilder var detail: Detail
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Spacer().frame(height: 3) // padding doesn't work
+        HStack {
+            icon.drawingGroup()
 
-            label
-                .font(.footnote)
-                .foregroundStyle(.primary)
-                .bold()
+            VStack(alignment: .leading, spacing: 1) {
+                Spacer().frame(height: 3) // padding doesn't work
 
-            detail
+                label
+                    .font(.footnote)
+                    .foregroundStyle(.primary)
+                    .bold()
 
-            Spacer().frame(height: 3) // padding doesn't work
+                detail
+
+                Spacer().frame(height: 3) // padding doesn't work
+            }
+            .foregroundStyle(.secondary)
+            .font(.caption2)
         }
-        .foregroundStyle(.secondary)
-        .font(.caption2)
+        .contentShape(Rectangle())
     }
 }
 
