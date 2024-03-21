@@ -20,14 +20,39 @@
 
 import SwiftUI
 
+/// `PropertyInspector` provides a SwiftUI view that presents a customizable inspector pane
+/// for properties, allowing users to dynamically explore and interact with property values.
+/// It supports customizable title, content, icons, labels, and detailed views for each property.
+///
+/// - Parameters:
+///   - Value: The type of the property values being inspected.
+///   - Content: The type of the main content view.
+///   - Label: The type of the view providing the label for each property.
+///   - Detail: The type of the view providing additional details for each property.
+///   - Icon: The type of the view providing an icon for each property.
+///
+/// Usage example:
+/// ```
+/// @State private var isInspectorPresented: Bool = false
+///
+/// var body: some View {
+///     PropertyInspector(isPresented: $isInspectorPresented) {
+///         // Main content view
+///     } icon: { value in
+///         // Icon view for the property value
+///     } label: { value in
+///         // Label view for the property value
+///     } detail: { value in
+///         // Detail view for the property value
+///     }
+/// }
+/// ```
+///
+/// The `PropertyInspector` leverages SwiftUI's preference system to collect property information
+/// from descendant views into a consolidated list, which is then presented in an inspector pane
+/// when the `isPresented` binding is toggled to `true`.
 @available(iOS 16.4, *)
-public struct PropertyInspector<
-    Value,
-    Content: View,
-    Label: View,
-    Detail: View,
-    Icon: View
->: View {
+public struct PropertyInspector<Value, Content: View, Label: View, Detail: View, Icon: View>: View {
     private let title: String?
     private let content: Content
     private let icon: (Value) -> Icon
@@ -42,6 +67,34 @@ public struct PropertyInspector<
     @State
     private var data: [PropertyInspectorItem<Value>] = []
 
+    /// Initializes a `PropertyInspector` with the most detailed configuration, including title, content,
+    /// icon, label, and detail views for each property.
+    ///
+    /// - Parameters:
+    ///   - title: An optional title for the property inspector pane.
+    ///   - value: The property value type.
+    ///   - isPresented: A binding to control the presentation state of the inspector.
+    ///   - content: A closure providing the main content view.
+    ///   - icon: A closure providing an icon view for each property value.
+    ///   - label: A closure providing a label view for each property value.
+    ///   - detail: A closure providing a detail view for each property value.
+    ///
+    /// Usage example:
+    /// ```
+    /// @State private var isInspectorPresented = false
+    ///
+    /// var body: some View {
+    ///     PropertyInspector("Properties", MyValueType.self, isPresented: $isInspectorPresented) {
+    ///         // Main content view goes here
+    ///     } icon: { value in
+    ///         Image(systemName: "gear")
+    ///     } label: { value in
+    ///         Text("Property \(value)")
+    ///     } detail: { value in
+    ///         Text("Detail for \(value)")
+    ///     }
+    /// }
+    /// ```
     public init(
         _ title: String? = nil,
         _ value: Value.Type = Value.self,
@@ -59,6 +112,31 @@ public struct PropertyInspector<
         self.detail = detail
     }
 
+    /// Initializes a `PropertyInspector` with most configurations, including title, content,
+    /// icon, and label views for each property.
+    ///
+    /// - Parameters:
+    ///   - title: An optional title for the property inspector pane.
+    ///   - value: The property value type.
+    ///   - isPresented: A binding to control the presentation state of the inspector.
+    ///   - content: A closure providing the main content view.
+    ///   - icon: A closure providing an icon view for each property value.
+    ///   - label: A closure providing a label view for each property value.
+    ///
+    /// Usage example:
+    /// ```
+    /// @State private var isInspectorPresented = false
+    ///
+    /// var body: some View {
+    ///     PropertyInspector("Properties", MyValueType.self, isPresented: $isInspectorPresented) {
+    ///         // Main content view goes here
+    ///     } icon: { value in
+    ///         Image(systemName: "gear")
+    ///     } label: { value in
+    ///         Text("Property \(value)")
+    ///     }
+    /// }
+    /// ```
     public init(
         _ title: String? = nil,
         _ value: Value.Type = Value.self,
@@ -78,6 +156,27 @@ public struct PropertyInspector<
         )
     }
 
+    /// Initializes a `PropertyInspector` with only a title, content and label views for each property.
+    ///
+    /// - Parameters:
+    ///   - title: An optional title for the property inspector pane.
+    ///   - value: The property value type.
+    ///   - isPresented: A binding to control the presentation state of the inspector.
+    ///   - content: A closure providing the main content view.
+    ///   - label: A closure providing a label view for each property value.
+    ///
+    /// Usage example:
+    /// ```
+    /// @State private var isInspectorPresented = false
+    ///
+    /// var body: some View {
+    ///     PropertyInspector("Properties", MyValueType.self, isPresented: $isInspectorPresented) {
+    ///         // Main content view goes here
+    ///     } label: { value in
+    ///         Text("Property \(value)")
+    ///     }
+    /// }
+    /// ```
     public init(
         _ title: String? = nil,
         _ value: Value.Type = Value.self,
@@ -135,6 +234,133 @@ public struct PropertyInspector<
     }
 }
 
+/// An extension to `PropertyInspector` that adds the ability to sort the properties displayed
+/// in the inspector view. It utilizes a comparator closure to determine the sorting logic.
+@available(iOS 16.4, *)
+public extension PropertyInspector {
+
+    /// Defines the type for the sorting comparator closure, which takes two `Value` instances
+    /// and returns a `Bool` indicating whether the first value should be ordered before the second.
+    typealias SortComparator = (_ lhs: Value, _ rhs: Value) -> Bool
+
+    /// Modifies the current `PropertyInspector` to sort its items using the provided comparator
+    /// when presenting the property list.
+    ///
+    /// - Parameter comparator: A closure that takes two values of the `Value` type and returns a
+    ///   Boolean value indicating whether the first value should come before the second value in the sorted list.
+    ///
+    /// - Returns: A new `PropertyInspector` instance with sorting applied.
+    ///
+    /// Usage example:
+    /// ```
+    /// @State private var isInspectorPresented = false
+    ///
+    /// var body: some View {
+    ///     PropertyInspector("Properties", MyValueType.self, isPresented: $isInspectorPresented) {
+    ///         // Main content view goes here
+    ///     } icon: { value in
+    ///         Image(systemName: "gear")
+    ///     } label: { value in
+    ///         Text("Property \(value)")
+    ///     }
+    ///     .sort { lhs, rhs in
+    ///         // Sorting logic goes here
+    ///         return lhs.propertyName < rhs.propertyName
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// The `sort(by:)` function can be called on a `PropertyInspector` instance to provide custom sorting
+    /// for the items it displays, based on properties of `Value`. This can be particularly useful when the
+    /// order of properties impacts the user experience, or when a logical grouping is needed.
+    func sort(by comparator: @escaping SortComparator) -> Self {
+        var copy = self
+        copy.comparator = comparator
+        return copy
+    }
+}
+
+
+public extension View {
+    /// Attaches a property inspector to the view, which can be used to inspect the specified value when
+    /// the inspector is presented. The view will collect information about the property and make it available
+    /// for inspection in the UI.
+    ///
+    /// - Parameters:
+    ///   - value: The value to be inspected. It can be of any type.
+    ///   - function: The name of the function from where the inspector is called, typically left as the default.
+    ///   - line: The line number in the file from where the inspector is called, typically left as the default.
+    ///   - file: The name of the file from where the inspector is called, typically left as the default.
+    ///
+    /// - Returns: A view modified with a property inspector for the given value.
+    ///
+    /// Usage example:
+    /// ```
+    /// struct MyView: View {
+    ///     let myProperty = "Example"
+    ///
+    ///     var body: some View {
+    ///         Text("Hello World")
+    ///             .inspectProperty(myProperty)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// By default, the `inspectProperty` method uses Swift's compile-time literals such as `#function`,
+    /// `#line`, and `#file` to capture the context where the property is being inspected. This context
+    /// information is used to provide insightful details within the property inspector.
+    func inspectProperty<Value>(
+        _ value: Value,
+        function: String = #function,
+        line: Int = #line,
+        file: String = #file
+    ) -> some View {
+        modifier(
+            PropertyInspectorViewModifier(
+                value: value,
+                function: function,
+                line: line,
+                file: file
+            )
+        )
+    }
+
+    /// Disables the property inspection functionality for this view. When inspection is disabled, the view
+    /// will not collect property information for the inspector.
+    ///
+    /// - Parameter disabled: A Boolean value that determines whether the property inspection is disabled.
+    ///   The default value is `true`.
+    ///
+    /// - Returns: A view that conditionally disables property inspection.
+    func inspectingDisabled(_ disabled: Bool = true) -> some View {
+        environment(\.propertyInspectorDisabled, disabled)
+    }
+
+    /// An extension on `View` to set the corner radius for `PropertyInspectorHighlightView`.
+    /// This environment value customizes the corner radius applied to the highlight effect
+    /// of a property within the inspector.
+    ///
+    /// - Parameter radius: The corner radius to apply to the property inspector's highlight view.
+    ///
+    /// - Returns: A view that sets the specified corner radius in the current environment.
+    ///
+    /// Usage example:
+    /// ```
+    /// var body: some View {
+    ///     MyContentView()
+    ///         .propertyInspectorCornerRadius(10) // Applies a corner radius of 10 to the highlight view
+    /// }
+    /// ```
+    ///
+    /// When you apply this modifier to a view, the `PropertyInspectorHighlightView` within the
+    /// inspector will display with rounded corners of the specified radius. This can be used to
+    /// maintain consistent styling within your app, especially if you have a design system with
+    /// specific corner radius values.
+    func inspectorHighlightCornerRadius(_ radius: CGFloat) -> some View {
+        environment(\.propertyInspectorCornerRadius, radius)
+    }
+}
+
 extension EnvironmentValues {
     var propertyInspectorDisabled: Bool {
         get { self[PropertyInspectorDisabledKey.self] }
@@ -144,16 +370,6 @@ extension EnvironmentValues {
 
 struct PropertyInspectorDisabledKey: EnvironmentKey {
     static let defaultValue: Bool = false
-}
-
-@available(iOS 16.4, *)
-public extension PropertyInspector {
-    typealias SortComparator = (_ lhs: Value, _ rhs: Value) -> Bool
-    func sort(by comparator: @escaping SortComparator) -> Self {
-        var copy = self
-        copy.comparator = comparator
-        return copy
-    }
 }
 
 @available(iOS 16.4, *)
@@ -205,7 +421,7 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
         .presentationBackgroundInteraction(.enabled)
         .presentationContentInteraction(.scrolls)
         .presentationCornerRadius(20)
-        .presentationBackground(Material.ultraThinMaterial)
+        .presentationBackground(Material.thinMaterial)
         .toggleStyle(
             PropertyInspectorToggleStyle(
                 alignment: .firstTextBaseline
@@ -225,7 +441,7 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
 
             HStack {
                 TextField(
-                    "Search \(filteredData.count) \(title ?? "items")",
+                    "Search \(filteredData.count) items",
                     text: $searchQuery
                 )
 
@@ -314,7 +530,7 @@ final class PropertyInspectorItem<Value>: Identifiable, Comparable {
     private lazy var sortString = [
         file,
         String(line),
-        function
+        function,
     ].joined(separator: "-")
 
     init(value: Value, isHighlighted: Binding<Bool>, function: String, line: Int, file: String) {
@@ -345,7 +561,7 @@ struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
             Spacer().frame(height: 3) // padding doesn't work
 
             label
-                .font(.callout)
+                .font(.footnote)
                 .foregroundStyle(.primary)
                 .bold()
 
@@ -355,28 +571,6 @@ struct PropertyInspectorItemLabel<Label: View, Detail: View>: View {
         }
         .foregroundStyle(.secondary)
         .font(.caption2)
-    }
-}
-
-public extension View {
-    func propertyInspector<Value>(
-        _ value: Value,
-        function: String = #function,
-        line: Int = #line,
-        file: String = #file
-    ) -> some View {
-        modifier(
-            PropertyInspectorViewModifier(
-                value: value,
-                function: function,
-                line: line,
-                file: file
-            )
-        )
-    }
-
-    func disablePropertyInspector(_ disabled: Bool = true) -> some View {
-        environment(\.propertyInspectorDisabled, disabled)
     }
 }
 
@@ -432,20 +626,14 @@ struct PropertyInspectorItemKey<Value>: PreferenceKey {
     }
 }
 
-struct PropertyInspectorCornerRadiusKey: EnvironmentKey {
+struct PropertyInspectorHighlightViewCornerRadiusKey: EnvironmentKey {
     static let defaultValue: CGFloat = 0
 }
 
 extension EnvironmentValues {
     var propertyInspectorCornerRadius: CGFloat {
-        get { self[PropertyInspectorCornerRadiusKey.self] }
-        set { self[PropertyInspectorCornerRadiusKey.self] = newValue }
-    }
-}
-
-public extension View {
-    func propertyInspectorCornerRadius(_ radius: CGFloat) -> some View {
-        environment(\.propertyInspectorCornerRadius, radius)
+        get { self[PropertyInspectorHighlightViewCornerRadiusKey.self] }
+        set { self[PropertyInspectorHighlightViewCornerRadiusKey.self] = newValue }
     }
 }
 
@@ -465,8 +653,7 @@ struct PropertyInspectorHighlightView<Content: View>: View {
     var transition: AnyTransition {
         .asymmetric(
             insertion: .opacity
-                .combined(with: .scale(scale:
-                        .random(in: 2 ... 2.5))),
+                .combined(with: .scale(scale: .random(in: 2 ... 2.5))),
             removal: .identity
         )
     }
