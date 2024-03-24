@@ -359,9 +359,11 @@ public extension View {
         modifier(
             PropertyInspectorViewModifier(
                 value: value,
-                function: function,
-                line: line,
-                file: file
+                location: .init(
+                    function: function,
+                    file: file,
+                    line: line
+                )
             )
         )
     }
@@ -549,14 +551,10 @@ public final class PropertyInspectorItem<Value>: Identifiable, Comparable {
     public let location: PropertyInspectorLocation
     let isHighlighted: Binding<Bool>
 
-    init(value: Value, isHighlighted: Binding<Bool>, function: String, line: Int, file: String) {
+    init(value: Value, isHighlighted: Binding<Bool>, location: PropertyInspectorLocation) {
         self.value = value
         self.isHighlighted = isHighlighted
-        self.location = .init(
-            function: function,
-            file: file,
-            line: line
-        )
+        self.location = location
     }
 
     public static func == (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
@@ -621,9 +619,7 @@ struct PropertyInspectorItemRow<Icon: View, Label: View, Detail: View>: View {
 
 struct PropertyInspectorViewModifier<Value>: ViewModifier  {
     let value: Value
-    let function: String
-    let line: Int
-    let file: String
+    let location: PropertyInspectorLocation
 
     @State
     private var isHighlighted = false
@@ -635,9 +631,7 @@ struct PropertyInspectorViewModifier<Value>: ViewModifier  {
         PropertyInspectorItem(
             value: value,
             isHighlighted: $isHighlighted,
-            function: function,
-            line: line,
-            file: file
+            location: location
         )
     }
 
