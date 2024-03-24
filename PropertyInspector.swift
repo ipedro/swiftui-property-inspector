@@ -53,13 +53,12 @@ import SwiftUI
 /// when the `isPresented` binding is toggled to `true`.
 @available(iOS 16.4, *)
 public struct PropertyInspector<Value, Content: View, Label: View, Detail: View, Icon: View>: View {
-    private let title: String?
-    private let content: Content
-    private let icon: (Value) -> Icon
-    private let label: (Value) -> Label
-    private let detail: (Value) -> Detail
-
-    private var comparator: SortComparator?
+    private var title: String?
+    private var content: Content
+    private var icon: (Value) -> Icon
+    private var label: (Value) -> Label
+    private var detail: (Value) -> Detail
+    private var comparator: ItemComparator?
 
     @Binding
     private var isPresented: Bool
@@ -203,7 +202,7 @@ public struct PropertyInspector<Value, Content: View, Label: View, Detail: View,
                     return
                 }
                 data = newValue.sorted(by: { lhs, rhs in
-                    comparator(lhs.value, rhs.value)
+                    comparator(lhs, rhs)
                 })
             }
             .safeAreaInset(edge: .bottom) {
@@ -241,7 +240,7 @@ public extension PropertyInspector {
 
     /// Defines the type for the sorting comparator closure, which takes two `Value` instances
     /// and returns a `Bool` indicating whether the first value should be ordered before the second.
-    typealias SortComparator = (_ lhs: Value, _ rhs: Value) -> Bool
+    typealias ValueComparator = (_ lhs: Value, _ rhs: Value) -> Bool
 
     /// Modifies the current `PropertyInspector` to sort its items using the provided comparator
     /// when presenting the property list.
@@ -273,7 +272,49 @@ public extension PropertyInspector {
     /// The `sort(by:)` function can be called on a `PropertyInspector` instance to provide custom sorting
     /// for the items it displays, based on properties of `Value`. This can be particularly useful when the
     /// order of properties impacts the user experience, or when a logical grouping is needed.
-    func sort(by comparator: @escaping SortComparator) -> Self {
+    func sort(by comparator: @escaping ValueComparator) -> Self {
+        var copy = self
+        copy.comparator = {
+            comparator($0.value, $1.value)
+        }
+        return copy
+    }
+
+    /// Defines the type for the sorting comparator closure, which takes two wrapped `Value` instances
+    /// and returns a `Bool` indicating whether the first value should be ordered before the second.
+    typealias ItemComparator = (_ lhs: PropertyInspectorItem<Value>, _ rhs: PropertyInspectorItem<Value>) -> Bool
+
+    /// Modifies the current `PropertyInspector` to sort its items using the provided comparator
+    /// when presenting the property list.
+    ///
+    /// - Parameter comparator: A closure that takes two values of the wraped `Value` type and returns a
+    ///   Boolean value indicating whether the first value should come before the second value in the sorted list.
+    ///
+    /// - Returns: A new `PropertyInspector` instance with sorting applied.
+    ///
+    /// Usage example:
+    /// ```
+    /// @State private var isInspectorPresented = false
+    ///
+    /// var body: some View {
+    ///     PropertyInspector("Properties", MyValueType.self, isPresented: $isInspectorPresented) {
+    ///         // Main content view goes here
+    ///     } icon: { value in
+    ///         Image(systemName: "gear")
+    ///     } label: { value in
+    ///         Text("Property \(value)")
+    ///     }
+    ///     .sort { lhs, rhs in
+    ///         // Sorting logic goes here
+    ///         return lhs.value.propertyName && lhs.file < rhs.value.propertyName && rhs.file
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// The `sort(by:)` function can be called on a `PropertyInspector` instance to provide custom sorting
+    /// for the items it displays, based on properties of `Value`. This can be particularly useful when the
+    /// order of properties impacts the user experience, or when a logical grouping is needed.
+    func sort(by comparator: @escaping ItemComparator) -> Self {
         var copy = self
         copy.comparator = comparator
         return copy
@@ -396,11 +437,11 @@ struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon: View>: 
             Section {
                 if filteredData.isEmpty {
                     Text(emptyMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
 
                 ForEach(filteredData, content: row(_ :))
@@ -474,7 +515,7 @@ struct PropertyInspectorItemList<Value, Label: View, Detail: View, Icon: View>: 
                 label: label(item.value),
                 detail: {
                     if Detail.self == EmptyView.self {
-                        Text(item.callSite)
+                        Text(item.location.description)
                     } else {
                         detail(item.value)
                     }
@@ -502,44 +543,51 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
     }
 }
 
-final class PropertyInspectorItem<Value>: Identifiable, Comparable {
-    let id = UUID()
-    let value: Value
+public final class PropertyInspectorItem<Value>: Identifiable, Comparable {
+    public let id = UUID()
+    public let value: Value
+    public let location: PropertyInspectorLocation
     let isHighlighted: Binding<Bool>
-    let function: String
-    let line: Int
-    let file: String
-
-    private(set) lazy var callSite = {
-        let functionName = {
-            if function.contains("(") { return "func \(function)" }
-            return "var \(function)"
-        }()
-        return "\(functionName) — \(file.split(separator: "/").last!):\(line)"
-    }()
-
-    private lazy var sortString = [
-        file,
-        String(line),
-        function,
-    ].joined(separator: "-")
 
     init(value: Value, isHighlighted: Binding<Bool>, function: String, line: Int, file: String) {
         self.value = value
         self.isHighlighted = isHighlighted
-        self.function = function
-        self.line = line
-        self.file = file
+        self.location = .init(
+            function: function,
+            file: file,
+            line: line
+        )
     }
 
-    static func == (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
+    public static func == (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
         lhs.id == rhs.id
     }
     
-    static func < (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
-        lhs.sortString < rhs.sortString
+    public static func < (lhs: PropertyInspectorItem<Value>, rhs: PropertyInspectorItem<Value>) -> Bool {
+        lhs.location < rhs.location
+    }
+}
+
+public struct PropertyInspectorLocation: Comparable, CustomStringConvertible {
+    public let function: String
+    public let file: String
+    public let line: Int
+
+    public var description: String {
+        guard let fileName = file.split(separator: "/").last else {
+            return prettyFunctionName
+        }
+        return "\(fileName):\(line)\n\(prettyFunctionName)"
     }
 
+    private var prettyFunctionName: String {
+        if function.contains("(") { return "func \(function)" }
+        return "var \(function)"
+    }
+
+    public static func < (lhs: PropertyInspectorLocation, rhs: PropertyInspectorLocation) -> Bool {
+        lhs.description.localizedStandardCompare(rhs.description) == .orderedAscending
+    }
 }
 
 @available(iOS 16.0, *)
