@@ -246,7 +246,7 @@ public extension PropertyInspector {
 
     /// Defines the type for the sorting comparator closure, which takes two wrapped `Value` instances
     /// and returns a `Bool` indicating whether the first value should be ordered before the second.
-    typealias ItemComparator = (_ lhs: PropertyInspectorItem<Value>, _ rhs: PropertyInspectorItem<Value>) -> Bool
+    typealias ItemComparator = (_ lhs: Item, _ rhs: Item) -> Bool
 
     /// Modifies the current `PropertyInspector` to sort its items using the provided comparator
     /// when presenting the property list.
@@ -641,14 +641,14 @@ struct PropertyInspectorItemKey<Value>: PreferenceKey {
     }
 }
 
-struct PropertyInspectorHighlightViewCornerRadiusKey: EnvironmentKey {
+struct PropertyInspectorHighlightCornerRadiusKey: EnvironmentKey {
     static let defaultValue: CGFloat = 0
 }
 
 extension EnvironmentValues {
     var propertyInspectorCornerRadius: CGFloat {
-        get { self[PropertyInspectorHighlightViewCornerRadiusKey.self] }
-        set { self[PropertyInspectorHighlightViewCornerRadiusKey.self] = newValue }
+        get { self[PropertyInspectorHighlightCornerRadiusKey.self] }
+        set { self[PropertyInspectorHighlightCornerRadiusKey.self] = newValue }
     }
 }
 
