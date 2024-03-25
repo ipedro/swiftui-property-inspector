@@ -396,7 +396,7 @@ struct PropertyInspectorList<Value, Label: View, Detail: View, Icon: View>: View
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard query.count > 1 else { return data }
         return data.filter { item in
-            "\(type(of: item))-\(item.value)".localizedCaseInsensitiveContains(query)
+            String(describing: item).localizedCaseInsensitiveContains(query)
         }
     }
 
@@ -513,7 +513,7 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
 
 /// Represents an individual item to be inspected within the Property Inspector.
 /// This class encapsulates a single property's value and metadata for display and comparison purposes.
-public final class PropertyInspectorItem<Value>: Identifiable, Comparable {
+public final class PropertyInspectorItem<Value>: Identifiable, Comparable, CustomStringConvertible {
     /// A unique identifier for the inspector item, used to differentiate between items.
     public let id = UUID()
 
@@ -526,6 +526,8 @@ public final class PropertyInspectorItem<Value>: Identifiable, Comparable {
 
     /// A binding to a Boolean value that determines whether this item is currently highlighted within the UI.
     let isHighlighted: Binding<Bool>
+
+    public private(set) lazy var description: String = "\(location)\(value)"
 
     init(value: Value, isHighlighted: Binding<Bool>, location: PropertyInspectorLocation) {
         self.value = value
