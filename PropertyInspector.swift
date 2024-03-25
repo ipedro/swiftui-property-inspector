@@ -511,10 +511,20 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
     }
 }
 
+/// Represents an individual item to be inspected within the Property Inspector.
+/// This class encapsulates a single property's value and metadata for display and comparison purposes.
 public final class PropertyInspectorItem<Value>: Identifiable, Comparable {
+    /// A unique identifier for the inspector item, used to differentiate between items.
     public let id = UUID()
+
+    /// The value of the property being inspected. The type of this value is generic, allowing for flexibility in what can be inspected.
     public let value: Value
+
+    /// The location within the source code where this item was tagged for inspection.
+    /// This includes the function name, file name, and line number.
     public let location: PropertyInspectorLocation
+
+    /// A binding to a Boolean value that determines whether this item is currently highlighted within the UI.
     let isHighlighted: Binding<Bool>
 
     init(value: Value, isHighlighted: Binding<Bool>, location: PropertyInspectorLocation) {
@@ -532,9 +542,16 @@ public final class PropertyInspectorItem<Value>: Identifiable, Comparable {
     }
 }
 
+/// Represents the location within the source code where a `PropertyInspectorItem` was defined.
+/// This includes the function or variable name, the file name, and the line number.
 public final class PropertyInspectorLocation: Comparable, CustomStringConvertible {
+    /// The name of the function or variable where the inspection item is defined.
     public let function: String
+
+    /// The full path of the file where the inspection item is defined.
     public let file: String
+
+    /// The line number within the file where the inspection item is defined.
     public let line: Int
 
     init(function: String, file: String, line: Int) {
@@ -543,13 +560,16 @@ public final class PropertyInspectorLocation: Comparable, CustomStringConvertibl
         self.line = line
     }
 
+    /// A textual description of the location, typically used for display purposes.
+    /// This includes the file name (without the full path) and the line number.
     public private(set) lazy var description: String = {
         guard let fileName = file.split(separator: "/").last else {
             return prettyFunctionName
         }
-        return "\(fileName):\(line)"//\n\(prettyFunctionName)"
+        return "\(fileName):\(line)"
     }()
 
+    /// Provides a formatted version of the function name for readability.
     private var prettyFunctionName: String {
         if function.contains("(") { return "func \(function)" }
         return "var \(function)"
