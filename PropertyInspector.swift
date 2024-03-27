@@ -339,8 +339,8 @@ public extension View {
     ///   The default value is `true`.
     ///
     /// - Returns: A view that conditionally disables property inspection.
-    func inspectingDisabled(_ disabled: Bool = true) -> some View {
-        environment(\.propertyInspectorDisabled, disabled)
+    func inspectorDisabled(_ disabled: Bool = true) -> some View {
+        environment(\.inspectorDisabled, disabled)
     }
 
     /// An extension on `View` to set the corner radius for `PropertyInspectorHighlightView`.
@@ -355,7 +355,7 @@ public extension View {
     /// ```
     /// var body: some View {
     ///     MyContentView()
-    ///         .propertyInspectorCornerRadius(10) // Applies a corner radius of 10 to the highlight view
+    ///         .inspectorCornerRadius(10) // Applies a corner radius of 10 to the highlight view
     /// }
     /// ```
     ///
@@ -364,12 +364,12 @@ public extension View {
     /// maintain consistent styling within your app, especially if you have a design system with
     /// specific corner radius values.
     func inspectorHighlightCornerRadius(_ radius: CGFloat) -> some View {
-        environment(\.propertyInspectorCornerRadius, radius)
+        environment(\.inspectorCornerRadius, radius)
     }
 }
 
 extension EnvironmentValues {
-    var propertyInspectorDisabled: Bool {
+    var inspectorDisabled: Bool {
         get { self[PropertyInspectorDisabledKey.self] }
         set { self[PropertyInspectorDisabledKey.self] = newValue }
     }
@@ -622,30 +622,31 @@ struct PropertyInspectorViewModifier<Value>: ViewModifier  {
     @State
     private var isHighlighted = false
 
-    @Environment(\.propertyInspectorDisabled)
+    @Environment(\.inspectorDisabled)
     private var disabled
 
-    var data: PropertyInspectorItem<Value> {
-        PropertyInspectorItem(
-            value: value,
-            isHighlighted: $isHighlighted,
-            location: location
-        )
+    var data: [PropertyInspectorItem<Value>] {
+        if disabled {
+            return []
+        }
+        return [
+            PropertyInspectorItem(
+                value: value,
+                isHighlighted: $isHighlighted,
+                location: location
+            )
+        ]
     }
 
     func body(content: Content) -> some View {
-        if disabled {
-            content
-        } else {
-            PropertyInspectorHighlightView(isOn: $isHighlighted) {
-                content.background(
-                    Color.clear.preference(
-                        key: PropertyInspectorItemKey<Value>.self,
-                        value: [data]
-                    )
+        content
+            .background(
+                Color.clear.preference(
+                    key: PropertyInspectorItemKey<Value>.self,
+                    value: data
                 )
-            }
-        }
+            )
+            .inspectorHighlight(isOn: $isHighlighted)
     }
 }
 
@@ -668,9 +669,17 @@ struct PropertyInspectorHighlightCornerRadiusKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    var propertyInspectorCornerRadius: CGFloat {
+    var inspectorCornerRadius: CGFloat {
         get { self[PropertyInspectorHighlightCornerRadiusKey.self] }
         set { self[PropertyInspectorHighlightCornerRadiusKey.self] = newValue }
+    }
+}
+
+extension View {
+    func inspectorHighlight(isOn: Binding<Bool>) -> PropertyInspectorHighlightView<Self> {
+        PropertyInspectorHighlightView(isOn: isOn) {
+            self
+        }
     }
 }
 
@@ -681,11 +690,14 @@ struct PropertyInspectorHighlightView<Content: View>: View {
     @Binding
     var isOn: Bool
 
-    @ViewBuilder 
+    @ViewBuilder
     var content: Content
 
-    @Environment(\.propertyInspectorCornerRadius)
+    @Environment(\.inspectorCornerRadius)
     private var cornerRadius
+
+    @Environment(\.inspectorDisabled)
+    private var disabled
 
     var transition: AnyTransition {
         .asymmetric(
@@ -695,11 +707,15 @@ struct PropertyInspectorHighlightView<Content: View>: View {
         )
     }
 
+    var isVisible: Bool {
+        isOn && !disabled
+    }
+
     var body: some View {
         content
-            .zIndex(isOn ? 999 : 0)
+            .zIndex(isVisible ? 999 : 0)
             .overlay {
-                if isOn {
+                if isVisible {
                     RoundedRectangle(cornerRadius: cornerRadius)
                         .stroke(lineWidth: 1.5)
                         .fill(Color.blue)
@@ -707,8 +723,7 @@ struct PropertyInspectorHighlightView<Content: View>: View {
                         .transition(transition)
                 }
             }
-            .compositingGroup()
-            .onChange(of: isOn) { newValue in
+            .onChange(of: isVisible) { newValue in
                 guard newValue else { return }
                 animationToken = UUID()
             }
@@ -717,8 +732,8 @@ struct PropertyInspectorHighlightView<Content: View>: View {
 
     var animation: Animation {
         .snappy(
-            duration: .random(in: 0.2 ... 0.6),
+            duration: .random(in: 0.2 ... 0.5),
             extraBounce: .random(in: 0 ... 0.1))
-        .delay(.random(in: 0 ... 0.2))
+        .delay(.random(in: 0 ... 0.3))
     }
 }
