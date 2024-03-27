@@ -292,7 +292,7 @@ public extension View {
     /// for inspection in the UI.
     ///
     /// - Parameters:
-    ///   - value: The value to be inspected. It can be of any type.
+    ///   - values: The values to be inspected. It can be of any type.
     ///   - function: The name of the function from where the inspector is called, typically left as the default.
     ///   - line: The line number in the file from where the inspector is called, typically left as the default.
     ///   - file: The name of the file from where the inspector is called, typically left as the default.
@@ -315,14 +315,14 @@ public extension View {
     /// `#line`, and `#file` to capture the context where the property is being inspected. This context
     /// information is used to provide insightful details within the property inspector.
     func inspectProperty<Value>(
-        _ value: Value,
+        _ values: Value...,
         function: String = #function,
         line: Int = #line,
         file: String = #file
     ) -> some View {
         modifier(
             PropertyInspectorViewModifier(
-                value: value,
+                values: values,
                 location: .init(
                     function: function,
                     file: file,
@@ -616,7 +616,7 @@ struct PropertyInspectorItemRow<Icon: View, Label: View, Detail: View>: View {
 }
 
 struct PropertyInspectorViewModifier<Value>: ViewModifier  {
-    let value: Value
+    let values: [Value]
     let location: PropertyInspectorLocation
 
     @State
@@ -629,13 +629,13 @@ struct PropertyInspectorViewModifier<Value>: ViewModifier  {
         if disabled {
             return []
         }
-        return [
+        return values.map {
             PropertyInspectorItem(
-                value: value,
+                value: $0,
                 isHighlighted: $isHighlighted,
                 location: location
             )
-        ]
+        }
     }
 
     func body(content: Content) -> some View {
