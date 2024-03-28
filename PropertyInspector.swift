@@ -25,11 +25,7 @@ import SwiftUI
 /// It supports customizable title, content, icons, labels, and detailed views for each property.
 ///
 /// - Parameters:
-///   - Value: The type of the property values being inspected.
 ///   - Content: The type of the main content view.
-///   - Label: The type of the view providing the label for each property.
-///   - Detail: The type of the view providing additional details for each property.
-///   - Icon: The type of the view providing an icon for each property.
 ///
 /// Usage example:
 /// ```
@@ -37,13 +33,8 @@ import SwiftUI
 ///
 /// var body: some View {
 ///     PropertyInspector(isPresented: $isInspectorPresented) {
-///         // Main content view
-///     } icon: { value in
-///         // Icon view for the property value
-///     } label: { value in
-///         // Label view for the property value
-///     } detail: { value in
-///         // Detail view for the property value
+///         // Inspectable content
+///         ...
 ///     }
 /// }
 /// ```
@@ -53,59 +44,39 @@ import SwiftUI
 /// when the `isPresented` binding is toggled to `true`.
 @available(iOS 16.4, *)
 public struct PropertyInspector<Content: View>: View {
-    private var title: String?
-
     private var content: Content
-
-    @State
-    private var iconBuilders = PropertyInspectorViewBuilderDictionary()
-
-    @State
-    private var labelBuilders = PropertyInspectorViewBuilderDictionary()
-
-    @State
-    private var detailBuilders = PropertyInspectorViewBuilderDictionary()
 
     @Binding
     private var isPresented: Bool
 
-    @State
-    private var data = [PropertyInspectorItem]()
+    @StateObject
+    private var data = PropertyInspectorDataStore()
 
-    /// Initializes a `PropertyInspector` with the most detailed configuration, including title, content,
-    /// icon, label, and detail views for each property.
+    /// `PropertyInspector` provides a dynamic and customizable view for inspecting properties within a SwiftUI application.
     ///
-    /// - Parameters:
-    ///   - title: An optional title for the property inspector pane.
-    ///   - value: The property value type.
-    ///   - isPresented: A binding to control the presentation state of the inspector.
-    ///   - content: A closure providing the main content view.
-    ///   - icon: A closure providing an icon view for each property value.
-    ///   - label: A closure providing a label view for each property value.
-    ///   - detail: A closure providing a detail view for each property value.
+    /// By integrating `PropertyInspector` into your SwiftUI views, you can add a powerful tool for developers and designers to introspect runtime values of properties, aiding in debugging and UI design processes. This inspector leverages SwiftUI's preference key system, view modifiers, and environment values to collect, display, and filter inspectable properties.
     ///
-    /// Usage example:
-    /// ```
+    /// Usage:
+    ///
+    /// Wrap any SwiftUI view where you want to enable property inspection:
+    /// ```swift
     /// @State private var isInspectorPresented = false
     ///
     /// var body: some View {
-    ///     PropertyInspector("Properties", MyValueType.self, isPresented: $isInspectorPresented) {
-    ///         // Main content view goes here
-    ///     } icon: { value in
-    ///         Image(systemName: "gear")
-    ///     } label: { value in
-    ///         Text("Property \(value)")
-    ///     } detail: { value in
-    ///         Text("Detail for \(value)")
+    ///     PropertyInspector("My Inspector", isPresented: $isInspectorPresented) {
+    ///         // Your view content here
     ///     }
     /// }
     /// ```
+    ///
+    /// - Parameters:
+    ///   - isPresented: A `Binding<Bool>` that controls the presentation of the inspector. Toggling this value shows or hides the inspector.
+    ///   - content: A closure returning the content of the view to be inspected.
+    ///
     public init(
-        _ title: String? = nil,
         isPresented: Binding<Bool>,
         @ViewBuilder content: () -> Content
     ) {
-        self.title = title
         self._isPresented = isPresented
         self.content = content()
     }
@@ -116,10 +87,11 @@ public struct PropertyInspector<Content: View>: View {
 
     public var body: some View {
         content
-            .onPreferenceChange(PropertyInspectorValueKey.self) { data = Set($0).sorted() }
-            .onPreferenceChange(PropertyInspectorIconViewBuilderKey.self) { iconBuilders = $0  }
-            .onPreferenceChange(PropertyInspectorLabelViewBuilderKey.self) { labelBuilders = $0 }
-            .onPreferenceChange(PropertyInspectorDetailViewBuilderKey.self) { detailBuilders = $0 }
+            .onPreferenceChange(PropertyInspectorValueKey.self) { data.items = Set($0).sorted() }
+            .onPreferenceChange(PropertyInspectorTitleKey.self) { data.title = $0 }
+            .onPreferenceChange(PropertyInspectorIconViewBuilderKey.self) { data.icons = $0  }
+            .onPreferenceChange(PropertyInspectorLabelViewBuilderKey.self) { data.labels = $0 }
+            .onPreferenceChange(PropertyInspectorDetailViewBuilderKey.self) { data.details = $0 }
             .safeAreaInset(edge: .bottom) {
                 Spacer().frame(height: bottomInset)
             }
@@ -134,46 +106,39 @@ public struct PropertyInspector<Content: View>: View {
             .animation(.snappy, value: isPresented)
             .overlay {
                 Spacer().sheet(isPresented: $isPresented) {
-                    PropertyInspectorList(
-                        title: title,
-                        data: data,
-                        iconBuilders: iconBuilders,
-                        labelBuilders: labelBuilders,
-                        detailBuilders: detailBuilders
-                    )
+                    PropertyInspectorList()
+                        .environmentObject(data)
                 }
             }
     }
 }
 
+final class PropertyInspectorDataStore: ObservableObject {
+    @Published var title = PropertyInspectorTitleKey.defaultValue
+    @Published var items = [PropertyInspectorItem]()
+    @Published var icons = PropertyInspectorViewBuilderDictionary()
+    @Published var labels = PropertyInspectorViewBuilderDictionary()
+    @Published var details = PropertyInspectorViewBuilderDictionary()
+}
+
 public extension View {
-    /// Attaches a property inspector to the view, which can be used to inspect the specified value when
-    /// the inspector is presented. The view will collect information about the property and make it available
-    /// for inspection in the UI.
+    /// Attaches an inspectable property to the view, which can be introspected by the `PropertyInspector`.
+    ///
+    /// Use `inspectProperty` to mark values within your view hierarchy as inspectable. These values are then available within the `PropertyInspector` UI, allowing you to debug and inspect values at runtime.
+    ///
+    /// Example:
+    /// ```swift
+    /// Text("Hello, world!")
+    ///     .inspectProperty("Hello, world!", function: "Text(_:)")
+    /// ```
     ///
     /// - Parameters:
-    ///   - values: The values to be inspected. It can be of any type.
-    ///   - function: The name of the function from where the inspector is called, typically left as the default.
-    ///   - line: The line number in the file from where the inspector is called, typically left as the default.
-    ///   - file: The name of the file from where the inspector is called, typically left as the default.
+    ///   - values: An array of `Any` representing the values to be inspected.
+    ///   - function: A `String` representing the name of the function or context in which the property is being inspected. Defaults to the caller function name.
+    ///   - line: An `Int` representing the line number in the source file at which the property is being inspected. Defaults to the caller line number.
+    ///   - file: A `String` representing the path of the source file in which the property is being inspected. Defaults to the caller file path.
     ///
-    /// - Returns: A view modified with a property inspector for the given value.
-    ///
-    /// Usage example:
-    /// ```
-    /// struct MyView: View {
-    ///     let myProperty = "Example"
-    ///
-    ///     var body: some View {
-    ///         Text("Hello World")
-    ///             .inspectProperty(myProperty)
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// By default, the `inspectProperty` method uses Swift's compile-time literals such as `#function`,
-    /// `#line`, and `#file` to capture the context where the property is being inspected. This context
-    /// information is used to provide insightful details within the property inspector.
+    /// - Returns: A view modified to include the specified properties in the inspection.
     func inspectProperty(
         _ values: Any...,
         function: String = #function,
@@ -192,41 +157,34 @@ public extension View {
         )
     }
 
-    /// Disables the property inspection functionality for this view. When inspection is disabled, the view
-    /// will not collect property information for the inspector.
+    /// Modifies the view to enable or disable the property inspector.
     ///
-    /// - Parameter disabled: A Boolean value that determines whether the property inspection is disabled.
-    ///   The default value is `true`.
-    ///
-    /// - Returns: A view that conditionally disables property inspection.
+    /// - Parameter disabled: A Boolean value that determines whether the inspector is disabled for this view.
+    /// - Returns: A view modified to have the inspector enabled or disabled.
     func inspectorDisabled(_ disabled: Bool = true) -> some View {
         environment(\.inspectorDisabled, disabled)
     }
 
-    /// An extension on `View` to set the corner radius for `PropertyInspectorHighlightView`.
-    /// This environment value customizes the corner radius applied to the highlight effect
-    /// of a property within the inspector.
+    /// Registers a custom icon view for a specific type to be used in the Property Inspector's UI.
     ///
-    /// - Parameter radius: The corner radius to apply to the property inspector's highlight view.
+    /// This function allows you to provide a custom icon representation for a given type when displayed in the property inspector. The icon view is constructed using the provided value of the specified type.
     ///
-    /// - Returns: A view that sets the specified corner radius in the current environment.
-    ///
-    /// Usage example:
-    /// ```
-    /// var body: some View {
-    ///     MyContentView()
-    ///         .inspectorCornerRadius(10) // Applies a corner radius of 10 to the highlight view
+    /// Usage Example:
+    /// ```swift
+    /// struct ContentView: View {
+    ///     var body: some View {
+    ///         Text("Hello, World!")
+    ///             .inspectorRowIcon(for: String.self) { stringValue in
+    ///                 Image(systemName: "text.quote")
+    ///             }
+    ///     }
     /// }
     /// ```
     ///
-    /// When you apply this modifier to a view, the `PropertyInspectorHighlightView` within the
-    /// inspector will display with rounded corners of the specified radius. This can be used to
-    /// maintain consistent styling within your app, especially if you have a design system with
-    /// specific corner radius values.
-    func inspectorHighlightCornerRadius(_ radius: CGFloat) -> some View {
-        environment(\.inspectorCornerRadius, radius)
-    }
-    
+    /// - Parameters:
+    ///   - type: The type of value for which the custom icon view is provided.
+    ///   - icon: A closure that takes an instance of the specified type and returns a view to be used as an icon.
+    /// - Returns: A view modified to include a custom icon view for a specific type in the property inspector.
     func inspectorRowIcon<Value, Icon: View>(
         for type: Value.Type,
         @ViewBuilder icon: @escaping (Value) -> Icon
@@ -239,6 +197,32 @@ public extension View {
         )
     }
 
+    func inspectorTitle(_ title: String) -> some View {
+        modifier(
+            PropertyInspectorTitleModifier(title: title)
+        )
+    }
+
+    /// Registers a custom label view for a specific type to be displayed in the Property Inspector's UI.
+    ///
+    /// Use this function to define how the label for a given type should be displayed in the property inspector. The label is generated dynamically based on the value of the specified type.
+    ///
+    /// Usage Example:
+    /// ```swift
+    /// struct ContentView: View {
+    ///     var body: some View {
+    ///         Text("Important")
+    ///             .inspectorRowLabel(for: String.self) { stringValue in
+    ///                 Text(stringValue).fontWeight(.bold)
+    ///             }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - type: The type of value for which the custom label view is provided.
+    ///   - label: A closure that takes an instance of the specified type and returns a view to be used as a label.
+    /// - Returns: A view modified to include a custom label view for a specific type in the property inspector.
     func inspectorRowLabel<Value, Label: View>(
         for type: Value.Type,
         @ViewBuilder label: @escaping (Value) -> Label
@@ -251,6 +235,29 @@ public extension View {
         )
     }
 
+    /// Registers a custom detail view for a specific type to be shown in the Property Inspector's UI.
+    ///
+    /// This function enables the customization of the detail view presented for a given type within the property inspector. It allows for detailed, context-specific views based on the provided value.
+    ///
+    /// Usage Example:
+    /// ```swift
+    /// struct ContentView: View {
+    ///     var body: some View {
+    ///         Text("User Detail")
+    ///             .inspectorRowDetail(for: String.self) { stringValue in
+    ///                 HStack {
+    ///                     Text("Detail:")
+    ///                     Text(stringValue).italic()
+    ///                 }
+    ///             }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - type: The type of value for which the custom detail view is provided.
+    ///   - detail: A closure that takes an instance of the specified type and returns a view to be used as a detail view.
+    /// - Returns: A view modified to include a custom detail view for a specific type in the property inspector.
     func inspectorRowDetail<Value, Detail: View>(
         for type: Value.Type,
         @ViewBuilder detail: @escaping (Value) -> Detail
@@ -277,19 +284,16 @@ struct PropertyInspectorDisabledKey: EnvironmentKey {
 
 @available(iOS 16.4, *)
 struct PropertyInspectorList: View {
-    let title: String?
-    let data: [PropertyInspectorItem]
-    let iconBuilders: PropertyInspectorViewBuilderDictionary
-    let labelBuilders: PropertyInspectorViewBuilderDictionary
-    let detailBuilders: PropertyInspectorViewBuilderDictionary
+    @EnvironmentObject
+    private var data: PropertyInspectorDataStore
 
     @State
     private var searchQuery = ""
 
-    private var filteredData: [PropertyInspectorItem] {
+    private var rows: [PropertyInspectorItem] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard query.count > 1 else { return data }
-        return data.filter { item in
+        guard query.count > 1 else { return data.items }
+        return data.items.filter { item in
             String(describing: item).localizedCaseInsensitiveContains(query)
         }
     }
@@ -297,21 +301,23 @@ struct PropertyInspectorList: View {
     var body: some View {
         List {
             Section {
-                if filteredData.isEmpty {
+                if rows.isEmpty {
                     Text(emptyMessage)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
+                        .multilineTextAlignment(.center)
+                        .padding(.top)
                 }
 
-                ForEach(filteredData) { item in
+                ForEach(rows) { item in
                     PropertyInspectorItemRow(
                         item: item,
-                        icon: makeBody(item, using: iconBuilders),
-                        label: makeBody(item, using: labelBuilders),
-                        detail: makeBody(item, using: detailBuilders)
+                        icon: makeBody(item, using: data.icons),
+                        label: makeBody(item, using: data.labels),
+                        detail: makeBody(item, using: data.details)
                     )
                 }
                 .listRowBackground(Color.clear)
@@ -336,23 +342,21 @@ struct PropertyInspectorList: View {
 
     private var emptyMessage: String {
         searchQuery.isEmpty ?
-        "No \(title ?? "items")" :
+        "Nothing yet.\nInspect items using `inspectProperty(_:)`" :
         "No results for '\(searchQuery)'"
     }
 
     private var header: some View {
         VStack(spacing: 6) {
-            if let title {
-                Toggle(sources: filteredData, isOn: \.isHighlighted) {
-                    Text(title)
-                        .bold()
-                        .font(.title2)
-                }
+            Toggle(sources: rows, isOn: \.$isHighlighted) {
+                Text(data.title)
+                    .bold()
+                    .font(.title2)
             }
 
             HStack {
                 TextField(
-                    "Search \(filteredData.count) items",
+                    "Search \(rows.count) items",
                     text: $searchQuery
                 )
 
@@ -405,21 +409,23 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
     }
 }
 
-/// Represents an individual item to be inspected within the Property Inspector.
-/// This class encapsulates a single property's value and metadata for display and comparison purposes.
+/// Represents an individual inspectable property within the `PropertyInspector`.
+///
+/// `PropertyInspectorItem` encapsulates the value and metadata of a property to be inspected, including its location within the source code and whether it is currently highlighted in the UI. This type is crucial for organizing and presenting property data within the inspector interface.
+///
+/// - Note: Conforms to `Identifiable`, `Comparable`, and `Hashable` to support efficient collection operations and UI presentation.
 public struct PropertyInspectorItem: Identifiable, Comparable, Hashable {
-    /// A unique identifier for the inspector item, used to differentiate between items.
+    /// A unique identifier for the inspector item, necessary for conforming to `Identifiable`.
     public let id = UUID()
 
-    /// The value of the property being inspected. The type of this value is generic, allowing for flexibility in what can be inspected.
+    /// The value of the property being inspected. This is stored as `Any` to accommodate any property type.
     public let value: Any
 
-    /// The location within the source code where this item was tagged for inspection.
-    /// This includes the function name, file name, and line number.
+    /// Metadata describing the source code location where this property is inspected.
     public let location: PropertyInspectorLocation
 
-    /// A binding to a Boolean value that determines whether this item is currently highlighted within the UI.
-    let isHighlighted: Binding<Bool>
+    /// A binding to a Boolean value indicating whether this item is highlighted within the UI.
+    @Binding var isHighlighted: Bool
 
     var stringValue: String {
         String(describing: value)
@@ -431,7 +437,7 @@ public struct PropertyInspectorItem: Identifiable, Comparable, Hashable {
 
     init(value: Any, isHighlighted: Binding<Bool>, location: PropertyInspectorLocation) {
         self.value = value
-        self.isHighlighted = isHighlighted
+        self._isHighlighted = isHighlighted
         self.location = location
     }
 
@@ -447,12 +453,14 @@ public struct PropertyInspectorItem: Identifiable, Comparable, Hashable {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
-        //        hasher.combine(location.description)
     }
 }
 
-/// Represents the location within the source code where a `PropertyInspectorItem` was defined.
-/// This includes the function or variable name, the file name, and the line number.
+/// Encapsulates the location within the source code where a `PropertyInspectorItem` was defined.
+///
+/// This class includes detailed information about the function or variable, the file path, and the line number where the inspected property is located, aiding in pinpointing the exact source of the property.
+///
+/// - Note: Conforms to `Comparable` and `CustomStringConvertible` for sorting and presenting location information.
 public final class PropertyInspectorLocation: Comparable, CustomStringConvertible {
     /// The name of the function or variable where the inspection item is defined.
     public let function: String
@@ -495,14 +503,17 @@ struct PropertyInspectorItemRow: View {
     var detail: AnyView?
 
     var body: some View {
-        Toggle(isOn: item.isHighlighted) {
+        Toggle(isOn: item.$isHighlighted) {
             HStack {
-                if let icon {
-                    icon
-                } else {
-                    Image(systemName: "questionmark.diamond")
-                        .foregroundStyle(.tertiary)
+                Group {
+                    if let icon {
+                        icon
+                    } else {
+                        Image(systemName: "questionmark.diamond")
+                            .foregroundStyle(.tertiary)
+                    }
                 }
+                .font(.footnote.bold())
 
                 VStack(alignment: .leading, spacing: 1) {
                     Spacer().frame(height: 3) // padding doesn't work
@@ -514,9 +525,8 @@ struct PropertyInspectorItemRow: View {
                             Text(verbatim: item.stringValue)
                         }
                     }
-                    .font(.footnote)
+                    .font(.footnote.bold())
                     .foregroundStyle(.primary)
-                    .bold()
 
                     if let detail {
                         detail
@@ -537,8 +547,8 @@ struct PropertyInspectorItemRow: View {
     }
 }
 
-struct PropertyInspectorViewModifier<Value>: ViewModifier  {
-    let values: [Value]
+struct PropertyInspectorViewModifier: ViewModifier  {
+    let values: [Any]
     let location: PropertyInspectorLocation
 
     @State
@@ -572,31 +582,6 @@ struct PropertyInspectorViewModifier<Value>: ViewModifier  {
     }
 }
 
-struct PropertyInspectorValueKey: PreferenceKey {
-    /// The default value for the dynamic value entries.
-    static var defaultValue: [PropertyInspectorItem] { [] }
-
-    /// Combines the current value with the next value.
-    ///
-    /// - Parameters:
-    ///   - value: The current value of dynamic value entries.
-    ///   - nextValue: A closure that returns the next set of dynamic value entries.
-    static func reduce(value: inout [PropertyInspectorItem], nextValue: () -> [PropertyInspectorItem]) {
-        value.append(contentsOf: nextValue())
-    }
-}
-
-struct PropertyInspectorHighlightCornerRadiusKey: EnvironmentKey {
-    static let defaultValue: CGFloat = 0
-}
-
-extension EnvironmentValues {
-    var inspectorCornerRadius: CGFloat {
-        get { self[PropertyInspectorHighlightCornerRadiusKey.self] }
-        set { self[PropertyInspectorHighlightCornerRadiusKey.self] = newValue }
-    }
-}
-
 extension View {
     func inspectorHighlight(isOn: Binding<Bool>) -> PropertyInspectorHighlightView<Self> {
         PropertyInspectorHighlightView(isOn: isOn) {
@@ -615,11 +600,11 @@ struct PropertyInspectorHighlightView<Content: View>: View {
     @ViewBuilder
     var content: Content
 
-    @Environment(\.inspectorCornerRadius)
-    private var cornerRadius
-
     @Environment(\.inspectorDisabled)
     private var disabled
+
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     var transition: AnyTransition {
         .asymmetric(
@@ -638,9 +623,9 @@ struct PropertyInspectorHighlightView<Content: View>: View {
             .zIndex(isVisible ? 999 : 0)
             .overlay {
                 if isVisible {
-                    RoundedRectangle(cornerRadius: cornerRadius)
+                    Rectangle()
                         .stroke(lineWidth: 1.5)
-                        .fill(Color.blue)
+                        .fill(colorScheme == .light ? Color.blue : Color.yellow)
                         .id(animationToken)
                         .transition(transition)
                 }
@@ -672,6 +657,28 @@ private extension PropertyInspectorViewBuilderDictionary {
 
 typealias PropertyInspectorViewBuilderDictionary = [String: PropertyInspectorViewBuilder]
 
+// MARK: - Preference Keys
+
+struct PropertyInspectorTitleKey: PreferenceKey {
+    static var defaultValue: String = "Inspect"
+
+    static func reduce(value: inout String, nextValue: () -> String) {}
+}
+
+struct PropertyInspectorValueKey: PreferenceKey {
+    /// The default value for the dynamic value entries.
+    static var defaultValue: [PropertyInspectorItem] { [] }
+
+    /// Combines the current value with the next value.
+    ///
+    /// - Parameters:
+    ///   - value: The current value of dynamic value entries.
+    ///   - nextValue: A closure that returns the next set of dynamic value entries.
+    static func reduce(value: inout [PropertyInspectorItem], nextValue: () -> [PropertyInspectorItem]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
 struct PropertyInspectorDetailViewBuilderKey: PreferenceKey {
     static let defaultValue = PropertyInspectorViewBuilderDictionary()
 
@@ -695,6 +702,8 @@ struct PropertyInspectorLabelViewBuilderKey: PreferenceKey {
         value.merge(nextValue())
     }
 }
+
+// MARK: - View Builders
 
 struct PropertyInspectorViewBuilder: Equatable {
     let view: (Any) -> AnyView?
@@ -731,6 +740,19 @@ struct PropertyInspectorViewBuilderModifier<Key: PreferenceKey, Value, Label: Vi
             Color.clear.preference(
                 key: key,
                 value: data
+            )
+        )
+    }
+}
+
+struct PropertyInspectorTitleModifier: ViewModifier {
+    let title: String
+
+    func body(content: Content) -> some View {
+        content.background(
+            Color.clear.preference(
+                key: PropertyInspectorTitleKey.self,
+                value: title
             )
         )
     }
