@@ -28,14 +28,33 @@ import SwiftUI
 ///   - Content: The type of the main content view.
 ///
 /// Usage example:
-/// ```
+/// ```swift
 /// @State private var isInspectorPresented: Bool = false
 ///
 /// var body: some View {
-///     PropertyInspector(isPresented: $isInspectorPresented) {
-///         // Inspectable content
-///         ...
-///     }
+///    PropertyInspector(initialHighlight: true) {
+///        let foreground = HierarchicalShapeStyle.primary
+///        let padding: Double = 20
+///
+///        VStack(alignment: .center, content: {
+///            Button {
+///                // action
+///            } label: {
+///                Text("Button").inspectSelf()
+///            }
+///            .foregroundStyle(foreground)
+///            .inspectProperty(
+///                foreground,
+///                function: "foregroundStyle()")
+///            .padding(padding)
+///            .inspectProperty(
+///                padding,
+///                function: "padding()")
+///        })
+///        .frame(maxWidth: .infinity)
+///    }
+///    .propertyInspectorTint(.cyan)
+///    .propertyInspectorStyle(.sheet(isPresented: .constant(true)))
 /// }
 /// ```
 ///
@@ -259,7 +278,7 @@ public extension View {
     /// struct ContentView: View {
     ///     var body: some View {
     ///         Text("Hello, World!")
-    ///             .inspectorRowIcon(for: String.self) { stringValue in
+    ///             .propertyInspectorRowIcon(for: String.self) { stringValue in
     ///                 Image(systemName: "text.quote")
     ///             }
     ///     }
@@ -297,7 +316,7 @@ public extension View {
     /// struct ContentView: View {
     ///     var body: some View {
     ///         Text("Important")
-    ///             .inspectorRowLabel(for: String.self) { stringValue in
+    ///             .propertyInspectorRowLabel(for: String.self) { stringValue in
     ///                 Text(stringValue).fontWeight(.bold)
     ///             }
     ///     }
@@ -329,7 +348,7 @@ public extension View {
     /// struct ContentView: View {
     ///     var body: some View {
     ///         Text("User Detail")
-    ///             .inspectorRowDetail(for: String.self) { stringValue in
+    ///             .propertyInspectorRowDetail(for: String.self) { stringValue in
     ///                 HStack {
     ///                     Text("Detail:")
     ///                     Text(stringValue).italic()
