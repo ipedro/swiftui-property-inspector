@@ -659,7 +659,7 @@ struct PropertyInspectorValueModifier: ViewModifier  {
     func body(content: Content) -> some View {
         content.modifier(
             _ViewModifier(
-                isHighlighted: isHighlighted,
+                isHighlighted: !disabled && isHighlighted,
                 values: disabled ? [] : values,
                 location: location
             )
