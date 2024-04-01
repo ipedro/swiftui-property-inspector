@@ -127,16 +127,44 @@ public extension PropertyInspectorStyle where Self == PropertyInspectorInlineSty
 
 public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
     public func makeBody(configuration: Configuration) -> some View {
+        LazyVStack(alignment: .leading) {
+            configuration.content
+            configuration.rows()
+                .padding(.vertical, 3)
+                .multilineTextAlignment(.leading)
+                .overlay(Divider(), alignment: .bottom)
+                .padding(.horizontal)
+        }
+    }
+}
+
+public extension PropertyInspectorStyle where Self == PropertyInspectorShowcaseStyle {
+
+    static var showcase: Self {
+        .init(title: "")
+    }
+
+    static func showcase(title: LocalizedStringKey) -> Self {
+        .init(title: title)
+    }
+}
+
+public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
+    let title: LocalizedStringKey
+
+    public func makeBody(configuration: Configuration) -> some View {
         LazyVStack(alignment: .leading, pinnedViews: [.sectionHeaders], content: {
             Section {
-                configuration.content
-                GroupBox("Properties") {
-                    configuration.rows()
-                        .padding(.vertical, 3)
-                        .multilineTextAlignment(.leading)
-                        .overlay(Divider(), alignment: .bottom)
+                GroupBox(title) {
+                    configuration.content
                 }
                 .padding()
+
+                configuration.rows()
+                    .padding(.vertical, 3)
+                    .multilineTextAlignment(.leading)
+                    .overlay(Divider(), alignment: .bottom)
+                    .padding(.horizontal)
             } header: {
                 configuration.header().padding(.horizontal)
             }
@@ -953,6 +981,7 @@ struct PropertyInspectorTitleModifier: ViewModifier {
         }
     }
     .propertyInspectorTint(.cyan)
+    .propertyInspectorStyle(.showcase(title: "Preview"))
     //.propertyInspectorStyle(.sheet(isPresented: .constant(true)))
 }
 #endif
