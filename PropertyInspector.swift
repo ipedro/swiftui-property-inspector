@@ -169,7 +169,7 @@ public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
                 configuration.header()
                     .padding(.horizontal)
             }
-        }   
+        }
     }
 }
 
