@@ -275,13 +275,11 @@ public extension PropertyInspectorStyle where Self == PropertyInspectorInlineSty
     }
 }
 
-// MARK: - Context Menu Style
-
-/// Provides a convenient static property for accessing the context menu selector style.
 public extension PropertyInspectorStyle where Self == ContextMenuPropertyInspector {
-    /// A static property to access a context menu selector style instance.
     static var contextMenu: Self { .init() }
 }
+
+// MARK: - Context Menu Style
 
 /// A style that presents dynamic value options within a context menu.
 public struct ContextMenuPropertyInspector: PropertyInspectorStyle {
