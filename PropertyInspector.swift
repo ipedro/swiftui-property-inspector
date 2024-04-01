@@ -263,6 +263,10 @@ public extension PropertyInspectorStyle where Self == PropertyInspectorShowcaseS
     static func showcase(title: LocalizedStringKey) -> Self {
         .init(title: title)
     }
+
+    static func showcase(title: String) -> Self {
+        .init(title: LocalizedStringKey(title))
+    }
 }
 
 public extension PropertyInspectorStyle where Self == PropertyInspectorInlineStyle {
