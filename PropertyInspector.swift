@@ -982,7 +982,9 @@ struct PropertyInspectorTitleModifier: ViewModifier {
         }
     }
     .propertyInspectorTint(.cyan)
+    .propertyInspectorStyle(.inline)
+    .propertyInspectorStyle(.showcase)
     .propertyInspectorStyle(.showcase(title: "Preview"))
-    //.propertyInspectorStyle(.sheet(isPresented: .constant(true)))
+    .propertyInspectorStyle(.sheet(isPresented: .constant(true)))
 }
 #endif
