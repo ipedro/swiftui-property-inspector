@@ -407,15 +407,6 @@ public struct PropertyInspectorList: View {
             .listRowBackground(Color.clear)
         }
     }
-
-    private func makeBody(_ item: PropertyInspectorValue, using dict: [String: PropertyInspectorViewBuilder]) -> AnyView? {
-        for key in dict.keys {
-            if let view = dict[key]?.view(item.value) {
-                return view
-            }
-        }
-        return nil
-    }
 }
 
 public struct PropertyInspectorHeader: View {
@@ -588,7 +579,9 @@ public struct PropertyInspectorValueRows: View {
     private var data: PropertyInspectorStorage
 
     public var body: some View {
-        if data.valuesMatchingSearchQuery.isEmpty {
+        let rows = data.valuesMatchingSearchQuery
+
+        if rows.isEmpty {
             Text(emptyMessage)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -597,12 +590,12 @@ public struct PropertyInspectorValueRows: View {
                 .multilineTextAlignment(.center)
                 .padding(.top)
         } else {
-            ForEach(data.valuesMatchingSearchQuery) { row in
+            ForEach(rows) { row in
                 PropertyInspectorValueRow(
                     data: row,
-                    icon: makeBody(row, using: data.icons),
-                    label: makeBody(row, using: data.labels),
-                    detail: makeBody(row, using: data.details)
+                    icon: makeBody(configuration: (row, data.icons)),
+                    label: makeBody(configuration: (row, data.labels)),
+                    detail: makeBody(configuration: (row, data.details))
                 )
             }
         }
@@ -614,9 +607,9 @@ public struct PropertyInspectorValueRows: View {
         "No results for '\(data.searchQuery)'"
     }
 
-    private func makeBody(_ item: PropertyInspectorValue, using dict: [String: PropertyInspectorViewBuilder]) -> AnyView? {
-        for key in dict.keys {
-            if let view = dict[key]?.view(item.value) {
+    private func makeBody(configuration: (item: PropertyInspectorValue, source: [String: PropertyInspectorViewBuilder])) -> AnyView? {
+        for key in configuration.source.keys {
+            if let view = configuration.source[key]?.view(configuration.item.value) {
                 return view
             }
         }
