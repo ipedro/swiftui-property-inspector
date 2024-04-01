@@ -472,8 +472,9 @@ public struct PropertyInspectorHeader: View {
             EdgeInsets(top: 16, leading: 0, bottom: 8, trailing: 0)
         )
     }
+
     private func searchField() -> HStack<TupleView<(TextField<Text>, Button<some View>?)>> {
-        return HStack {
+        HStack {
             TextField(
                 "Search \(data.valuesMatchingSearchQuery.count) items",
                 text: $data.searchQuery
