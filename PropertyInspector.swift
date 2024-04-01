@@ -30,32 +30,42 @@ import SwiftUI
 /// Usage example:
 /// ```swift
 /// @State private var isInspectorPresented: Bool = false
+/// let foreground: HierarchicalShapeStyle = .primary
+/// let padding: Double = 20
 ///
 /// var body: some View {
 ///    PropertyInspector(initialHighlight: true) {
-///        let foreground = HierarchicalShapeStyle.primary
-///        let padding: Double = 20
-///
-///        VStack(alignment: .center, content: {
-///            Button {
-///                // action
-///            } label: {
-///                Text("Button").inspectSelf()
-///            }
-///            .foregroundStyle(foreground)
-///            .inspectProperty(
-///                foreground,
-///                function: "foregroundStyle()")
-///            .padding(padding)
-///            .inspectProperty(
-///                padding,
-///                function: "padding()")
-///        })
-///        .frame(maxWidth: .infinity)
+///        // component we want to inspect
+///        Button {
+///            // some action
+///        } label: {
+///            // you can inspect views directly, useful for debugging
+///            Text("Button").inspectSelf()
+///        }
+///        // inspect foreground style
+///        .foregroundStyle(foreground)
+///        .inspectProperty(
+///            "\(foreground)",
+///            function: "foregroundStyle()"
+///        )
+///        // inspect padding value
+///        .padding(padding)
+///        .inspectProperty(
+///            padding,
+///            function: "padding()"
+///        )
+///        // optional: custom title
+///        .propertyInspectorTitle("Example")
+///        // optional: register custom icons, labels, detail views
+///        .propertyInspectorRowIcon(for: Double.self) { value in
+///            Image(systemName: "\(Int(value)).circle.fill")
+///                .symbolRenderingMode(.hierarchical)
+///        }
 ///    }
+///    // optional: change highlight tint
 ///    .propertyInspectorTint(.cyan)
-///    .propertyInspectorStyle(.sheet(isPresented: .constant(true)))
-/// }
+///    // optional: change behavior
+///    .propertyInspectorStyle(.showcase)
 /// ```
 ///
 /// The `PropertyInspector` leverages SwiftUI's preference system to collect property information
@@ -81,27 +91,29 @@ public struct PropertyInspector<Content: View>: View {
     }
 
     private var configuration: PropertyInspectorStyleConfiguration {
-        .init(
-            content: PropertyInspectorContent(content),
-            header: PropertyInspectorHeader.init,
-            list: PropertyInspectorList.init,
-            rows: PropertyInspectorRows.init
-        )
+        PropertyInspectorStyleConfiguration(content)
     }
 
     public var body: some View {
         AnyView(style.makeBody(configuration: configuration))
             .toggleStyle(PropertyInspectorToggleStyle())
-            .environmentObject(data)
             .environment(\.inspectorInitialHighlight, initialHighlight)
+            .environmentObject(data)
     }
 }
 
 public struct PropertyInspectorStyleConfiguration {
     public let content: PropertyInspectorContent
-    public let header: () -> PropertyInspectorHeader
-    public let list: () -> PropertyInspectorList
-    public let rows: () -> PropertyInspectorRows
+
+    init<V: View>(_ view: V) {
+        self.content = PropertyInspectorContent(view)
+    }
+
+    public var header: PropertyInspectorHeader { .init() }
+
+    public var list: PropertyInspectorList { .init() }
+
+    public var rows: PropertyInspectorRows { .init() }
 }
 
 public struct PropertyInspectorContent: View {
@@ -170,8 +182,9 @@ public struct PropertyInspectorHeader: View {
             EdgeInsets(top: 16, leading: 0, bottom: 8, trailing: 0)
         )
     }
+    
     private func searchField() -> HStack<TupleView<(TextField<Text>, Button<some View>?)>> {
-        return HStack {
+        HStack {
             TextField(
                 "Search \(data.valuesMatchingSearchQuery.count) items",
                 text: $data.searchQuery
@@ -262,6 +275,27 @@ public extension PropertyInspectorStyle where Self == PropertyInspectorInlineSty
     }
 }
 
+// MARK: - Context Menu Style
+
+/// Provides a convenient static property for accessing the context menu selector style.
+public extension PropertyInspectorStyle where Self == ContextMenuPropertyInspector {
+    /// A static property to access a context menu selector style instance.
+    static var contextMenu: Self { .init() }
+}
+
+/// A style that presents dynamic value options within a context menu.
+public struct ContextMenuPropertyInspector: PropertyInspectorStyle {
+    /// Creates the view for the context menu style, presenting the dynamic value options within a context menu.
+    ///
+    /// - Parameter configuration: The configuration containing the dynamic value options and content.
+    /// - Returns: A view displaying the dynamic value options in a context menu.
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.content.contextMenu {
+            configuration.rows
+        }
+    }
+}
+
 // MARK: - Inline Style
 
 public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
@@ -270,7 +304,7 @@ public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
     public func makeBody(configuration: Configuration) -> some View {
         LazyVStack(alignment: alignment) {
             configuration.content
-            configuration.rows()
+            configuration.rows
                 .padding(.vertical, 3)
                 .multilineTextAlignment(.leading)
                 .overlay(Divider(), alignment: .bottom)
@@ -292,13 +326,13 @@ public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
                 }
                 .padding()
 
-                configuration.rows()
+                configuration.rows
                     .padding(.vertical, 3)
                     .multilineTextAlignment(.leading)
                     .overlay(Divider(), alignment: .bottom)
                     .padding(.horizontal)
             } header: {
-                configuration.header()
+                configuration.header
                     .padding(.horizontal)
             }
         }
@@ -361,7 +395,7 @@ public struct PropertyInspectorSheetStyle: PropertyInspectorStyle {
 
     private func sheet(configuration: Configuration) -> some View {
         Spacer().sheet(isPresented: $isPresented) {
-            configuration.list()
+            configuration.list
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .presentationDetents(
@@ -1005,17 +1039,21 @@ struct PropertyInspectorTitleViewModifier: ViewModifier {
             padding,
             function: "padding()"
         )
-        // custom title
+        // optional: customize title
         .propertyInspectorTitle("Example")
+        // optional: register custom icons, labels, detail views
         .propertyInspectorRowIcon(for: Double.self) { value in
             Image(systemName: "\(Int(value)).circle.fill")
                 .symbolRenderingMode(.hierarchical)
         }
     }
+    // optional: change highlight tint
     .propertyInspectorTint(.cyan)
+    // optional: choose from different built-in styles or create your own
     .propertyInspectorStyle(.showcase)
     .propertyInspectorStyle(.showcase(title: "Preview"))
     .propertyInspectorStyle(.sheet(isPresented: .constant(true)))
+    .propertyInspectorStyle(.contextMenu)
     .propertyInspectorStyle(.inline(alignment: .trailing))
     .propertyInspectorStyle(.inline)
 }
