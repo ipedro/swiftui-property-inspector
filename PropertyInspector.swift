@@ -82,7 +82,7 @@ public struct PropertyInspector<Content: View>: View {
 
     private var configuration: PropertyInspectorStyleConfiguration {
         .init(
-            content: AnyView(contentWithDataListeners),
+            content: PropertyInspectorContent(content),
             header: PropertyInspectorHeader.init,
             list: PropertyInspectorList.init,
             rows: PropertyInspectorRows.init
@@ -93,11 +93,29 @@ public struct PropertyInspector<Content: View>: View {
         AnyView(style.makeBody(configuration: configuration))
             .toggleStyle(PropertyInspectorToggleStyle())
             .environmentObject(data)
+            .environment(\.inspectorInitialHighlight, initialHighlight)
+    }
+}
+
+public struct PropertyInspectorStyleConfiguration {
+    public let content: PropertyInspectorContent
+    public let header: () -> PropertyInspectorHeader
+    public let list: () -> PropertyInspectorList
+    public let rows: () -> PropertyInspectorRows
+}
+
+public struct PropertyInspectorContent: View {
+    @EnvironmentObject
+    private var data: PropertyInspectorStorage
+
+    let content: AnyView
+
+    init<Content: View>(_ content: Content) {
+        self.content = AnyView(content)
     }
 
-    private var contentWithDataListeners: some View {
+    public var body: some View {
         content
-            .environment(\.inspectorInitialHighlight, initialHighlight)
             .onPreferenceChange(PropertyInspectorDetailViewBuilderKey.self) { data.details = $0 }
             .onPreferenceChange(PropertyInspectorIconViewBuilderKey.self) { data.icons = $0  }
             .onPreferenceChange(PropertyInspectorLabelViewBuilderKey.self) { data.labels = $0 }
@@ -106,12 +124,117 @@ public struct PropertyInspector<Content: View>: View {
     }
 }
 
-public struct PropertyInspectorStyleConfiguration {
-    public let content: AnyView
-    public let header: () -> PropertyInspectorHeader
-    public let list: () -> PropertyInspectorList
-    public let rows: () -> PropertyInspectorRows
+public struct PropertyInspectorList: View {
+    public var body: some View {
+        List {
+            Section(
+                content: PropertyInspectorRows.init,
+                header: PropertyInspectorHeader.init
+            )
+            .listRowBackground(Color.clear)
+        }
+    }
 }
+
+public struct PropertyInspectorHeader: View {
+    @EnvironmentObject
+    private var data: PropertyInspectorStorage
+
+    private var isOn: Binding<Bool> {
+        Binding(
+            get: {
+                !data.valuesMatchingSearchQuery.isEmpty
+                && data.valuesMatchingSearchQuery
+                    .map(\.isHighlighted)
+                    .filter { $0 == false }
+                    .isEmpty
+            },
+            set: { newValue in
+                data.valuesMatchingSearchQuery.forEach {
+                    $0.isHighlighted = newValue
+                }
+            }
+        )
+    }
+
+    public var body: some View {
+        VStack(spacing: 6) {
+            Toggle(isOn: isOn) {
+                Text(data.title).bold().font(.title2)
+            }
+
+            searchField()
+        }
+        .tint(.primary)
+        .padding(
+            EdgeInsets(top: 16, leading: 0, bottom: 8, trailing: 0)
+        )
+    }
+    private func searchField() -> HStack<TupleView<(TextField<Text>, Button<some View>?)>> {
+        return HStack {
+            TextField(
+                "Search \(data.valuesMatchingSearchQuery.count) items",
+                text: $data.searchQuery
+            )
+
+            if !data.searchQuery.isEmpty {
+                Button {
+                    data.searchQuery.removeAll()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+}
+
+public struct PropertyInspectorRows: View {
+    @EnvironmentObject
+    private var data: PropertyInspectorStorage
+
+    public var body: some View {
+        let rows = data.valuesMatchingSearchQuery
+
+        if rows.isEmpty {
+            Text(emptyMessage)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .listRowSeparator(.hidden)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .padding(.top)
+        } else {
+            ForEach(rows) { row in
+                InspectablePropertyView(
+                    data: row,
+                    icon: makeBody(configuration: (row, data.icons)),
+                    label: makeBody(configuration: (row, data.labels)),
+                    detail: makeBody(configuration: (row, data.details))
+                )
+            }
+        }
+    }
+
+    private var emptyMessage: String {
+        data.searchQuery.isEmpty ?
+        "Nothing yet.\nInspect items using `inspectProperty(_:)`" :
+        "No results for '\(data.searchQuery)'"
+    }
+
+    private func makeBody(configuration: (item: InspectableProperty, source: [String: PropertyInspectorViewBuilder])) -> AnyView? {
+        for key in configuration.source.keys {
+            if let view = configuration.source[key]?.view(configuration.item.value) {
+                return view
+            }
+        }
+        return nil
+    }
+}
+
+// MARK: - Style Protocol
 
 public protocol PropertyInspectorStyle {
     typealias Configuration = PropertyInspectorStyleConfiguration
@@ -119,15 +242,33 @@ public protocol PropertyInspectorStyle {
     @ViewBuilder func makeBody(configuration: Configuration) -> Body
 }
 
-public extension PropertyInspectorStyle where Self == PropertyInspectorInlineStyle {
-    static var inline: Self {
-        .init()
+public extension PropertyInspectorStyle where Self == PropertyInspectorShowcaseStyle {
+    static var showcase: Self {
+        .init(title: "")
+    }
+
+    static func showcase(title: LocalizedStringKey) -> Self {
+        .init(title: title)
     }
 }
 
+public extension PropertyInspectorStyle where Self == PropertyInspectorInlineStyle {
+    static var inline: Self {
+        .init(alignment: .center)
+    }
+
+    static func inline(alignment: HorizontalAlignment) -> Self {
+        .init(alignment: alignment)
+    }
+}
+
+// MARK: - Inline Style
+
 public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
+    let alignment: HorizontalAlignment
+
     public func makeBody(configuration: Configuration) -> some View {
-        LazyVStack(alignment: .leading) {
+        LazyVStack(alignment: alignment) {
             configuration.content
             configuration.rows()
                 .padding(.vertical, 3)
@@ -138,16 +279,7 @@ public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
     }
 }
 
-public extension PropertyInspectorStyle where Self == PropertyInspectorShowcaseStyle {
-
-    static var showcase: Self {
-        .init(title: "")
-    }
-
-    static func showcase(title: LocalizedStringKey) -> Self {
-        .init(title: title)
-    }
-}
+// MARK: - Showcase Style
 
 public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
     let title: LocalizedStringKey
@@ -172,6 +304,8 @@ public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
         }
     }
 }
+
+// MARK: - Sheet Style
 
 @available(iOS 16.4, *)
 public extension PropertyInspectorStyle where Self == PropertyInspectorSheetStyle {
@@ -243,22 +377,7 @@ public struct PropertyInspectorSheetStyle: PropertyInspectorStyle {
     }
 }
 
-final class PropertyInspectorStorage: ObservableObject {
-    @Published var searchQuery = ""
-    @Published var title = PropertyInspectorTitleKey.defaultValue
-    @Published var values = [InspectableProperty]()
-    @Published var icons = [String: PropertyInspectorViewBuilder]()
-    @Published var labels = [String: PropertyInspectorViewBuilder]()
-    @Published var details = [String: PropertyInspectorViewBuilder]()
-
-    var valuesMatchingSearchQuery: [InspectableProperty] {
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty, query.count > 1 else { return values }
-        return values.filter { item in
-            String(describing: item).localizedCaseInsensitiveContains(query)
-        }
-    }
-}
+// MARK: - Public API
 
 public extension View {
     func propertyInspectorStyle<S: PropertyInspectorStyle>(_ style: S) -> some View {
@@ -426,117 +545,6 @@ public extension View {
     }
 }
 
-public struct PropertyInspectorList: View {
-    public var body: some View {
-        List {
-            Section(
-                content: PropertyInspectorRows.init,
-                header: PropertyInspectorHeader.init
-            )
-            .listRowBackground(Color.clear)
-        }
-    }
-}
-
-public struct PropertyInspectorHeader: View {
-    @EnvironmentObject
-    private var data: PropertyInspectorStorage
-
-    private var isOn: Binding<Bool> {
-        Binding(
-            get: {
-                !data.valuesMatchingSearchQuery.isEmpty
-                && data.valuesMatchingSearchQuery
-                    .map(\.isHighlighted)
-                    .filter { $0 == false }
-                    .isEmpty
-            },
-            set: { newValue in
-                data.valuesMatchingSearchQuery.forEach {
-                    $0.isHighlighted = newValue
-                }
-            }
-        )
-    }
-
-    public var body: some View {
-        VStack(spacing: 6) {
-            Toggle(isOn: isOn) {
-                Text(data.title).bold().font(.title2)
-            }
-
-            searchField()
-        }
-        .tint(.primary)
-        .padding(
-            EdgeInsets(top: 16, leading: 0, bottom: 8, trailing: 0)
-        )
-    }
-
-    private func searchField() -> HStack<TupleView<(TextField<Text>, Button<some View>?)>> {
-        HStack {
-            TextField(
-                "Search \(data.valuesMatchingSearchQuery.count) items",
-                text: $data.searchQuery
-            )
-
-            if !data.searchQuery.isEmpty {
-                Button {
-                    data.searchQuery.removeAll()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-}
-
-public struct PropertyInspectorRows: View {
-    @EnvironmentObject
-    private var data: PropertyInspectorStorage
-
-    public var body: some View {
-        let rows = data.valuesMatchingSearchQuery
-
-        if rows.isEmpty {
-            Text(emptyMessage)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .listRowSeparator(.hidden)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-                .padding(.top)
-        } else {
-            ForEach(rows) { row in
-                InspectablePropertyView(
-                    data: row,
-                    icon: makeBody(configuration: (row, data.icons)),
-                    label: makeBody(configuration: (row, data.labels)),
-                    detail: makeBody(configuration: (row, data.details))
-                )
-            }
-        }
-    }
-
-    private var emptyMessage: String {
-        data.searchQuery.isEmpty ?
-        "Nothing yet.\nInspect items using `inspectProperty(_:)`" :
-        "No results for '\(data.searchQuery)'"
-    }
-
-    private func makeBody(configuration: (item: InspectableProperty, source: [String: PropertyInspectorViewBuilder])) -> AnyView? {
-        for key in configuration.source.keys {
-            if let view = configuration.source[key]?.view(configuration.item.value) {
-                return view
-            }
-        }
-        return nil
-    }
-}
-
 struct PropertyInspectorToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
 
@@ -558,9 +566,26 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
     }
 }
 
+final class PropertyInspectorStorage: ObservableObject {
+    @Published var searchQuery = ""
+    @Published var title = PropertyInspectorTitleKey.defaultValue
+    @Published var values = [InspectableProperty]()
+    @Published var icons = [String: PropertyInspectorViewBuilder]()
+    @Published var labels = [String: PropertyInspectorViewBuilder]()
+    @Published var details = [String: PropertyInspectorViewBuilder]()
+
+    var valuesMatchingSearchQuery: [InspectableProperty] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty, query.count > 1 else { return values }
+        return values.filter { item in
+            String(describing: item).localizedCaseInsensitiveContains(query)
+        }
+    }
+}
+
 /// Represents an individual inspectable property within the `PropertyInspector`.
 ///
-/// `Property` encapsulates the value and metadata of a property to be inspected, including its location within the source code and whether it is currently highlighted in the UI. This type is crucial for organizing and presenting property data within the inspector interface.
+/// `InspectableProperty` encapsulates the value and metadata of a property to be inspected, including its location within the source code and whether it is currently highlighted in the UI. This type is crucial for organizing and presenting property data within the inspector interface.
 ///
 /// - Note: Conforms to `Identifiable`, `Comparable`, and `Hashable` to support efficient collection operations and UI presentation.
 struct InspectableProperty: Identifiable, Comparable, Hashable {
@@ -609,7 +634,7 @@ struct InspectableProperty: Identifiable, Comparable, Hashable {
     }
 }
 
-/// Encapsulates the location within the source code where a `PropertyInspectorValue` was defined.
+/// Encapsulates the location within the source code where an inspectable property was defined.
 ///
 /// This class includes detailed information about the function or variable, the file path, and the line number where the inspected property is located, aiding in pinpointing the exact source of the property.
 ///
@@ -961,35 +986,37 @@ struct PropertyInspectorTitleViewModifier: ViewModifier {
         let foreground = HierarchicalShapeStyle.primary
         let padding: Double = 20
 
-        // container
-        VStack(alignment: .center, content: {
-
-            // component we want to inspect
-            Button {
-                // some action
-            } label: {
-                // you can inspect views directly, useful for debugging
-                Text("Button").inspectSelf()
-            }
-            .foregroundStyle(foreground)
-            .inspectProperty(
-                "\(foreground)",
-                function: "foregroundStyle()")
-            .padding(padding)
-            .inspectProperty(
-                padding,
-                function: "padding()")
-        })
-        .frame(maxWidth: .infinity)
+        // component we want to inspect
+        Button {
+            // some action
+        } label: {
+            // you can inspect views directly, useful for debugging
+            Text("Button").inspectSelf()
+        }
+        // inspect foreground style
+        .foregroundStyle(foreground)
+        .inspectProperty(
+            "\(foreground)",
+            function: "foregroundStyle()"
+        )
+        // inspect padding value
+        .padding(padding)
+        .inspectProperty(
+            padding,
+            function: "padding()"
+        )
+        // custom title
         .propertyInspectorTitle("Example")
         .propertyInspectorRowIcon(for: Double.self) { value in
-            Image(systemName: "\(Int(value)).circle.fill").symbolRenderingMode(.hierarchical)
+            Image(systemName: "\(Int(value)).circle.fill")
+                .symbolRenderingMode(.hierarchical)
         }
     }
     .propertyInspectorTint(.cyan)
-    .propertyInspectorStyle(.inline)
     .propertyInspectorStyle(.showcase)
     .propertyInspectorStyle(.showcase(title: "Preview"))
     .propertyInspectorStyle(.sheet(isPresented: .constant(true)))
+    .propertyInspectorStyle(.inline(alignment: .trailing))
+    .propertyInspectorStyle(.inline)
 }
 #endif
