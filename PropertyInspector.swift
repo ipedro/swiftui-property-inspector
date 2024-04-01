@@ -912,11 +912,13 @@ struct PropertyInspectorTitleModifier: ViewModifier {
             Button {
                 // action
             } label: {
-                Text("Button").inspectSelf()
+                Text("Button")
+                    .inspectSelf()
+                    .propertyInspectorDisabled()
             }
             .foregroundStyle(foreground)
             .inspectProperty(
-                foreground,
+                "\(foreground)",
                 function: "foregroundStyle()")
             .padding(padding)
             .inspectProperty(
@@ -924,6 +926,10 @@ struct PropertyInspectorTitleModifier: ViewModifier {
                 function: "padding()")
         })
         .frame(maxWidth: .infinity)
+        .propertyInspectorTitle("Example")
+        .propertyInspectorRowIcon(for: Double.self) { value in
+            Image(systemName: "\(Int(value)).circle.fill").symbolRenderingMode(.hierarchical)
+        }
     }
     .propertyInspectorTint(.cyan)
     .propertyInspectorStyle(.sheet(isPresented: .constant(true)))
