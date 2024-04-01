@@ -959,12 +959,15 @@ struct PropertyInspectorTitleModifier: ViewModifier {
         let foreground = HierarchicalShapeStyle.primary
         let padding: Double = 20
 
+        // container
         VStack(alignment: .center, content: {
+
+            // component we want to inspect
             Button {
-                // action
+                // some action
             } label: {
-                Text("Button")
-                    .inspectSelf()
+                // you can inspect views directly, useful for debugging
+                Text("Button").inspectSelf()
             }
             .foregroundStyle(foreground)
             .inspectProperty(
