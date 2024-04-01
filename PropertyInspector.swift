@@ -83,6 +83,7 @@ public struct PropertyInspector<Content: View>: View {
     private var configuration: PropertyInspectorStyleConfiguration {
         .init(
             content: AnyView(contentWithDataListeners),
+            header: PropertyInspectorHeader.init,
             list: PropertyInspectorList.init,
             rows: PropertyInspectorValueRows.init
         )
@@ -107,6 +108,7 @@ public struct PropertyInspector<Content: View>: View {
 
 public struct PropertyInspectorStyleConfiguration {
     public let content: AnyView
+    public let header: () -> PropertyInspectorHeader
     public let list: () -> PropertyInspectorList
     public let rows: () -> PropertyInspectorValueRows
 }
@@ -125,12 +127,20 @@ public extension PropertyInspectorStyle where Self == PropertyInspectorInlineSty
 
 public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
     public func makeBody(configuration: Configuration) -> some View {
-        VStack(alignment: .leading) {
-            configuration.content
-            configuration.rows()
-                .padding(.vertical, 3)
-                .multilineTextAlignment(.leading)
-        }
+        LazyVStack(alignment: .leading, pinnedViews: [.sectionHeaders], content: {
+            Section {
+                configuration.content
+                GroupBox("Properties") {
+                    configuration.rows()
+                        .padding(.vertical, 3)
+                        .multilineTextAlignment(.leading)
+                        .overlay(Divider(), alignment: .bottom)
+                }
+                .padding()
+            } header: {
+                configuration.header().padding(.horizontal)
+            }
+        })
     }
 }
 
@@ -388,50 +398,42 @@ public extension View {
 }
 
 public struct PropertyInspectorList: View {
-    @EnvironmentObject
-    private var data: PropertyInspectorStorage
-
     public var body: some View {
-        let rows = data.valuesMatchingSearchQuery
         List {
-            Section {
-                PropertyInspectorValueRows()
-
-                if rows.isEmpty {
-                    Text(emptyMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .listRowSeparator(.hidden)
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
-                        .padding(.top)
-                }
-
-            } header: {
-                header(rows)
-            }
+            Section(
+                content: PropertyInspectorValueRows.init,
+                header: PropertyInspectorHeader.init
+            )
             .listRowBackground(Color.clear)
         }
     }
 
-    private var emptyMessage: String {
-        data.searchQuery.isEmpty ?
-        "Nothing yet.\nInspect items using `inspectProperty(_:)`" :
-        "No results for '\(data.searchQuery)'"
+    private func makeBody(_ item: PropertyInspectorValue, using dict: [String: PropertyInspectorViewBuilder]) -> AnyView? {
+        for key in dict.keys {
+            if let view = dict[key]?.view(item.value) {
+                return view
+            }
+        }
+        return nil
     }
+}
 
-    private func header(_ rows: [PropertyInspectorValue]) -> some View {
+public struct PropertyInspectorHeader: View {
+    @EnvironmentObject
+    private var data: PropertyInspectorStorage
+
+    public var body: some View {
         VStack(spacing: 6) {
             Toggle(isOn: .init(
                 get: {
                     !data.valuesMatchingSearchQuery.isEmpty
-                    && rows
+                    && data.valuesMatchingSearchQuery
                         .map(\.isHighlighted)
                         .filter { $0 == false }
                         .isEmpty
                 },
                 set: { newValue in
-                    rows.forEach {
+                    data.valuesMatchingSearchQuery.forEach {
                         $0.isHighlighted = newValue
                     }
                 }
@@ -443,7 +445,7 @@ public struct PropertyInspectorList: View {
 
             HStack {
                 TextField(
-                    "Search \(rows.count) items",
+                    "Search \(data.valuesMatchingSearchQuery.count) items",
                     text: $data.searchQuery
                 )
 
@@ -469,17 +471,7 @@ public struct PropertyInspectorList: View {
             )
         )
     }
-
-    private func makeBody(_ item: PropertyInspectorValue, using dict: [String: PropertyInspectorViewBuilder]) -> AnyView? {
-        for key in dict.keys {
-            if let view = dict[key]?.view(item.value) {
-                return view
-            }
-        }
-        return nil
-    }
 }
-
 struct PropertyInspectorToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
     
@@ -596,14 +588,30 @@ public struct PropertyInspectorValueRows: View {
     private var data: PropertyInspectorStorage
 
     public var body: some View {
-        ForEach(data.valuesMatchingSearchQuery) { row in
-            PropertyInspectorValueRow(
-                data: row,
-                icon: makeBody(row, using: data.icons),
-                label: makeBody(row, using: data.labels),
-                detail: makeBody(row, using: data.details)
-            )
+        if data.valuesMatchingSearchQuery.isEmpty {
+            Text(emptyMessage)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .listRowSeparator(.hidden)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .padding(.top)
+        } else {
+            ForEach(data.valuesMatchingSearchQuery) { row in
+                PropertyInspectorValueRow(
+                    data: row,
+                    icon: makeBody(row, using: data.icons),
+                    label: makeBody(row, using: data.labels),
+                    detail: makeBody(row, using: data.details)
+                )
+            }
         }
+    }
+
+    private var emptyMessage: String {
+        data.searchQuery.isEmpty ?
+        "Nothing yet.\nInspect items using `inspectProperty(_:)`" :
+        "No results for '\(data.searchQuery)'"
     }
 
     private func makeBody(_ item: PropertyInspectorValue, using dict: [String: PropertyInspectorViewBuilder]) -> AnyView? {
@@ -661,6 +669,7 @@ struct PropertyInspectorValueRow: View {
             }
             .foregroundStyle(.secondary)
             .font(.caption2)
+            .multilineTextAlignment(.leading)
         }
     }
 }
@@ -934,7 +943,6 @@ struct PropertyInspectorTitleModifier: ViewModifier {
             } label: {
                 Text("Button")
                     .inspectSelf()
-                    .propertyInspectorDisabled()
             }
             .foregroundStyle(foreground)
             .inspectProperty(
@@ -945,7 +953,6 @@ struct PropertyInspectorTitleModifier: ViewModifier {
                 padding,
                 function: "padding()")
         })
-        .inspectSelf()
         .frame(maxWidth: .infinity)
         .propertyInspectorTitle("Example")
         .propertyInspectorRowIcon(for: Double.self) { value in
@@ -953,6 +960,6 @@ struct PropertyInspectorTitleModifier: ViewModifier {
         }
     }
     .propertyInspectorTint(.cyan)
-    .propertyInspectorStyle(.sheet(isPresented: .constant(true)))
+    //.propertyInspectorStyle(.sheet(isPresented: .constant(true)))
 }
 #endif
