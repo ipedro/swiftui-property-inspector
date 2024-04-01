@@ -127,8 +127,7 @@ public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
     public func makeBody(configuration: Configuration) -> some View {
         VStack(alignment: .leading) {
             configuration.content
-            configuration
-                .rows()
+            configuration.rows()
                 .padding(.vertical, 3)
                 .multilineTextAlignment(.leading)
         }
