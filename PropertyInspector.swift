@@ -153,7 +153,7 @@ public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
     let title: LocalizedStringKey
 
     public func makeBody(configuration: Configuration) -> some View {
-        LazyVStack(alignment: .leading, pinnedViews: [.sectionHeaders], content: {
+        LazyVStack(pinnedViews: [.sectionHeaders]) {
             Section {
                 GroupBox(title) {
                     configuration.content
@@ -166,9 +166,10 @@ public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
                     .overlay(Divider(), alignment: .bottom)
                     .padding(.horizontal)
             } header: {
-                configuration.header().padding(.horizontal)
+                configuration.header()
+                    .padding(.horizontal)
             }
-        })
+        }   
     }
 }
 
@@ -351,7 +352,7 @@ public extension View {
         )
     }
 
-    func propertyInspectorTitle(_ title: String) -> some View {
+    func propertyInspectorTitle(_ title: LocalizedStringKey) -> some View {
         modifier(
             PropertyInspectorTitleModifier(title: title)
         )
@@ -864,8 +865,8 @@ extension EnvironmentValues {
 // MARK: - Preference Keys
 
 struct PropertyInspectorTitleKey: PreferenceKey {
-    static var defaultValue: String = "Inspect"
-    static func reduce(value: inout String, nextValue: () -> String) {}
+    static var defaultValue: LocalizedStringKey = "Inspect"
+    static func reduce(value: inout LocalizedStringKey, nextValue: () -> LocalizedStringKey) {}
 }
 
 struct PropertyInspectorValueKey: PreferenceKey {
@@ -939,7 +940,7 @@ struct PropertyInspectorViewBuilderModifier<Key: PreferenceKey, Value, Label: Vi
 }
 
 struct PropertyInspectorTitleModifier: ViewModifier {
-    let title: String
+    let title: LocalizedStringKey
 
     func body(content: Content) -> some View {
         content.background(
