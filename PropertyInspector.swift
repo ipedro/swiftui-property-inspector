@@ -134,11 +134,11 @@ public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
 public extension PropertyInspectorStyle where Self == PropertyInspectorSheetStyle {
     static func sheet(
         isPresented: Binding<Bool>,
-        detent: PresentationDetent = .fraction(1/2),
+        detent: PresentationDetent = .fraction(2/3),
         presentationDetents: Set<PresentationDetent> = [
             .fraction(1/3),
-            .fraction(1/2),
             .fraction(2/3),
+            .large
         ]
     ) -> Self {
         .init(
@@ -925,6 +925,7 @@ struct PropertyInspectorTitleModifier: ViewModifier {
                 padding,
                 function: "padding()")
         })
+        .inspectSelf()
         .frame(maxWidth: .infinity)
         .propertyInspectorTitle("Example")
         .propertyInspectorRowIcon(for: Double.self) { value in
