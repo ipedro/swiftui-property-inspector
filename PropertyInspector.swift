@@ -85,7 +85,7 @@ public struct PropertyInspector<Content: View>: View {
             content: AnyView(contentWithDataListeners),
             header: PropertyInspectorHeader.init,
             list: PropertyInspectorList.init,
-            rows: PropertyInspectorValueRows.init
+            rows: PropertyInspectorRows.init
         )
     }
 
@@ -110,7 +110,7 @@ public struct PropertyInspectorStyleConfiguration {
     public let content: AnyView
     public let header: () -> PropertyInspectorHeader
     public let list: () -> PropertyInspectorList
-    public let rows: () -> PropertyInspectorValueRows
+    public let rows: () -> PropertyInspectorRows
 }
 
 public protocol PropertyInspectorStyle {
@@ -246,12 +246,12 @@ public struct PropertyInspectorSheetStyle: PropertyInspectorStyle {
 final class PropertyInspectorStorage: ObservableObject {
     @Published var searchQuery = ""
     @Published var title = PropertyInspectorTitleKey.defaultValue
-    @Published var values = [PropertyInspectorValue]()
+    @Published var values = [InspectableProperty]()
     @Published var icons = [String: PropertyInspectorViewBuilder]()
     @Published var labels = [String: PropertyInspectorViewBuilder]()
     @Published var details = [String: PropertyInspectorViewBuilder]()
 
-    var valuesMatchingSearchQuery: [PropertyInspectorValue] {
+    var valuesMatchingSearchQuery: [InspectableProperty] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty, query.count > 1 else { return values }
         return values.filter { item in
@@ -301,7 +301,7 @@ public extension View {
         file: String = #file
     ) -> some View {
         modifier(
-            PropertyInspectorValueModifier(
+            InspectablePropertyViewModifier(
                 values: values,
                 location: .init(
                     function: function,
@@ -354,7 +354,7 @@ public extension View {
 
     func propertyInspectorTitle(_ title: LocalizedStringKey) -> some View {
         modifier(
-            PropertyInspectorTitleModifier(title: title)
+            PropertyInspectorTitleViewModifier(title: title)
         )
     }
 
@@ -430,7 +430,7 @@ public struct PropertyInspectorList: View {
     public var body: some View {
         List {
             Section(
-                content: PropertyInspectorValueRows.init,
+                content: PropertyInspectorRows.init,
                 header: PropertyInspectorHeader.init
             )
             .listRowBackground(Color.clear)
@@ -442,59 +442,103 @@ public struct PropertyInspectorHeader: View {
     @EnvironmentObject
     private var data: PropertyInspectorStorage
 
+    private var isOn: Binding<Bool> {
+        Binding(
+            get: {
+                !data.valuesMatchingSearchQuery.isEmpty
+                && data.valuesMatchingSearchQuery
+                    .map(\.isHighlighted)
+                    .filter { $0 == false }
+                    .isEmpty
+            },
+            set: { newValue in
+                data.valuesMatchingSearchQuery.forEach {
+                    $0.isHighlighted = newValue
+                }
+            }
+        )
+    }
+
     public var body: some View {
         VStack(spacing: 6) {
-            Toggle(isOn: .init(
-                get: {
-                    !data.valuesMatchingSearchQuery.isEmpty
-                    && data.valuesMatchingSearchQuery
-                        .map(\.isHighlighted)
-                        .filter { $0 == false }
-                        .isEmpty
-                },
-                set: { newValue in
-                    data.valuesMatchingSearchQuery.forEach {
-                        $0.isHighlighted = newValue
-                    }
-                }
-            )) {
-                Text(data.title)
-                    .bold()
-                    .font(.title2)
+            Toggle(isOn: isOn) {
+                Text(data.title).bold().font(.title2)
             }
 
-            HStack {
-                TextField(
-                    "Search \(data.valuesMatchingSearchQuery.count) items",
-                    text: $data.searchQuery
-                )
-
-                if !data.searchQuery.isEmpty {
-                    Button {
-                        data.searchQuery.removeAll()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-
+            searchField()
         }
         .tint(.primary)
         .padding(
-            EdgeInsets(
-                top: 16,
-                leading: 0,
-                bottom: 8,
-                trailing: 0
-            )
+            EdgeInsets(top: 16, leading: 0, bottom: 8, trailing: 0)
         )
     }
+    private func searchField() -> HStack<TupleView<(TextField<Text>, Button<some View>?)>> {
+        return HStack {
+            TextField(
+                "Search \(data.valuesMatchingSearchQuery.count) items",
+                text: $data.searchQuery
+            )
+
+            if !data.searchQuery.isEmpty {
+                Button {
+                    data.searchQuery.removeAll()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
 }
+
+public struct PropertyInspectorRows: View {
+    @EnvironmentObject
+    private var data: PropertyInspectorStorage
+
+    public var body: some View {
+        let rows = data.valuesMatchingSearchQuery
+
+        if rows.isEmpty {
+            Text(emptyMessage)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .listRowSeparator(.hidden)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .padding(.top)
+        } else {
+            ForEach(rows) { row in
+                InspectablePropertyView(
+                    data: row,
+                    icon: makeBody(configuration: (row, data.icons)),
+                    label: makeBody(configuration: (row, data.labels)),
+                    detail: makeBody(configuration: (row, data.details))
+                )
+            }
+        }
+    }
+
+    private var emptyMessage: String {
+        data.searchQuery.isEmpty ?
+        "Nothing yet.\nInspect items using `inspectProperty(_:)`" :
+        "No results for '\(data.searchQuery)'"
+    }
+
+    private func makeBody(configuration: (item: InspectableProperty, source: [String: PropertyInspectorViewBuilder])) -> AnyView? {
+        for key in configuration.source.keys {
+            if let view = configuration.source[key]?.view(configuration.item.value) {
+                return view
+            }
+        }
+        return nil
+    }
+}
+
 struct PropertyInspectorToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
-    
+
     func icon(_ isOn: Bool) -> String {
         isOn ? "checkmark.circle.fill" : "circle"
     }
@@ -515,18 +559,18 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
 
 /// Represents an individual inspectable property within the `PropertyInspector`.
 ///
-/// `PropertyInspectorValue` encapsulates the value and metadata of a property to be inspected, including its location within the source code and whether it is currently highlighted in the UI. This type is crucial for organizing and presenting property data within the inspector interface.
+/// `Property` encapsulates the value and metadata of a property to be inspected, including its location within the source code and whether it is currently highlighted in the UI. This type is crucial for organizing and presenting property data within the inspector interface.
 ///
 /// - Note: Conforms to `Identifiable`, `Comparable`, and `Hashable` to support efficient collection operations and UI presentation.
-public struct PropertyInspectorValue: Identifiable, Comparable, Hashable {
+struct InspectableProperty: Identifiable, Comparable, Hashable {
     /// A unique identifier for the inspector item, necessary for conforming to `Identifiable`.
-    public let id = UUID()
+    let id = UUID()
 
     /// The value of the property being inspected. This is stored as `Any` to accommodate any property type.
-    public let value: Any
+    let value: Any
 
     /// Metadata describing the source code location where this property is inspected.
-    public let location: PropertyInspectorLocation
+    let location: InspectablePropertyLocation
 
     /// A binding to a Boolean value indicating whether this item is highlighted within the UI.
     @Binding var isHighlighted: Bool
@@ -543,23 +587,23 @@ public struct PropertyInspectorValue: Identifiable, Comparable, Hashable {
         "\(location)\(stringValueType)\(stringValue)"
     }
 
-    init(value: Any, isHighlighted: Binding<Bool>, location: PropertyInspectorLocation) {
+    init(value: Any, isHighlighted: Binding<Bool>, location: InspectablePropertyLocation) {
         self.value = value
         self._isHighlighted = isHighlighted
         self.location = location
     }
 
-    public static func == (lhs: PropertyInspectorValue, rhs: PropertyInspectorValue) -> Bool {
+    static func == (lhs: InspectableProperty, rhs: InspectableProperty) -> Bool {
         lhs.id == rhs.id &&
         lhs.location == rhs.location &&
         lhs.stringValue == rhs.stringValue
     }
 
-    public static func < (lhs: PropertyInspectorValue, rhs: PropertyInspectorValue) -> Bool {
+    static func < (lhs: InspectableProperty, rhs: InspectableProperty) -> Bool {
         lhs.sortString.localizedCaseInsensitiveCompare(rhs.sortString) == .orderedAscending
     }
 
-    public func hash(into hasher: inout Hasher) {
+    func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
 }
@@ -569,15 +613,15 @@ public struct PropertyInspectorValue: Identifiable, Comparable, Hashable {
 /// This class includes detailed information about the function or variable, the file path, and the line number where the inspected property is located, aiding in pinpointing the exact source of the property.
 ///
 /// - Note: Conforms to `Comparable` and `CustomStringConvertible` for sorting and presenting location information.
-public final class PropertyInspectorLocation: Comparable, CustomStringConvertible {
+final class InspectablePropertyLocation: Comparable, CustomStringConvertible {
     /// The name of the function or variable where the inspection item is defined.
-    public let function: String
+    let function: String
 
     /// The full path of the file where the inspection item is defined.
-    public let file: String
+    let file: String
 
     /// The line number within the file where the inspection item is defined.
-    public let line: Int
+    let line: Int
 
     init(function: String, file: String, line: Int) {
         self.function = function
@@ -587,67 +631,24 @@ public final class PropertyInspectorLocation: Comparable, CustomStringConvertibl
 
     /// A textual description of the location, typically used for display purposes.
     /// This includes the file name (without the full path) and the line number.
-    public private(set) lazy var description: String = {
+    private(set) lazy var description: String = {
         guard let fileName = file.split(separator: "/").last else {
             return function
         }
         return "\(fileName):\(line)"
     }()
 
-    public static func < (lhs: PropertyInspectorLocation, rhs: PropertyInspectorLocation) -> Bool {
+    static func < (lhs: InspectablePropertyLocation, rhs: InspectablePropertyLocation) -> Bool {
         lhs.description.localizedStandardCompare(rhs.description) == .orderedAscending
     }
 
-    public static func == (lhs: PropertyInspectorLocation, rhs: PropertyInspectorLocation) -> Bool {
+    static func == (lhs: InspectablePropertyLocation, rhs: InspectablePropertyLocation) -> Bool {
         lhs.description == rhs.description
     }
 }
 
-public struct PropertyInspectorValueRows: View {
-    @EnvironmentObject
-    private var data: PropertyInspectorStorage
-
-    public var body: some View {
-        let rows = data.valuesMatchingSearchQuery
-
-        if rows.isEmpty {
-            Text(emptyMessage)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .listRowSeparator(.hidden)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-                .padding(.top)
-        } else {
-            ForEach(rows) { row in
-                PropertyInspectorValueRow(
-                    data: row,
-                    icon: makeBody(configuration: (row, data.icons)),
-                    label: makeBody(configuration: (row, data.labels)),
-                    detail: makeBody(configuration: (row, data.details))
-                )
-            }
-        }
-    }
-
-    private var emptyMessage: String {
-        data.searchQuery.isEmpty ?
-        "Nothing yet.\nInspect items using `inspectProperty(_:)`" :
-        "No results for '\(data.searchQuery)'"
-    }
-
-    private func makeBody(configuration: (item: PropertyInspectorValue, source: [String: PropertyInspectorViewBuilder])) -> AnyView? {
-        for key in configuration.source.keys {
-            if let view = configuration.source[key]?.view(configuration.item.value) {
-                return view
-            }
-        }
-        return nil
-    }
-}
-
-struct PropertyInspectorValueRow: View {
-    let data: PropertyInspectorValue
+struct InspectablePropertyView: View {
+    let data: InspectableProperty
     var icon: AnyView?
     var label: AnyView?
     var detail: AnyView?
@@ -696,11 +697,11 @@ struct PropertyInspectorValueRow: View {
     }
 }
 
-struct PropertyInspectorValueModifier: ViewModifier  {
+struct InspectablePropertyViewModifier: ViewModifier  {
     @Environment(\.inspectorInitialHighlight)
     private var isHighlighted
     let values: [Any]
-    let location: PropertyInspectorLocation
+    let location: InspectablePropertyLocation
 
     func body(content: Content) -> some View {
         content.modifier(
@@ -716,15 +717,15 @@ struct PropertyInspectorValueModifier: ViewModifier  {
         @State
         var isHighlighted: Bool
         var values: [Any]
-        var location: PropertyInspectorLocation
+        var location: InspectablePropertyLocation
 
         @Environment(\.inspectorDisabled)
         private var disabled
 
-        private var data: [PropertyInspectorValue] {
+        private var data: [InspectableProperty] {
             if disabled { return [] }
             return values.map {
-                PropertyInspectorValue(
+                InspectableProperty(
                     value: $0,
                     isHighlighted: $isHighlighted,
                     location: location
@@ -870,8 +871,8 @@ struct PropertyInspectorTitleKey: PreferenceKey {
 }
 
 struct PropertyInspectorValueKey: PreferenceKey {
-    static var defaultValue: [PropertyInspectorValue] { [] }
-    static func reduce(value: inout [PropertyInspectorValue], nextValue: () -> [PropertyInspectorValue]) {
+    static var defaultValue: [InspectableProperty] { [] }
+    static func reduce(value: inout [InspectableProperty], nextValue: () -> [InspectableProperty]) {
         value.append(contentsOf: nextValue())
     }
 }
@@ -939,7 +940,7 @@ struct PropertyInspectorViewBuilderModifier<Key: PreferenceKey, Value, Label: Vi
     }
 }
 
-struct PropertyInspectorTitleModifier: ViewModifier {
+struct PropertyInspectorTitleViewModifier: ViewModifier {
     let title: LocalizedStringKey
 
     func body(content: Content) -> some View {
