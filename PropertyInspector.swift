@@ -139,10 +139,11 @@ public struct PropertyInspectorContent: View {
 public struct PropertyInspectorList: View {
     public var body: some View {
         List {
-            Section(
-                content: PropertyInspectorRows.init,
-                header: PropertyInspectorHeader.init
-            )
+            Section {
+                PropertyInspectorRows()
+            } header: {
+                PropertyInspectorHeader()
+            }
             .listRowBackground(Color.clear)
         }
     }
@@ -152,26 +153,19 @@ public struct PropertyInspectorHeader: View {
     @EnvironmentObject
     private var data: PropertyInspectorStorage
 
-    private var isOn: Binding<Bool> {
-        Binding(
-            get: {
+    public var body: some View {
+        VStack(spacing: 6) {
+            Toggle(isOn: .init {
                 !data.valuesMatchingSearchQuery.isEmpty
                 && data.valuesMatchingSearchQuery
                     .map(\.isHighlighted)
                     .filter { $0 == false }
                     .isEmpty
-            },
-            set: { newValue in
+            } set: { newValue in
                 data.valuesMatchingSearchQuery.forEach {
                     $0.isHighlighted = newValue
                 }
-            }
-        )
-    }
-
-    public var body: some View {
-        VStack(spacing: 6) {
-            Toggle(isOn: isOn) {
+            }) {
                 Text(data.title).bold().font(.title2)
             }
 
@@ -182,7 +176,7 @@ public struct PropertyInspectorHeader: View {
             EdgeInsets(top: 16, leading: 0, bottom: 8, trailing: 0)
         )
     }
-    
+
     private func searchField() -> HStack<TupleView<(TextField<Text>, Button<some View>?)>> {
         HStack {
             TextField(
@@ -248,6 +242,22 @@ public struct PropertyInspectorRows: View {
 }
 
 // MARK: - Style Protocol
+
+public struct AnyPropertyInspectorStyle: PropertyInspectorStyle, Equatable {
+    public static func == (lhs: AnyPropertyInspectorStyle, rhs: AnyPropertyInspectorStyle) -> Bool {
+        String(describing: lhs) == String(describing: rhs)
+    }
+
+    let style: any PropertyInspectorStyle
+
+    public init<S: PropertyInspectorStyle>(_ style: S) {
+        self.style = style
+    }
+
+    public func makeBody(configuration: Configuration) -> some View {
+        AnyView(style.makeBody(configuration: configuration))
+    }
+}
 
 public protocol PropertyInspectorStyle {
     typealias Configuration = PropertyInspectorStyleConfiguration
@@ -321,23 +331,24 @@ public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
     let title: LocalizedStringKey
 
     public func makeBody(configuration: Configuration) -> some View {
-        LazyVStack(pinnedViews: [.sectionHeaders]) {
+        VStack {
+            GroupBox(title) {
+                configuration.content
+            }
             Section {
-                GroupBox(title) {
-                    configuration.content
+                ScrollView {
+                    LazyVStack {
+                        configuration.rows
+                            .padding(.vertical, 3)
+                            .multilineTextAlignment(.leading)
+                            .overlay(Divider(), alignment: .bottom)
+                    }
                 }
-                .padding()
-
-                configuration.rows
-                    .padding(.vertical, 3)
-                    .multilineTextAlignment(.leading)
-                    .overlay(Divider(), alignment: .bottom)
-                    .padding(.horizontal)
             } header: {
                 configuration.header
-                    .padding(.horizontal)
             }
         }
+        .padding(.horizontal)
     }
 }
 
@@ -795,12 +806,10 @@ struct InspectablePropertyViewModifier: ViewModifier  {
             }
         }
 
-        private var isOn: Binding<Bool> {
-            disabled ? .constant(false) : $isHighlighted
-        }
-
         func body(content: Content) -> some View {
-            PropertyInspectorHighlightView(isOn: isOn) {
+            PropertyInspectorHighlightView(
+                isOn: disabled ? .constant(false) : $isHighlighted
+            ) {
                 content.background(
                     Color.clear.preference(
                         key: PropertyInspectorValueKey.self,
@@ -928,7 +937,7 @@ extension EnvironmentValues {
 // MARK: - Preference Keys
 
 struct PropertyInspectorTitleKey: PreferenceKey {
-    static var defaultValue: LocalizedStringKey = "Inspect"
+    static var defaultValue: LocalizedStringKey = "Properties"
     static func reduce(value: inout LocalizedStringKey, nextValue: () -> LocalizedStringKey) {}
 }
 
@@ -1042,7 +1051,7 @@ struct PropertyInspectorTitleViewModifier: ViewModifier {
             function: "padding()"
         )
         // optional: customize title
-        .propertyInspectorTitle("Example")
+        .propertyInspectorTitle("Properties")
         // optional: register custom icons, labels, detail views
         .propertyInspectorRowIcon(for: Double.self) { value in
             Image(systemName: "\(Int(value)).circle.fill")
@@ -1052,8 +1061,8 @@ struct PropertyInspectorTitleViewModifier: ViewModifier {
     // optional: change highlight tint
     .propertyInspectorTint(.cyan)
     // optional: choose from different built-in styles or create your own
-    .propertyInspectorStyle(.showcase)
     .propertyInspectorStyle(.showcase(title: "Preview"))
+    .propertyInspectorStyle(.showcase)
     .propertyInspectorStyle(.sheet(isPresented: .constant(true)))
     .propertyInspectorStyle(.contextMenu)
     .propertyInspectorStyle(.inline(alignment: .trailing))
