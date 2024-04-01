@@ -358,6 +358,7 @@ public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
 public extension PropertyInspectorStyle where Self == PropertyInspectorSheetStyle {
     static func sheet(
         isPresented: Binding<Bool>,
+        adjustsBottomInset: Bool = true,
         detent: PresentationDetent = .fraction(2/3),
         presentationDetents: Set<PresentationDetent> = [
             .fraction(1/3),
@@ -367,6 +368,7 @@ public extension PropertyInspectorStyle where Self == PropertyInspectorSheetStyl
     ) -> Self {
         .init(
             isPresented: isPresented,
+            adjustsBottomInset: adjustsBottomInset,
             detent: detent,
             presentationDetents: presentationDetents
         )
@@ -377,6 +379,8 @@ public extension PropertyInspectorStyle where Self == PropertyInspectorSheetStyl
 public struct PropertyInspectorSheetStyle: PropertyInspectorStyle {
     @Binding
     var isPresented: Bool
+
+    let adjustsBottomInset: Bool
 
     @State
     var detent: PresentationDetent
@@ -393,7 +397,7 @@ public struct PropertyInspectorSheetStyle: PropertyInspectorStyle {
 
     private func bottomInset() -> some View {
         Spacer().frame(
-            height: isPresented ? UIScreen.main.bounds.midY : 0
+            height: adjustsBottomInset && isPresented ? UIScreen.main.bounds.midY : 0
         )
     }
 
