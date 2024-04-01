@@ -393,17 +393,6 @@ public struct PropertyInspectorList: View {
     public var body: some View {
         List {
             Section {
-                if rows.isEmpty {
-                    Text(emptyMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .multilineTextAlignment(.center)
-                        .padding(.top)
-                }
-
                 ForEach(rows) { row in
                     PropertyInspectorValueRow(
                         data: row,
@@ -412,11 +401,21 @@ public struct PropertyInspectorList: View {
                         detail: makeBody(row, using: data.details)
                     )
                 }
-                .listRowBackground(Color.clear)
+
+                if rows.isEmpty {
+                    Text(emptyMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .listRowSeparator(.hidden)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                        .padding(.top)
+                }
 
             } header: {
                 header
             }
+            .listRowBackground(Color.clear)
         }
     }
 
