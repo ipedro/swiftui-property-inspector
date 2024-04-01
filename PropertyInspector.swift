@@ -646,20 +646,16 @@ struct PropertyInspectorValueRow: View {
 }
 
 struct PropertyInspectorValueModifier: ViewModifier  {
-    let values: [Any]
-    let location: PropertyInspectorLocation
-
     @Environment(\.inspectorInitialHighlight)
     private var isHighlighted
-
-    @Environment(\.inspectorDisabled)
-    private var disabled
+    let values: [Any]
+    let location: PropertyInspectorLocation
 
     func body(content: Content) -> some View {
         content.modifier(
             _ViewModifier(
-                isHighlighted: !disabled && isHighlighted,
-                values: disabled ? [] : values,
+                isHighlighted: isHighlighted,
+                values: values,
                 location: location
             )
         )
@@ -671,8 +667,12 @@ struct PropertyInspectorValueModifier: ViewModifier  {
         var values: [Any]
         var location: PropertyInspectorLocation
 
-        var data: [PropertyInspectorValue] {
-            values.map {
+        @Environment(\.inspectorDisabled)
+        private var disabled
+
+        private var data: [PropertyInspectorValue] {
+            if disabled { return [] }
+            return values.map {
                 PropertyInspectorValue(
                     value: $0,
                     isHighlighted: $isHighlighted,
@@ -681,8 +681,12 @@ struct PropertyInspectorValueModifier: ViewModifier  {
             }
         }
 
+        private var isOn: Binding<Bool> {
+            disabled ? .constant(false) : $isHighlighted
+        }
+
         func body(content: Content) -> some View {
-            PropertyInspectorHighlightView(isOn: $isHighlighted) {
+            PropertyInspectorHighlightView(isOn: isOn) {
                 content.background(
                     Color.clear.preference(
                         key: PropertyInspectorValueKey.self,
