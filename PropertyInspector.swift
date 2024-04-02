@@ -95,7 +95,7 @@ public struct PropertyInspector<Content: View>: View {
     }
 
     public var body: some View {
-        AnyView(style.makeBody(configuration: configuration))
+        AnyView(style.resolve(configuration: configuration))
             .toggleStyle(PropertyInspectorToggleStyle())
             .environment(\.inspectorInitialHighlight, initialHighlight)
             .environmentObject(data)
@@ -243,6 +243,12 @@ public struct PropertyInspectorRows: View {
 
 // MARK: - Style Protocol
 
+public protocol PropertyInspectorStyle: DynamicProperty {
+    typealias Configuration = PropertyInspectorStyleConfiguration
+    associatedtype Body: View
+    @ViewBuilder func makeBody(configuration: Configuration) -> Body
+}
+
 public struct AnyPropertyInspectorStyle: PropertyInspectorStyle, Equatable {
     public static func == (lhs: AnyPropertyInspectorStyle, rhs: AnyPropertyInspectorStyle) -> Bool {
         String(describing: lhs) == String(describing: rhs)
@@ -259,10 +265,19 @@ public struct AnyPropertyInspectorStyle: PropertyInspectorStyle, Equatable {
     }
 }
 
-public protocol PropertyInspectorStyle {
-    typealias Configuration = PropertyInspectorStyleConfiguration
-    associatedtype Body: View
-    @ViewBuilder func makeBody(configuration: Configuration) -> Body
+struct ResolvedPropertyInspectorStyle<Style: PropertyInspectorStyle>: View {
+    var configuration: PropertyInspectorStyleConfiguration
+    var style: Style
+
+    var body: some View {
+        style.makeBody(configuration: configuration)
+    }
+}
+
+extension PropertyInspectorStyle {
+    func resolve(configuration: Configuration) -> some View {
+        ResolvedPropertyInspectorStyle(configuration: configuration, style: self)
+    }
 }
 
 public extension PropertyInspectorStyle where Self == PropertyInspectorShowcaseStyle {
@@ -389,16 +404,16 @@ public struct PropertyInspectorSheetStyle: PropertyInspectorStyle {
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.content
-            .safeAreaInset(edge: .bottom, content: bottomInset)
+            .safeAreaInset(edge: .bottom) {
+                Spacer().frame(height: bottomInset)
+            }
             .toolbar(content: toolbarButton)
             .animation(.snappy, value: isPresented)
             .overlay(sheet(configuration: configuration))
     }
 
-    private func bottomInset() -> some View {
-        Spacer().frame(
-            height: adjustsBottomInset && isPresented ? UIScreen.main.bounds.midY : 0
-        )
+    private var bottomInset: Double {
+        adjustsBottomInset && isPresented ? UIScreen.main.bounds.midY : 0
     }
 
     private func toolbarButton() -> some View {
