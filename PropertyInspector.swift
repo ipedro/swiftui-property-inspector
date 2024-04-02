@@ -664,6 +664,8 @@ struct InspectableProperty: Identifiable, Comparable, Hashable {
     /// Metadata describing the source code location where this property is inspected.
     let location: InspectablePropertyLocation
 
+    let index: Int
+
     /// A binding to a Boolean value indicating whether this item is highlighted within the UI.
     @Binding var isHighlighted: Bool
 
@@ -676,13 +678,19 @@ struct InspectableProperty: Identifiable, Comparable, Hashable {
     }
 
     private var sortString: String {
-        "\(location)\(stringValueType)\(stringValue)"
+        "\(index)-\(location)-\(stringValueType)-\(stringValue)"
     }
 
-    init(value: Any, isHighlighted: Binding<Bool>, location: InspectablePropertyLocation) {
+    init(
+        value: Any,
+        isHighlighted: Binding<Bool>,
+        location: InspectablePropertyLocation,
+        index: Int = 0
+    ) {
         self.value = value
         self._isHighlighted = isHighlighted
         self.location = location
+        self.index = index
     }
 
     static func == (lhs: InspectableProperty, rhs: InspectableProperty) -> Bool {
@@ -816,11 +824,12 @@ struct InspectablePropertyViewModifier: ViewModifier  {
 
         private var data: [InspectableProperty] {
             if disabled { return [] }
-            return values.map {
+            return values.enumerated().map {
                 InspectableProperty(
-                    value: $0,
+                    value: $0.element,
                     isHighlighted: $isHighlighted,
-                    location: location
+                    location: location,
+                    index: $0.offset
                 )
             }
         }
@@ -876,9 +885,13 @@ struct PropertyInspectorHighlightView<Content: View>: View {
         return colorScheme == .light ? Color.blue : Color.yellow
     }
 
+    var zIndex: Double {
+        isVisible ? 999 : 0
+    }
+
     var body: some View {
         content
-            .zIndex(isVisible ? 999 : 0)
+            .zIndex(zIndex)
             .overlay {
                 if isVisible {
                     Rectangle()
