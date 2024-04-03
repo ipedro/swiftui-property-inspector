@@ -96,7 +96,7 @@ public struct PropertyInspector<Content: View>: View {
 
     public var body: some View {
         AnyView(style.resolve(configuration: configuration))
-            .toggleStyle(PropertyInspectorToggleStyle())
+            .toggleStyle(InspectablePropertyToggle())
             .environment(\.inspectorInitialHighlight, initialHighlight)
             .environmentObject(data)
     }
@@ -128,11 +128,11 @@ public struct PropertyInspectorContent: View {
 
     public var body: some View {
         content
-            .onPreferenceChange(PropertyInspectorDetailViewBuilderKey.self) { data.details = $0 }
-            .onPreferenceChange(PropertyInspectorIconViewBuilderKey.self) { data.icons = $0  }
-            .onPreferenceChange(PropertyInspectorLabelViewBuilderKey.self) { data.labels = $0 }
-            .onPreferenceChange(PropertyInspectorTitleKey.self) { data.title = $0 }
-            .onPreferenceChange(PropertyInspectorValueKey.self) { data.values = Set($0).sorted() }
+            .onPreferenceChange(RowDetailViewBuilderKey.self) { data.details = $0 }
+            .onPreferenceChange(RowIconViewBuilderKey.self) { data.icons = $0  }
+            .onPreferenceChange(RowLabelViewBuilderKey.self) { data.labels = $0 }
+            .onPreferenceChange(TitleKey.self) { data.title = $0 }
+            .onPreferenceChange(InspectablePropertyKey.self) { data.values = Set($0).sorted() }
     }
 }
 
@@ -215,7 +215,7 @@ public struct PropertyInspectorRows: View {
                 .padding(.top)
         } else {
             ForEach(rows) { row in
-                InspectablePropertyView(
+                RowView(
                     data: row,
                     icon: makeBody(configuration: (row, data.icons)),
                     label: makeBody(configuration: (row, data.labels)),
@@ -231,7 +231,7 @@ public struct PropertyInspectorRows: View {
         "No results for '\(data.searchQuery)'"
     }
 
-    private func makeBody(configuration: (item: InspectableProperty, source: [String: PropertyInspectorViewBuilder])) -> AnyView? {
+    private func makeBody(configuration: (item: InspectableProperty, source: [String: RowViewBuilder])) -> AnyView? {
         for key in configuration.source.keys {
             if let view = configuration.source[key]?.view(configuration.item.value) {
                 return view
@@ -249,23 +249,7 @@ public protocol PropertyInspectorStyle: DynamicProperty {
     @ViewBuilder func makeBody(configuration: Configuration) -> Body
 }
 
-public struct AnyPropertyInspectorStyle: PropertyInspectorStyle, Equatable {
-    public static func == (lhs: AnyPropertyInspectorStyle, rhs: AnyPropertyInspectorStyle) -> Bool {
-        String(describing: lhs) == String(describing: rhs)
-    }
-
-    let style: any PropertyInspectorStyle
-
-    public init<S: PropertyInspectorStyle>(_ style: S) {
-        self.style = style
-    }
-
-    public func makeBody(configuration: Configuration) -> some View {
-        AnyView(style.makeBody(configuration: configuration))
-    }
-}
-
-struct ResolvedPropertyInspectorStyle<Style: PropertyInspectorStyle>: View {
+private struct ResolvedPropertyInspectorStyle<Style: PropertyInspectorStyle>: View {
     var configuration: PropertyInspectorStyleConfiguration
     var style: Style
 
@@ -274,13 +258,13 @@ struct ResolvedPropertyInspectorStyle<Style: PropertyInspectorStyle>: View {
     }
 }
 
-extension PropertyInspectorStyle {
+private extension PropertyInspectorStyle {
     func resolve(configuration: Configuration) -> some View {
         ResolvedPropertyInspectorStyle(configuration: configuration, style: self)
     }
 }
 
-public extension PropertyInspectorStyle where Self == PropertyInspectorShowcaseStyle {
+public extension PropertyInspectorStyle where Self == ShowcasePropertyInspector {
     static var showcase: Self {
         .init(title: "")
     }
@@ -294,7 +278,7 @@ public extension PropertyInspectorStyle where Self == PropertyInspectorShowcaseS
     }
 }
 
-public extension PropertyInspectorStyle where Self == PropertyInspectorInlineStyle {
+public extension PropertyInspectorStyle where Self == InlinePropertyInspector {
     static var inline: Self {
         .init(alignment: .center)
     }
@@ -325,7 +309,7 @@ public struct ContextMenuPropertyInspector: PropertyInspectorStyle {
 
 // MARK: - Inline Style
 
-public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
+public struct InlinePropertyInspector: PropertyInspectorStyle {
     let alignment: HorizontalAlignment
 
     public func makeBody(configuration: Configuration) -> some View {
@@ -342,7 +326,7 @@ public struct PropertyInspectorInlineStyle: PropertyInspectorStyle {
 
 // MARK: - Showcase Style
 
-public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
+public struct ShowcasePropertyInspector: PropertyInspectorStyle {
     let title: LocalizedStringKey
 
     public func makeBody(configuration: Configuration) -> some View {
@@ -370,7 +354,7 @@ public struct PropertyInspectorShowcaseStyle: PropertyInspectorStyle {
 // MARK: - Sheet Style
 
 @available(iOS 16.4, *)
-public extension PropertyInspectorStyle where Self == PropertyInspectorSheetStyle {
+public extension PropertyInspectorStyle where Self == SheetPropertyInspector {
     static func sheet(
         isPresented: Binding<Bool>,
         adjustsBottomInset: Bool = true,
@@ -391,7 +375,7 @@ public extension PropertyInspectorStyle where Self == PropertyInspectorSheetStyl
 }
 
 @available(iOS 16.4, *)
-public struct PropertyInspectorSheetStyle: PropertyInspectorStyle {
+public struct SheetPropertyInspector: PropertyInspectorStyle {
     @Binding
     var isPresented: Bool
 
@@ -486,7 +470,7 @@ public extension View {
         file: String = #file
     ) -> some View {
         modifier(
-            InspectablePropertyViewModifier(
+            RowViewModifier(
                 values: values,
                 location: .init(
                     function: function,
@@ -530,8 +514,8 @@ public extension View {
         @ViewBuilder icon: @escaping (Value) -> Icon
     ) -> some View {
         modifier(
-            PropertyInspectorViewBuilderModifier(
-                key: PropertyInspectorIconViewBuilderKey.self,
+            RowBuilderViewModifier(
+                key: RowIconViewBuilderKey.self,
                 label: icon
             )
         )
@@ -539,7 +523,7 @@ public extension View {
 
     func propertyInspectorTitle(_ title: LocalizedStringKey) -> some View {
         modifier(
-            PropertyInspectorTitleViewModifier(title: title)
+            TitleViewModifier(title: title)
         )
     }
 
@@ -568,8 +552,8 @@ public extension View {
         @ViewBuilder label: @escaping (Value) -> Label
     ) -> some View {
         modifier(
-            PropertyInspectorViewBuilderModifier(
-                key: PropertyInspectorLabelViewBuilderKey.self,
+            RowBuilderViewModifier(
+                key: RowLabelViewBuilderKey.self,
                 label: label
             )
         )
@@ -603,15 +587,15 @@ public extension View {
         @ViewBuilder detail: @escaping (Value) -> Detail
     ) -> some View {
         modifier(
-            PropertyInspectorViewBuilderModifier(
-                key: PropertyInspectorDetailViewBuilderKey.self,
+            RowBuilderViewModifier(
+                key: RowDetailViewBuilderKey.self,
                 label: detail
             )
         )
     }
 }
 
-struct PropertyInspectorToggleStyle: ToggleStyle {
+private struct InspectablePropertyToggle: ToggleStyle {
     var alignment: VerticalAlignment = .center
 
     func icon(_ isOn: Bool) -> String {
@@ -632,13 +616,13 @@ struct PropertyInspectorToggleStyle: ToggleStyle {
     }
 }
 
-final class PropertyInspectorStorage: ObservableObject {
+private final class PropertyInspectorStorage: ObservableObject {
     @Published var searchQuery = ""
-    @Published var title = PropertyInspectorTitleKey.defaultValue
+    @Published var title = TitleKey.defaultValue
     @Published var values = [InspectableProperty]()
-    @Published var icons = [String: PropertyInspectorViewBuilder]()
-    @Published var labels = [String: PropertyInspectorViewBuilder]()
-    @Published var details = [String: PropertyInspectorViewBuilder]()
+    @Published var icons = [String: RowViewBuilder]()
+    @Published var labels = [String: RowViewBuilder]()
+    @Published var details = [String: RowViewBuilder]()
 
     var valuesMatchingSearchQuery: [InspectableProperty] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -654,7 +638,7 @@ final class PropertyInspectorStorage: ObservableObject {
 /// `InspectableProperty` encapsulates the value and metadata of a property to be inspected, including its location within the source code and whether it is currently highlighted in the UI. This type is crucial for organizing and presenting property data within the inspector interface.
 ///
 /// - Note: Conforms to `Identifiable`, `Comparable`, and `Hashable` to support efficient collection operations and UI presentation.
-struct InspectableProperty: Identifiable, Comparable, Hashable {
+private struct InspectableProperty: Identifiable, Comparable, Hashable {
     /// A unique identifier for the inspector item, necessary for conforming to `Identifiable`.
     let id = UUID()
 
@@ -747,7 +731,7 @@ final class InspectablePropertyLocation: Comparable, CustomStringConvertible {
     }
 }
 
-struct InspectablePropertyView: View {
+private struct RowView: View {
     let data: InspectableProperty
     var icon: AnyView?
     var label: AnyView?
@@ -797,7 +781,7 @@ struct InspectablePropertyView: View {
     }
 }
 
-struct InspectablePropertyViewModifier: ViewModifier  {
+private struct RowViewModifier: ViewModifier  {
     @Environment(\.inspectorInitialHighlight)
     private var isHighlighted
     let values: [Any]
@@ -835,12 +819,12 @@ struct InspectablePropertyViewModifier: ViewModifier  {
         }
 
         func body(content: Content) -> some View {
-            PropertyInspectorHighlightView(
+            HighlightView(
                 isOn: disabled ? .constant(false) : $isHighlighted
             ) {
                 content.background(
                     Color.clear.preference(
-                        key: PropertyInspectorValueKey.self,
+                        key: InspectablePropertyKey.self,
                         value: data
                     )
                 )
@@ -849,7 +833,7 @@ struct InspectablePropertyViewModifier: ViewModifier  {
     }
 }
 
-struct PropertyInspectorHighlightView<Content: View>: View {
+private struct HighlightView<Content: View>: View {
     @State
     private var animationToken = UUID()
 
@@ -918,7 +902,7 @@ struct PropertyInspectorHighlightView<Content: View>: View {
 
 // MARK: - View Builders
 
-private extension [String: PropertyInspectorViewBuilder] {
+private extension [String: RowViewBuilder] {
     mutating func merge(_ next: Self) {
         merge(next) { content, _ in
             content
@@ -928,89 +912,89 @@ private extension [String: PropertyInspectorViewBuilder] {
 
 // MARK: - Environment Keys
 
-struct PropertyInspectorTintKey: EnvironmentKey {
+private struct TintKey: EnvironmentKey {
     static let defaultValue: Color? = nil
 }
 
-struct PropertyInspectorDisabledKey: EnvironmentKey {
+private struct DisabledKey: EnvironmentKey {
     static let defaultValue: Bool = false
 }
 
-struct PropertyInspectorStyleKey: EnvironmentKey {
+private struct StyleKey: EnvironmentKey {
     static var defaultValue: any PropertyInspectorStyle = .inline
 }
 
-struct PropertyInspectorInitialHighlightKey: EnvironmentKey {
+private struct InitialHighlightKey: EnvironmentKey {
     static var defaultValue: Bool = false
 }
 
 extension EnvironmentValues {
     var inspectorDisabled: Bool {
-        get { self[PropertyInspectorDisabledKey.self] }
-        set { self[PropertyInspectorDisabledKey.self] = newValue }
+        get { self[DisabledKey.self] }
+        set { self[DisabledKey.self] = newValue }
     }
 
     var inspectorInitialHighlight: Bool {
-        get { self[PropertyInspectorInitialHighlightKey.self] }
-        set { self[PropertyInspectorInitialHighlightKey.self] = newValue }
+        get { self[InitialHighlightKey.self] }
+        set { self[InitialHighlightKey.self] = newValue }
     }
 
     var inspectorStyle: any PropertyInspectorStyle {
-        get { self[PropertyInspectorStyleKey.self] }
-        set { self[PropertyInspectorStyleKey.self] = newValue }
+        get { self[StyleKey.self] }
+        set { self[StyleKey.self] = newValue }
     }
 
     var inspectorTint: Color? {
-        get { self[PropertyInspectorTintKey.self] }
-        set { self[PropertyInspectorTintKey.self] = newValue }
+        get { self[TintKey.self] }
+        set { self[TintKey.self] = newValue }
     }
 }
 
 // MARK: - Preference Keys
 
-struct PropertyInspectorTitleKey: PreferenceKey {
+private struct TitleKey: PreferenceKey {
     static var defaultValue: LocalizedStringKey = "Properties"
     static func reduce(value: inout LocalizedStringKey, nextValue: () -> LocalizedStringKey) {}
 }
 
-struct PropertyInspectorValueKey: PreferenceKey {
+private struct InspectablePropertyKey: PreferenceKey {
     static var defaultValue: [InspectableProperty] { [] }
     static func reduce(value: inout [InspectableProperty], nextValue: () -> [InspectableProperty]) {
         value.append(contentsOf: nextValue())
     }
 }
 
-struct PropertyInspectorDetailViewBuilderKey: PreferenceKey {
-    static let defaultValue = [String: PropertyInspectorViewBuilder]()
-    static func reduce(value: inout [String: PropertyInspectorViewBuilder], nextValue: () -> [String: PropertyInspectorViewBuilder]) {
+private struct RowDetailViewBuilderKey: PreferenceKey {
+    static let defaultValue = [String: RowViewBuilder]()
+    static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
         value.merge(nextValue())
     }
 }
 
-struct PropertyInspectorIconViewBuilderKey: PreferenceKey {
-    static let defaultValue = [String: PropertyInspectorViewBuilder]()
-    static func reduce(value: inout [String: PropertyInspectorViewBuilder], nextValue: () -> [String: PropertyInspectorViewBuilder]) {
+private struct RowIconViewBuilderKey: PreferenceKey {
+    static let defaultValue = [String: RowViewBuilder]()
+    static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
         value.merge(nextValue())
     }
 }
 
-struct PropertyInspectorLabelViewBuilderKey: PreferenceKey {
-    static let defaultValue = [String: PropertyInspectorViewBuilder]()
-    static func reduce(value: inout [String: PropertyInspectorViewBuilder], nextValue: () -> [String: PropertyInspectorViewBuilder]) {
+private struct RowLabelViewBuilderKey: PreferenceKey {
+    static let defaultValue = [String: RowViewBuilder]()
+    static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
         value.merge(nextValue())
     }
 }
 
 // MARK: - View Builders
 
-struct PropertyInspectorViewBuilder: Equatable {
+private struct RowViewBuilder: Equatable {
     let view: (Any) -> AnyView?
-    static func == (lhs: PropertyInspectorViewBuilder, rhs: PropertyInspectorViewBuilder) -> Bool {
+    static func == (lhs: RowViewBuilder, rhs: RowViewBuilder) -> Bool {
         String(describing: lhs.view) == String(describing: rhs.view)
     }
 }
 
-struct PropertyInspectorViewBuilderModifier<Key: PreferenceKey, Value, Label: View>: ViewModifier where Key.Value == [String: PropertyInspectorViewBuilder] {
+private struct RowBuilderViewModifier<Key: PreferenceKey, Value, Label: View>: ViewModifier where Key.Value == [String: RowViewBuilder] {
     var key: Key.Type
 
     @ViewBuilder
@@ -1020,8 +1004,8 @@ struct PropertyInspectorViewBuilderModifier<Key: PreferenceKey, Value, Label: Vi
         String(describing: Value.self)
     }
 
-    private var builder: PropertyInspectorViewBuilder {
-        PropertyInspectorViewBuilder { value in
+    private var builder: RowViewBuilder {
+        RowViewBuilder { value in
             guard let castedValue = value as? Value else {
                 return nil
             }
@@ -1029,7 +1013,7 @@ struct PropertyInspectorViewBuilderModifier<Key: PreferenceKey, Value, Label: Vi
         }
     }
 
-    private var data: [String: PropertyInspectorViewBuilder] {
+    private var data: [String: RowViewBuilder] {
         [valueType: builder]
     }
 
@@ -1043,13 +1027,13 @@ struct PropertyInspectorViewBuilderModifier<Key: PreferenceKey, Value, Label: Vi
     }
 }
 
-struct PropertyInspectorTitleViewModifier: ViewModifier {
+private struct TitleViewModifier: ViewModifier {
     let title: LocalizedStringKey
 
     func body(content: Content) -> some View {
         content.background(
             Color.clear.preference(
-                key: PropertyInspectorTitleKey.self,
+                key: TitleKey.self,
                 value: title
             )
         )
