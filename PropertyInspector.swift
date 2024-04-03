@@ -678,7 +678,7 @@ struct InspectableProperty: Identifiable, Comparable, Hashable {
     }
 
     private var sortString: String {
-        "\(index)-\(location)-\(stringValueType)-\(stringValue)"
+        "\(location):\(index):\(stringValueType):\(stringValue)"
     }
 
     init(
