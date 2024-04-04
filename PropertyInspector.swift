@@ -214,12 +214,12 @@ public struct PropertyInspectorRows: View {
                 .multilineTextAlignment(.center)
                 .padding(.top)
         } else {
-            ForEach(rows) { row in
+            ForEach(rows) {
                 Row(
-                    data: row,
-                    icon: makeBody(configuration: (row, data.icons)),
-                    label: makeBody(configuration: (row, data.labels)),
-                    detail: makeBody(configuration: (row, data.details))
+                    data: $0,
+                    icon: makeBody(configuration: ($0, data.icons)),
+                    label: makeBody(configuration: ($0, data.labels)),
+                    detail: makeBody(configuration: ($0, data.details))
                 )
             }
         }
@@ -352,16 +352,35 @@ public struct ShowcasePropertyInspector: PropertyInspectorStyle {
     }
 
     private struct _GroupBoxStyle: GroupBoxStyle {
+        @PreferenceKeyState<ShowcaseStyleBackgroundPreference>
+        private var background
+
+        @PreferenceKeyState<ShowcaseStyleForegroundPreference>
+        private var foreground
+
         func makeBody(configuration: Configuration) -> some View {
-            VStack(alignment: .leading) {
-                configuration.label
+            VStack {
+                Group {
+                    if #available(iOS 16.0, *) {
+                        configuration.label.bold()
+                    } else {
+                        // Fallback on earlier versions
+                        configuration.label
+                    }
+                }
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(foreground)
+
                 configuration.content
             }
+            .padding(.bottom, 12)
             .padding()
-            .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 10).fill(background)
             )
+            .onPreferenceChange(ShowcaseStyleBackgroundPreference.self) { background = $0 }
+            .onPreferenceChange(ShowcaseStyleForegroundPreference.self) { foreground = $0 }
         }
     }
 }
@@ -529,13 +548,13 @@ public extension View {
         @ViewBuilder icon: @escaping (Value) -> Icon
     ) -> some View {
         modifier(
-            RowPreferenceModifier(RowIconPreference.self, icon)
+            PreferenceModifier<RowIconPreference>(icon)
         )
     }
 
     func propertyInspectorTitle(_ title: LocalizedStringKey) -> some View {
         modifier(
-            TitlePreferenceModifier(title: title)
+            PreferenceModifier<TitlePreference>(title)
         )
     }
 
@@ -564,7 +583,7 @@ public extension View {
         @ViewBuilder label: @escaping (Value) -> Label
     ) -> some View {
         modifier(
-            RowPreferenceModifier(RowLabelPreference.self, label)
+            PreferenceModifier<RowLabelPreference>(label)
         )
     }
 
@@ -596,8 +615,26 @@ public extension View {
         @ViewBuilder detail: @escaping (Value) -> Detail
     ) -> some View {
         modifier(
-            RowPreferenceModifier(RowDetailPreference.self, detail)
+            PreferenceModifier<RowDetailPreference>(detail)
         )
+    }
+
+    func propertyInspectorShowcaseBackground<S: ShapeStyle>(_ background: S) -> some View {
+        modifier(
+            PreferenceModifier<ShowcaseStyleBackgroundPreference>(.init(background))
+        )
+    }
+
+    func propertyInspectorShowcaseForeground<S: ShapeStyle>(_ foreground: S) -> some View {
+        modifier(
+            PreferenceModifier<ShowcaseStyleForegroundPreference>(.init(foreground))
+        )
+    }
+}
+
+extension AnyShapeStyle: Equatable {
+    public static func == (lhs: AnyShapeStyle, rhs: AnyShapeStyle) -> Bool {
+        String(describing: lhs) == String(describing: rhs)
     }
 }
 
@@ -964,13 +1001,13 @@ private struct TitlePreference: PreferenceKey {
 }
 
 private struct ShowcaseStyleBackgroundPreference: PreferenceKey {
-    static var defaultValue: AnyShapeStyle?
-    static func reduce(value: inout AnyShapeStyle?, nextValue: () -> AnyShapeStyle?) {}
+    static var defaultValue: AnyShapeStyle = .init(.background)
+    static func reduce(value: inout AnyShapeStyle, nextValue: () -> AnyShapeStyle) {}
 }
 
 private struct ShowcaseStyleForegroundPreference: PreferenceKey {
-    static var defaultValue: AnyShapeStyle?
-    static func reduce(value: inout AnyShapeStyle?, nextValue: () -> AnyShapeStyle?) {}
+    static var defaultValue: AnyShapeStyle = .init(.foreground)
+    static func reduce(value: inout AnyShapeStyle, nextValue: () -> AnyShapeStyle) {}
 }
 
 private struct PropertyPreference: PreferenceKey {
@@ -1011,55 +1048,37 @@ private struct RowViewBuilder: Equatable {
     }
 }
 
-private struct RowPreferenceModifier<Key: PreferenceKey, Value, V: View>: ViewModifier where Key.Value == [String: RowViewBuilder] {
-    var key: Key.Type
+/// A modifier that you apply to a view or another view modifier to set a value for any given preference key.
+private struct PreferenceModifier<K: PreferenceKey>: ViewModifier {
+    let value: K.Value
 
-    @ViewBuilder 
-    var view: (Value) -> V
-
-    init(_ key: Key.Type = Key.self, @ViewBuilder _ view: @escaping (Value) -> V) {
-        self.key = key
-        self.view = view
+    init(_ value: K.Value) {
+        self.value = value
     }
 
-    private var valueType: String {
-        String(describing: Value.self)
-    }
-
-    private var builder: RowViewBuilder {
-        RowViewBuilder { value in
-            guard let castedValue = value as? Value else {
-                return nil
+    init<V: View, Value>(@ViewBuilder _ view: @escaping (Value) -> V) where K.Value == [String: RowViewBuilder] {
+        let key = String(describing: Value.self)
+        let builder = RowViewBuilder { value in
+            if let castedValue = value as? Value {
+                return AnyView(view(castedValue))
             }
-            return AnyView(view(castedValue))
+            return nil
         }
-    }
-
-    private var data: [String: RowViewBuilder] {
-        [valueType: builder]
+        self.value = [key: builder]
     }
 
     func body(content: Content) -> some View {
         content.background(
-            Color.clear.preference(
-                key: key,
-                value: data
-            )
+            Color.clear.preference(key: K.self, value: value)
         )
     }
 }
 
-private struct TitlePreferenceModifier: ViewModifier {
-    let title: LocalizedStringKey
-
-    func body(content: Content) -> some View {
-        content.background(
-            Color.clear.preference(
-                key: TitlePreference.self,
-                value: title
-            )
-        )
-    }
+@propertyWrapper
+private struct PreferenceKeyState<K: PreferenceKey>: DynamicProperty {
+    @State<K.Value> 
+    var wrappedValue: K.Value = K.defaultValue
+    var projectedValue: Binding<K.Value> { $wrappedValue }
 }
 
 #if DEBUG
