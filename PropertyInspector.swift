@@ -352,11 +352,11 @@ public struct ShowcasePropertyInspector: PropertyInspectorStyle {
     }
 
     private struct _GroupBoxStyle: GroupBoxStyle {
-        @PreferenceKeyState<ShowcaseStyleBackgroundPreference>
+        @PreferenceKeyState<ShowcaseBackgroundStylePreference>
         private var background
 
-        @PreferenceKeyState<ShowcaseStyleForegroundPreference>
-        private var foreground
+        @PreferenceKeyState<ShowcaseForegroundColorPreference>
+        private var foregroundColor
 
         func makeBody(configuration: Configuration) -> some View {
             VStack {
@@ -370,17 +370,17 @@ public struct ShowcasePropertyInspector: PropertyInspectorStyle {
                 }
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .foregroundStyle(foreground)
+                //.foregroundColor(foregroundColor)
 
                 configuration.content
             }
             .padding(.bottom, 12)
             .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 10).fill(background)
-            )
-            .onPreferenceChange(ShowcaseStyleBackgroundPreference.self) { background = $0 }
-            .onPreferenceChange(ShowcaseStyleForegroundPreference.self) { foreground = $0 }
+//            .background(
+//                RoundedRectangle(cornerRadius: 10).fill(background)
+//            )
+//            .onPreferenceChange(ShowcaseBackgroundStylePreference.self) { background = $0 }
+//            .onPreferenceChange(ShowcaseForegroundColorPreference.self) { foregroundColor = $0 }
         }
     }
 }
@@ -621,13 +621,13 @@ public extension View {
 
     func propertyInspectorShowcaseBackground<S: ShapeStyle>(_ background: S) -> some View {
         modifier(
-            PreferenceModifier<ShowcaseStyleBackgroundPreference>(.init(background))
+            PreferenceModifier<ShowcaseBackgroundStylePreference>(AnyShapeStyle(background))
         )
     }
 
-    func propertyInspectorShowcaseForeground<S: ShapeStyle>(_ foreground: S) -> some View {
+    func propertyInspectorShowcaseForeground(_ foreground: Color?) -> some View {
         modifier(
-            PreferenceModifier<ShowcaseStyleForegroundPreference>(.init(foreground))
+            PreferenceModifier<ShowcaseForegroundColorPreference>(foreground)
         )
     }
 }
@@ -1000,18 +1000,18 @@ private struct TitlePreference: PreferenceKey {
     static func reduce(value: inout LocalizedStringKey, nextValue: () -> LocalizedStringKey) {}
 }
 
-private struct ShowcaseStyleBackgroundPreference: PreferenceKey {
+private struct ShowcaseBackgroundStylePreference: PreferenceKey {
     static var defaultValue: AnyShapeStyle = .init(.background)
     static func reduce(value: inout AnyShapeStyle, nextValue: () -> AnyShapeStyle) {}
 }
 
-private struct ShowcaseStyleForegroundPreference: PreferenceKey {
-    static var defaultValue: AnyShapeStyle = .init(.foreground)
-    static func reduce(value: inout AnyShapeStyle, nextValue: () -> AnyShapeStyle) {}
+private struct ShowcaseForegroundColorPreference: PreferenceKey {
+    static var defaultValue: Color?
+    static func reduce(value: inout Color?, nextValue: () -> Color?) {}
 }
 
 private struct PropertyPreference: PreferenceKey {
-    static var defaultValue: [Property] { [] }
+    static var defaultValue = [Property]()
     static func reduce(value: inout [Property], nextValue: () -> [Property]) {
         value.append(contentsOf: nextValue())
     }
@@ -1097,6 +1097,8 @@ private struct PreferenceKeyState<K: PreferenceKey>: DynamicProperty {
         }
         // inspect foreground style
         .foregroundStyle(foreground)
+        .propertyInspectorShowcaseBackground(.blue)
+        .propertyInspectorShowcaseForeground(.red)
         .inspectProperty(
             "\(foreground)",
             function: "foregroundStyle()"
