@@ -109,11 +109,9 @@ public struct PropertyInspectorStyleConfiguration {
         self.content = PropertyInspectorContent(view)
     }
 
-    public var header: PropertyInspectorHeader { .init() }
+    public let header = PropertyInspectorHeader()
 
-    public var list: PropertyInspectorList { .init() }
-
-    public var rows: PropertyInspectorRows { .init() }
+    public let rows = PropertyInspectorRows()
 }
 
 public struct PropertyInspectorContent: View {
@@ -132,20 +130,7 @@ public struct PropertyInspectorContent: View {
             .onPreferenceChange(RowIconPreference.self) { data.icons = $0  }
             .onPreferenceChange(RowLabelPreference.self) { data.labels = $0 }
             .onPreferenceChange(TitlePreference.self) { data.title = $0 }
-            .onPreferenceChange(PropertyPreference.self) { data.values = Set($0).sorted() }
-    }
-}
-
-public struct PropertyInspectorList: View {
-    public var body: some View {
-        List {
-            Section {
-                PropertyInspectorRows()
-            } header: {
-                PropertyInspectorHeader()
-            }
-            .listRowBackground(Color.clear)
-        }
+            .onPreferenceChange(PropertyPreference.self) { data.properties = Set($0).sorted() }
     }
 }
 
@@ -334,7 +319,6 @@ public struct ShowcasePropertyInspector: PropertyInspectorStyle {
             GroupBox(title) {
                 configuration.content
             }
-            .groupBoxStyle(_GroupBoxStyle())
             Section {
                 ScrollView {
                     LazyVStack {
@@ -349,39 +333,6 @@ public struct ShowcasePropertyInspector: PropertyInspectorStyle {
             }
         }
         .padding(.horizontal)
-    }
-
-    private struct _GroupBoxStyle: GroupBoxStyle {
-        @PreferenceKeyState<ShowcaseBackgroundStylePreference>
-        private var background
-
-        @PreferenceKeyState<ShowcaseForegroundColorPreference>
-        private var foregroundColor
-
-        func makeBody(configuration: Configuration) -> some View {
-            VStack {
-                Group {
-                    if #available(iOS 16.0, *) {
-                        configuration.label.bold()
-                    } else {
-                        // Fallback on earlier versions
-                        configuration.label
-                    }
-                }
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                //.foregroundColor(foregroundColor)
-
-                configuration.content
-            }
-            .padding(.bottom, 12)
-            .padding()
-//            .background(
-//                RoundedRectangle(cornerRadius: 10).fill(background)
-//            )
-//            .onPreferenceChange(ShowcaseBackgroundStylePreference.self) { background = $0 }
-//            .onPreferenceChange(ShowcaseForegroundColorPreference.self) { foregroundColor = $0 }
-        }
     }
 }
 
@@ -445,18 +396,25 @@ public struct SheetPropertyInspector: PropertyInspectorStyle {
 
     private func sheet(configuration: Configuration) -> some View {
         Spacer().sheet(isPresented: $isPresented) {
-            configuration.list
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .presentationDetents(
-                    presentationDetents,
-                    selection: $detent
-                )
-                .presentationBackgroundInteraction(.enabled)
-                .presentationContentInteraction(.scrolls)
-                .presentationCornerRadius(20)
-                .presentationBackground(Material.thinMaterial)
-                .toggleStyle(PropertyInspectorToggle())
+            List {
+                Section {
+                    configuration.rows
+                } header: {
+                    configuration.header
+                }
+                .listRowBackground(Color.clear)
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .presentationDetents(
+                presentationDetents,
+                selection: $detent
+            )
+            .presentationBackgroundInteraction(.enabled)
+            .presentationContentInteraction(.scrolls)
+            .presentationCornerRadius(20)
+            .presentationBackground(Material.thinMaterial)
+            .toggleStyle(PropertyInspectorToggle())
         }
     }
 }
@@ -618,18 +576,6 @@ public extension View {
             PreferenceModifier<RowDetailPreference>(detail)
         )
     }
-
-    func propertyInspectorShowcaseBackground<S: ShapeStyle>(_ background: S) -> some View {
-        modifier(
-            PreferenceModifier<ShowcaseBackgroundStylePreference>(AnyShapeStyle(background))
-        )
-    }
-
-    func propertyInspectorShowcaseForeground(_ foreground: Color?) -> some View {
-        modifier(
-            PreferenceModifier<ShowcaseForegroundColorPreference>(foreground)
-        )
-    }
 }
 
 extension AnyShapeStyle: Equatable {
@@ -662,15 +608,15 @@ private struct PropertyInspectorToggle: ToggleStyle {
 private final class Storage: ObservableObject {
     @Published var searchQuery = ""
     @Published var title = TitlePreference.defaultValue
-    @Published var values = [Property]()
+    @Published var properties = [Property]()
     @Published var icons = [String: RowViewBuilder]()
     @Published var labels = [String: RowViewBuilder]()
     @Published var details = [String: RowViewBuilder]()
 
     var valuesMatchingSearchQuery: [Property] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty, query.count > 1 else { return values }
-        return values.filter { item in
+        guard !query.isEmpty, query.count > 1 else { return properties }
+        return properties.filter { item in
             String(describing: item).localizedCaseInsensitiveContains(query)
         }
     }
@@ -996,22 +942,12 @@ extension EnvironmentValues {
 // MARK: - Preference Keys
 
 private struct TitlePreference: PreferenceKey {
-    static var defaultValue: LocalizedStringKey = "Properties"
+    static let defaultValue = LocalizedStringKey("Properties")
     static func reduce(value: inout LocalizedStringKey, nextValue: () -> LocalizedStringKey) {}
 }
 
-private struct ShowcaseBackgroundStylePreference: PreferenceKey {
-    static var defaultValue: AnyShapeStyle = .init(.background)
-    static func reduce(value: inout AnyShapeStyle, nextValue: () -> AnyShapeStyle) {}
-}
-
-private struct ShowcaseForegroundColorPreference: PreferenceKey {
-    static var defaultValue: Color?
-    static func reduce(value: inout Color?, nextValue: () -> Color?) {}
-}
-
 private struct PropertyPreference: PreferenceKey {
-    static var defaultValue = [Property]()
+    static let defaultValue = [Property]()
     static func reduce(value: inout [Property], nextValue: () -> [Property]) {
         value.append(contentsOf: nextValue())
     }
@@ -1097,8 +1033,6 @@ private struct PreferenceKeyState<K: PreferenceKey>: DynamicProperty {
         }
         // inspect foreground style
         .foregroundStyle(foreground)
-        .propertyInspectorShowcaseBackground(.blue)
-        .propertyInspectorShowcaseForeground(.red)
         .inspectProperty(
             "\(foreground)",
             function: "foregroundStyle()"

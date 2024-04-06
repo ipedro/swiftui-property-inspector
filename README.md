@@ -69,18 +69,7 @@ To disable the property inspection:
 ```swift
 var body: some View {
     MyView()
-        .inspectingDisabled()
-}
-```
-
-### Customizing Corner Radius
-
-To customize the corner radius of the property highlight view:
-
-```swift
-var body: some View {
-    MyView()
-        .inspectorHighlightCornerRadius(10)
+        .propertyInspectorDisabled()
 }
 ```
 
