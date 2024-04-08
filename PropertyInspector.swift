@@ -249,20 +249,6 @@ private extension PropertyInspectorStyle {
     }
 }
 
-public extension PropertyInspectorStyle where Self == ShowcasePropertyInspector {
-    static var showcase: Self {
-        .init(title: "")
-    }
-
-    static func showcase(title: LocalizedStringKey) -> Self {
-        .init(title: title)
-    }
-
-    static func showcase(title: String) -> Self {
-        .init(title: LocalizedStringKey(title))
-    }
-}
-
 public extension PropertyInspectorStyle where Self == InlinePropertyInspector {
     static var inline: Self {
         .init(alignment: .center)
@@ -309,30 +295,84 @@ public struct InlinePropertyInspector: PropertyInspectorStyle {
     }
 }
 
-// MARK: - Showcase Style
 
-public struct ShowcasePropertyInspector: PropertyInspectorStyle {
-    let title: LocalizedStringKey
+public extension PropertyInspectorStyle where Self == ListPropertyInspector<PlainListStyle, Color> {
+    static var list: Self { .list() }
+
+    static func list(
+        rowBackground: Color = Color(uiColor: .systemBackground)
+    ) -> Self {
+        .init(
+            listStyle: .init(),
+            listRowBackground: rowBackground
+        )
+    }
+}
+
+public extension PropertyInspectorStyle where Self == ListPropertyInspector<InsetGroupedListStyle, Color> {
+    static var insetGroupedList: Self { .insetGroupedList() }
+
+    static func insetGroupedList(
+        rowBackground: Color = Color(uiColor: .systemBackground)
+    ) -> Self {
+        .init(
+            listStyle: .init(),
+            listRowBackground: rowBackground
+        )
+    }
+}
+
+public extension PropertyInspectorStyle where Self == ListPropertyInspector<GroupedListStyle, Color> {
+    static var groupedList: Self { .groupedList() }
+
+    static func groupedList(
+        rowBackground: Color = Color(uiColor: .systemBackground)
+    ) -> Self {
+        .init(
+            listStyle: .init(),
+            listRowBackground: rowBackground
+        )
+    }
+}
+
+public extension PropertyInspectorStyle where Self == ListPropertyInspector<SidebarListStyle, Color> {
+    static var sidebarList: Self { .sidebarList() }
+
+    static func sidebarList(
+        rowBackground: Color = Color(uiColor: .systemBackground)
+    ) -> Self {
+        .init(
+            listStyle: .init(),
+            listRowBackground: rowBackground
+        )
+    }
+}
+
+// MARK: - List Style
+
+public struct ListPropertyInspector<S: ListStyle, B: View>: PropertyInspectorStyle {
+    let listStyle: S
+    let listRowBackground: B
 
     public func makeBody(configuration: Configuration) -> some View {
-        VStack {
-            GroupBox(title) {
-                configuration.content
-            }
+        List {
             Section {
-                ScrollView {
-                    LazyVStack {
-                        configuration.rows
-                            .padding(.vertical, 3)
-                            .multilineTextAlignment(.leading)
-                            .overlay(Divider(), alignment: .bottom)
-                    }
-                }
+                configuration.rows
+                    .listRowBackground(listRowBackground)
             } header: {
-                configuration.header
+                VStack(spacing: .zero) {
+                    configuration.content
+                        .environment(\.textCase, nil)
+                        .padding(.vertical)
+                        .padding(.vertical)
+
+                    configuration.header
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .multilineTextAlignment(.leading)
+                }
             }
         }
-        .padding(.horizontal)
+        .listStyle(listStyle)
     }
 }
 
@@ -343,9 +383,10 @@ public extension PropertyInspectorStyle where Self == SheetPropertyInspector {
     static func sheet(
         isPresented: Binding<Bool>,
         adjustsBottomInset: Bool = true,
-        detent: PresentationDetent = .fraction(2/3),
+        detent: PresentationDetent = .fraction(1/4),
         presentationDetents: Set<PresentationDetent> = [
-            .fraction(1/3),
+            .fraction(1/4),
+            .medium,
             .fraction(2/3),
             .large
         ]
@@ -667,9 +708,7 @@ private struct Property: Identifiable, Comparable, Hashable {
     }
 
     static func == (lhs: Property, rhs: Property) -> Bool {
-        lhs.id == rhs.id &&
-        lhs.location == rhs.location &&
-        lhs.stringValue == rhs.stringValue
+        lhs.id == rhs.id
     }
 
     static func < (lhs: Property, rhs: Property) -> Bool {
@@ -721,7 +760,7 @@ final class PropertyLocation: Comparable, CustomStringConvertible {
 }
 
 private struct Row: View {
-    let data: Property
+    var data: Property
     var icon: AnyView?
     var label: AnyView?
     var detail: AnyView?
@@ -773,73 +812,52 @@ private struct Row: View {
 private struct PropertyPreferenceModifier: ViewModifier  {
     @Environment(\.inspectorInitialHighlight)
     private var isHighlighted
-    let values: [Any]
-    let location: PropertyLocation
+
+    @Environment(\.inspectorDisabled)
+    private var disabled
+
+    var values: [Any]
+
+    var location: PropertyLocation
 
     func body(content: Content) -> some View {
         content.modifier(
-            _ViewModifier(
-                isHighlighted: isHighlighted,
-                values: values,
+            PropertyHighlightModifier(
+                isOn: disabled ? false : isHighlighted,
+                values: disabled ? [] : values,
                 location: location
             )
         )
     }
-
-    private struct _ViewModifier: ViewModifier  {
-        @State
-        var isHighlighted: Bool
-        var values: [Any]
-        var location: PropertyLocation
-
-        @Environment(\.inspectorDisabled)
-        private var disabled
-
-        private var data: [Property] {
-            if disabled { return [] }
-            return values.enumerated().map {
-                Property(
-                    value: $0.element,
-                    isHighlighted: $isHighlighted,
-                    location: location,
-                    index: $0.offset
-                )
-            }
-        }
-
-        func body(content: Content) -> some View {
-            HighlightView(
-                isOn: disabled ? .constant(false) : $isHighlighted
-            ) {
-                content.background(
-                    Color.clear.preference(
-                        key: PropertyPreference.self,
-                        value: data
-                    )
-                )
-            }
-        }
-    }
 }
 
-private struct HighlightView<Content: View>: View {
+private struct PropertyHighlightModifier: ViewModifier {
     @State
     private var animationToken = UUID()
 
-    @Binding
+    @State
     var isOn: Bool
 
-    @ViewBuilder
-    var content: Content
+    var values: [Any]
 
-    @Environment(\.inspectorDisabled)
-    private var disabled
+    var location: PropertyLocation
 
     @Environment(\.inspectorHighlightTint)
     private var tint
 
     @Environment(\.colorScheme)
     private var colorScheme
+
+    private var data: [Property] {
+        values.enumerated().map {
+            Property(
+                value: $0.element,
+                isHighlighted: $isOn,
+                location: location,
+                index: $0.offset
+            )
+        }
+    }
 
     var transition: AnyTransition {
         .asymmetric(
@@ -849,24 +867,26 @@ private struct HighlightView<Content: View>: View {
         )
     }
 
-    var isVisible: Bool {
-        isOn && !disabled
-    }
-
     var tintShape: some ShapeStyle {
         if let tint { return tint }
         return colorScheme == .light ? Color.blue : Color.yellow
     }
 
     var zIndex: Double {
-        isVisible ? 999 : 0
+        isOn ? 999 : 0
     }
 
-    var body: some View {
+    func body(content: Content) -> some View {
         content
+            .background(
+                Spacer().preference(
+                    key: PropertyPreference.self,
+                    value: data
+                )
+            )
             .zIndex(zIndex)
             .overlay {
-                if isVisible {
+                if isOn {
                     Rectangle()
                         .stroke(lineWidth: 1.5)
                         .fill(tintShape)
@@ -874,7 +894,7 @@ private struct HighlightView<Content: View>: View {
                         .transition(transition)
                 }
             }
-            .onChange(of: isVisible) { newValue in
+            .onChange(of: isOn) { newValue in
                 guard newValue else { return }
                 animationToken = UUID()
             }
@@ -886,16 +906,6 @@ private struct HighlightView<Content: View>: View {
             duration: .random(in: 0.2 ... 0.5),
             extraBounce: .random(in: 0 ... 0.1))
         .delay(.random(in: 0 ... 0.3))
-    }
-}
-
-// MARK: - View Builders
-
-private extension [String: RowViewBuilder] {
-    mutating func merge(_ next: Self) {
-        merge(next) { content, _ in
-            content
-        }
     }
 }
 
@@ -956,31 +966,38 @@ private struct PropertyPreference: PreferenceKey {
 private struct RowDetailPreference: PreferenceKey {
     static let defaultValue = [String: RowViewBuilder]()
     static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
-        value.merge(nextValue())
+        value.merge(nextValue()) { content, _ in
+            content
+        }
     }
 }
 
 private struct RowIconPreference: PreferenceKey {
     static let defaultValue = [String: RowViewBuilder]()
     static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
-        value.merge(nextValue())
+        value.merge(nextValue()) { content, _ in
+            content
+        }
     }
 }
 
 private struct RowLabelPreference: PreferenceKey {
     static let defaultValue = [String: RowViewBuilder]()
     static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
-        value.merge(nextValue())
+        value.merge(nextValue()) { content, _ in
+            content
+        }
     }
 }
 
 // MARK: - View Builders
 
-private struct RowViewBuilder: Equatable {
+private struct RowViewBuilder: Equatable, Identifiable {
+    let id = UUID()
     let view: (Any) -> AnyView?
 
     static func == (lhs: RowViewBuilder, rhs: RowViewBuilder) -> Bool {
-        String(describing: lhs.view) == String(describing: rhs.view)
+        lhs.id == rhs.id
     }
 }
 
@@ -1005,7 +1022,7 @@ private struct PreferenceModifier<K: PreferenceKey>: ViewModifier {
 
     func body(content: Content) -> some View {
         content.background(
-            Color.clear.preference(key: K.self, value: value)
+            Spacer().preference(key: K.self, value: value)
         )
     }
 }
@@ -1054,8 +1071,9 @@ private struct PreferenceKeyState<K: PreferenceKey>: DynamicProperty {
     // optional: change highlight tint
     .propertyInspectorTint(.cyan)
     // optional: choose from different built-in styles or create your own
-    .propertyInspectorStyle(.showcase(title: "Preview"))
-    .propertyInspectorStyle(.showcase)
+    .propertyInspectorStyle(.list)
+    .propertyInspectorStyle(.insetGroupedList)
+    .propertyInspectorStyle(.sidebarList)
     .propertyInspectorStyle(.sheet(isPresented: .constant(true)))
     .propertyInspectorStyle(.contextMenu)
     .propertyInspectorStyle(.inline(alignment: .trailing))
