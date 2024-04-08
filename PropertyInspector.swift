@@ -670,7 +670,7 @@ private final class Storage: ObservableObject {
 /// - Note: Conforms to `Identifiable`, `Comparable`, and `Hashable` to support efficient collection operations and UI presentation.
 private struct Property: Identifiable, Comparable, Hashable {
     /// A unique identifier for the inspector item, necessary for conforming to `Identifiable`.
-    let id = UUID()
+    var id: String { sortString }
 
     /// The value of the property being inspected. This is stored as `Any` to accommodate any property type.
     let value: Any
@@ -681,19 +681,14 @@ private struct Property: Identifiable, Comparable, Hashable {
     let index: Int
 
     /// A binding to a Boolean value indicating whether this item is highlighted within the UI.
-    @Binding var isHighlighted: Bool
+    @Binding 
+    var isHighlighted: Bool
 
-    var stringValue: String {
-        String(describing: value)
-    }
+    var stringValue: String
 
-    var stringValueType: String {
-        String(describing: type(of: value))
-    }
+    var stringValueType: String
 
-    private var sortString: String {
-        "\(location):\(index):\(stringValueType):\(stringValue)"
-    }
+    private let sortString: String
 
     init(
         value: Any,
@@ -705,6 +700,12 @@ private struct Property: Identifiable, Comparable, Hashable {
         self._isHighlighted = isHighlighted
         self.location = location
         self.index = index
+
+        let stringValueType = String(describing: type(of: value))
+        let stringValue = String(describing: value)
+        self.stringValueType = stringValueType
+        self.stringValue = stringValue
+        self.sortString = "\(location):\(index):\(stringValueType):\(stringValue)"
     }
 
     static func == (lhs: Property, rhs: Property) -> Bool {
@@ -878,6 +879,7 @@ private struct PropertyHighlightModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .id(data.map(\.id))
             .background(
                 Spacer().preference(
                     key: PropertyPreference.self,
