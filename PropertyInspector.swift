@@ -546,15 +546,11 @@ public extension View {
         for type: Value.Type,
         @ViewBuilder icon: @escaping (Value) -> Icon
     ) -> some View {
-        modifier(
-            PreferenceModifier<RowIconPreference>(icon)
-        )
+        setPreferenceChange(RowIconPreference.self, content: icon)
     }
 
     func propertyInspectorTitle(_ title: LocalizedStringKey) -> some View {
-        modifier(
-            PreferenceModifier<TitlePreference>(title)
-        )
+        setPreferenceChange(TitlePreference.self, value: title)
     }
 
     /// Registers a custom label view for a specific type to be displayed in the Property Inspector's UI.
@@ -581,9 +577,7 @@ public extension View {
         for type: Value.Type,
         @ViewBuilder label: @escaping (Value) -> Label
     ) -> some View {
-        modifier(
-            PreferenceModifier<RowLabelPreference>(label)
-        )
+        setPreferenceChange(RowLabelPreference.self, content: label)
     }
 
     /// Registers a custom detail view for a specific type to be shown in the Property Inspector's UI.
@@ -613,9 +607,7 @@ public extension View {
         for type: Value.Type,
         @ViewBuilder detail: @escaping (Value) -> Detail
     ) -> some View {
-        modifier(
-            PreferenceModifier<RowDetailPreference>(detail)
-        )
+        setPreferenceChange(RowDetailPreference.self, content: detail)
     }
 }
 
@@ -849,7 +841,7 @@ private struct PropertyHighlightModifier: ViewModifier {
     @Environment(\.colorScheme)
     private var colorScheme
 
-    private var data: [Property] {
+    private func data() -> [Property] {
         values.enumerated().map {
             Property(
                 value: $0.element,
@@ -877,15 +869,18 @@ private struct PropertyHighlightModifier: ViewModifier {
         isOn ? 999 : 0
     }
 
+    @State
+    private var id: String = UUID().uuidString {
+        didSet {
+            print(oldValue, id, separator: "\n")
+        }
+    }
+
     func body(content: Content) -> some View {
-        content
-            .id(data.map(\.id))
-            .background(
-                Spacer().preference(
-                    key: PropertyPreference.self,
-                    value: data
-                )
-            )
+        let data = data()
+        return content
+            .id(id)
+            .setPreferenceChange(PropertyPreference.self, value: data)
             .zIndex(zIndex)
             .overlay {
                 if isOn {
@@ -900,7 +895,16 @@ private struct PropertyHighlightModifier: ViewModifier {
                 guard newValue else { return }
                 animationToken = UUID()
             }
+            .onChange(of: data, perform: { newData in
+                DispatchQueue.main.async {
+                    let newId = newData.map(\.id).joined()
+                    if newId != self.id {
+                        self.id = newId
+                    }
+                }
+            })
             .animation(animation, value: animationToken)
+
     }
 
     var animation: Animation {
@@ -951,6 +955,15 @@ extension EnvironmentValues {
     }
 }
 
+// MARK: - Property Wrappers
+
+@propertyWrapper
+private struct PreferenceKeyState<K: PreferenceKey>: DynamicProperty {
+    @State<K.Value>
+    var wrappedValue: K.Value = K.defaultValue
+    var projectedValue: Binding<K.Value> { $wrappedValue }
+}
+
 // MARK: - Preference Keys
 
 private struct TitlePreference: PreferenceKey {
@@ -992,7 +1005,7 @@ private struct RowLabelPreference: PreferenceKey {
     }
 }
 
-// MARK: - View Builders
+// MARK: - Row Builder
 
 private struct RowViewBuilder: Equatable, Identifiable {
     let id = UUID()
@@ -1004,22 +1017,11 @@ private struct RowViewBuilder: Equatable, Identifiable {
 }
 
 /// A modifier that you apply to a view or another view modifier to set a value for any given preference key.
-private struct PreferenceModifier<K: PreferenceKey>: ViewModifier {
+private struct PreferenceValueModifier<K: PreferenceKey>: ViewModifier {
     let value: K.Value
 
-    init(_ value: K.Value) {
+    init(_ key: K.Type = K.self, _ value: K.Value) {
         self.value = value
-    }
-
-    init<V: View, Value>(@ViewBuilder _ view: @escaping (Value) -> V) where K.Value == [String: RowViewBuilder] {
-        let key = String(describing: Value.self)
-        let builder = RowViewBuilder { value in
-            if let castedValue = value as? Value {
-                return AnyView(view(castedValue))
-            }
-            return nil
-        }
-        self.value = [key: builder]
     }
 
     func body(content: Content) -> some View {
@@ -1029,11 +1031,28 @@ private struct PreferenceModifier<K: PreferenceKey>: ViewModifier {
     }
 }
 
-@propertyWrapper
-private struct PreferenceKeyState<K: PreferenceKey>: DynamicProperty {
-    @State<K.Value> 
-    var wrappedValue: K.Value = K.defaultValue
-    var projectedValue: Binding<K.Value> { $wrappedValue }
+private extension View {
+    func setPreferenceChange<K: PreferenceKey>(
+        _ key: K.Type,
+        value: K.Value
+    ) -> some View {
+        modifier(PreferenceValueModifier(key, value))
+    }
+
+    func setPreferenceChange<K: PreferenceKey, C: View, T>(
+        _ key: K.Type,
+        @ViewBuilder content: @escaping (T) -> C
+    ) -> some View where K.Value == [String: RowViewBuilder] {
+        let dataType = String(describing: T.self)
+        let viewBuilder = RowViewBuilder { value in
+            if let castedValue = value as? T {
+                return AnyView(content(castedValue))
+            }
+            return nil
+        }
+        let value = [dataType: viewBuilder]
+        return modifier(PreferenceValueModifier(key, value))
+    }
 }
 
 #if DEBUG
