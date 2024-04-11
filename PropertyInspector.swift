@@ -127,15 +127,15 @@ public struct PropertyInspector<Content: View>: View {
                     }())
                 }
             }
-            .onPreferenceChange(PropertyInspectorItemKey.self) {
-                let newValue = Set($0).sorted()
+            .onPreferenceChange(PropertyPreferenceKey.self) {
+                let newValue = ($0).sorted()
                 if newValue != data.properties {
                     data.properties = newValue
                 }
             }
-            .onPreferenceChange(RowDetailPreference.self) { data.details = $0 }
-            .onPreferenceChange(RowIconPreference.self) { data.icons = $0  }
-            .onPreferenceChange(RowLabelPreference.self) { data.labels = $0 }
+            .onPreferenceChange(RowDetailPreferenceKey.self) { data.details = $0 }
+            .onPreferenceChange(RowIconPreferenceKey.self) { data.icons = $0  }
+            .onPreferenceChange(RowLabelPreferenceKey.self) { data.labels = $0 }
             .environmentObject(data)
     }
 }
@@ -166,7 +166,7 @@ public extension View {
         for type: Value.Type,
         @ViewBuilder icon: @escaping (Value) -> Icon
     ) -> some View {
-        setPreferenceChange(RowIconPreference.self, content: icon)
+        changePreference(RowIconPreferenceKey.self, content: icon)
     }
 
     /// Registers a custom label view for a specific type to be displayed in the Property Inspector's UI.
@@ -193,7 +193,7 @@ public extension View {
         for type: Value.Type,
         @ViewBuilder label: @escaping (Value) -> Label
     ) -> some View {
-        setPreferenceChange(RowLabelPreference.self, content: label)
+        changePreference(RowLabelPreferenceKey.self, content: label)
     }
 
     /// Registers a custom detail view for a specific type to be shown in the Property Inspector's UI.
@@ -223,7 +223,7 @@ public extension View {
         for type: Value.Type,
         @ViewBuilder detail: @escaping (Value) -> Detail
     ) -> some View {
-        setPreferenceChange(RowDetailPreference.self, content: detail)
+        changePreference(RowDetailPreferenceKey.self, content: detail)
     }
 
     /// Attaches a property inspector to the view, which can be used to inspect the specified value when
@@ -260,8 +260,8 @@ public extension View {
         file: String = #file
     ) -> some View {
         modifier(
-            PropertyInspectorViewModifier(
-                values: values,
+            PropertyViewModifier(
+                data: values,
                 location: .init(
                     function: function,
                     file: file,
@@ -271,15 +271,9 @@ public extension View {
         )
     }
 
-    /// Disables the property inspection functionality for this view. When inspection is disabled, the view
-    /// will not collect property information for the inspector.
-    ///
-    /// - Parameter disabled: A Boolean value that determines whether the property inspection is disabled.
-    ///   The default value is `true`.
-    ///
-    /// - Returns: A view that conditionally disables property inspection.
-    func propertyInspectorDisabled(_ disabled: Bool = true) -> some View {
-        environment(\.propertyInspectorDisabled, disabled)
+    /// Hides this view and its children from the property inspection.
+    func propertyInspectorHidden(_ hidden: Bool = true) -> some View {
+        environment(\.propertyInspectorHidden, hidden)
     }
 
     /// An extension on `View` to set the corner radius for `PropertyInspectorHighlightView`.
@@ -309,7 +303,7 @@ public extension View {
 
 /// Represents an individual item to be inspected within the Property Inspector.
 /// This class encapsulates a single property's value and metadata for display and comparison purposes.
-private final class Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
+private struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
     /// A unique identifier for the inspector item, used to differentiate between items.
     let id = UUID()
 
@@ -323,36 +317,35 @@ private final class Property: Identifiable, Comparable, CustomStringConvertible,
     /// This includes the function name, file name, and line number.
     let location: PropertyLocation
 
-    let index: Int
-
     var description: String {
-        "\(location) — \(stringValue)"
+        sortString
     }
 
     var stringValueType: String {
-        String(
-            describing: type(of: value)
-        )
+        String(describing: type(of: value))
     }
 
     var stringValue: String {
         String(describing: value)
     }
 
-    private var sortString: String {
-        "\(location):\(index):\(stringValue)"
-    }
+    private let sortString: String
 
     init(
         value: Any,
         isHighlighted: Binding<Bool>,
         location: PropertyLocation,
+        level: Int,
         index: Int
     ) {
         self.value = value
         self._isHighlighted = isHighlighted
         self.location = location
-        self.index = index
+        self.sortString = [
+            String(level) + String(index),
+            location.id,
+            String(describing: value)
+        ].joined(separator: "_")
     }
 
     static func == (lhs: Property, rhs: Property) -> Bool {
@@ -383,22 +376,16 @@ struct PropertyLocation: Identifiable, Comparable, CustomStringConvertible {
     let line: Int
 
     init(function: String, file: String, line: Int) {
-        let file: String = {
-            guard let lastComponent = file.split(separator: "/").last else {
-                return file
-            }
-            return String(lastComponent)
-        }()
+        let fileName = URL(string: file)?.lastPathComponent ?? file
 
         self.id = "\(file):\(line):\(function)"
-        self.description = "\(file):\(line)"
+        self.description = "\(fileName):\(line)"
         self.function = function
         self.file = file
         self.line = line
     }
 
-    /// A textual description of the location, typically used for display purposes.
-    /// This includes the file name (without the full path) and the line number.
+    /// A textual description of the location, includes the file name (without the full path) and the line number.
     let description: String
 
     static func < (lhs: PropertyLocation, rhs: PropertyLocation) -> Bool {
@@ -412,7 +399,11 @@ struct PropertyLocation: Identifiable, Comparable, CustomStringConvertible {
 
 private final class PropertyInspectorStorage: ObservableObject {
     @Published var searchQuery = ""
-    @Published var properties = [Property]()
+    @Published var properties = [Property]() {
+        didSet {
+            print(properties)
+        }
+    }
     @Published var icons = [String: RowViewBuilder]()
     @Published var labels = [String: RowViewBuilder]()
     @Published var details = [String: RowViewBuilder]()
@@ -480,7 +471,7 @@ private struct PropertyInspectorRows: View {
             .listRowSeparator(.hidden)
 
         ForEach(data.searchResults) {
-            PropertyInspectorRow(
+            PropertyRow(
                 data: $0,
                 icon: makeBody(configuration: ($0, data.icons)),
                 label: makeBody(configuration: ($0, data.labels)),
@@ -548,7 +539,7 @@ private struct PropertyInspectorToggleStyle: ToggleStyle {
                 configuration.label
                 Spacer()
                 Image(systemName: {
-                    if #available(iOS 16.0, *), configuration.isMixed { return "minus.circle" }
+                    if #available(iOS 16.0, *), configuration.isMixed { return "minus.circle.fill" }
                     if configuration.isOn { return "checkmark.circle.fill" }
                     return "circle"
                 }())
@@ -557,36 +548,40 @@ private struct PropertyInspectorToggleStyle: ToggleStyle {
     }
 }
 
-private struct PropertyInspectorViewModifier: ViewModifier  {
-    let values: [Any]
+private struct PropertyViewModifier: ViewModifier  {
+    let data: [Any]
     let location: PropertyLocation
 
     @State
     private var isHighlighted = false
 
-    @Environment(\.propertyInspectorDisabled)
-    private var disabled
+    @Environment(\.propertyInspectorHidden)
+    private var hidden
 
-    var data: [Property] {
-        if disabled { return [] }
-        return values.enumerated().map { (offset, value) in
+    @State
+    private var level = 0
+
+    private var properties: [Property] {
+        if hidden { return [] }
+        return data.enumerated().map { (offset, value) in
             Property(
                 value: value,
                 isHighlighted: $isHighlighted,
                 location: location,
+                level: level,
                 index: offset
             )
         }
     }
 
     func body(content: Content) -> some View {
-        PropertyInspectorHighlightView(isOn: $isHighlighted) {
-            content.background(
-                Color.clear.preference(
-                    key: PropertyInspectorItemKey.self,
-                    value: data
-                )
-            )
+        PropertyHighlight(isOn: $isHighlighted) {
+            content
+                .changePreference(PropertyPreferenceKey.self, value: properties)
+                .changePreference(LevelPreferenceKey.self, value: level + 1)
+        }
+        .onPreferenceChange(LevelPreferenceKey.self) { value in
+            level = value
         }
     }
 }
@@ -594,14 +589,14 @@ private struct PropertyInspectorViewModifier: ViewModifier  {
 // MARK: - Preference View Modifiers
 
 private extension View {
-    func setPreferenceChange<K: PreferenceKey>(
+    func changePreference<K: PreferenceKey>(
         _ key: K.Type,
         value: K.Value
     ) -> some View where K.Value: Hashable {
-        modifier(PreferenceValueModifier(key, value))
+        modifier(PreferenceKeyChangeModifier(key, value))
     }
 
-    func setPreferenceChange<K: PreferenceKey, C: View, T>(
+    func changePreference<K: PreferenceKey, C: View, T>(
         _ key: K.Type,
         @ViewBuilder content: @escaping (T) -> C
     ) -> some View where K.Value == [String: RowViewBuilder] {
@@ -613,12 +608,12 @@ private extension View {
             return nil
         }
         let value = [dataType: viewBuilder]
-        return modifier(PreferenceValueModifier(key, value))
+        return modifier(PreferenceKeyChangeModifier(key, value))
     }
 }
 
 /// A modifier that you apply to a view or another view modifier to set a value for any given preference key.
-private struct PreferenceValueModifier<K: PreferenceKey>: ViewModifier where K.Value: Hashable {
+private struct PreferenceKeyChangeModifier<K: PreferenceKey>: ViewModifier where K.Value: Hashable {
     let value: K.Value
 
     init(_ key: K.Type = K.self, _ value: K.Value) {
@@ -627,14 +622,15 @@ private struct PreferenceValueModifier<K: PreferenceKey>: ViewModifier where K.V
 
     func body(content: Content) -> some View {
         content.background(
-            Color.clear.preference(key: K.self, value: value).id(String(describing: value))
+            Color.clear
+                .preference(key: K.self, value: value)
         )
     }
 }
 
 // MARK: - Preference Keys
 
-private struct PropertyInspectorItemKey: PreferenceKey {
+private struct PropertyPreferenceKey: PreferenceKey {
     /// The default value for the dynamic value entries.
     static var defaultValue: [Property] { [] }
 
@@ -648,7 +644,7 @@ private struct PropertyInspectorItemKey: PreferenceKey {
     }
 }
 
-private struct RowDetailPreference: PreferenceKey {
+private struct RowDetailPreferenceKey: PreferenceKey {
     static let defaultValue = [String: RowViewBuilder]()
     static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
         value.merge(nextValue()) { content, _ in
@@ -657,7 +653,7 @@ private struct RowDetailPreference: PreferenceKey {
     }
 }
 
-private struct RowIconPreference: PreferenceKey {
+private struct RowIconPreferenceKey: PreferenceKey {
     static let defaultValue = [String: RowViewBuilder]()
     static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
         value.merge(nextValue()) { content, _ in
@@ -666,34 +662,41 @@ private struct RowIconPreference: PreferenceKey {
     }
 }
 
-private struct RowLabelPreference: PreferenceKey {
+private struct RowLabelPreferenceKey: PreferenceKey {
     static let defaultValue = [String: RowViewBuilder]()
     static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
         value.merge(nextValue()) { content, _ in
             content
         }
+    }
+}
+
+private struct LevelPreferenceKey: PreferenceKey {
+    static let defaultValue: Int = 0
+    static func reduce(value: inout Int, nextValue: () -> Int) {
+        value += nextValue()
     }
 }
 
 // MARK: - Environment Keys
 
-private struct PropertyInspectorHighlightCornerRadiusKey: EnvironmentKey {
+private struct CornerRadiusEnvironmentKey: EnvironmentKey {
     static let defaultValue: CGFloat = 0
 }
 
-private struct PropertyInspectorDisabledKey: EnvironmentKey {
+private struct DisabledEnvironmentKey: EnvironmentKey {
     static let defaultValue: Bool = false
 }
 
 private extension EnvironmentValues {
     var propertyInspectorCornerRadius: CGFloat {
-        get { self[PropertyInspectorHighlightCornerRadiusKey.self] }
-        set { self[PropertyInspectorHighlightCornerRadiusKey.self] = newValue }
+        get { self[CornerRadiusEnvironmentKey.self] }
+        set { self[CornerRadiusEnvironmentKey.self] = newValue }
     }
 
-    var propertyInspectorDisabled: Bool {
-        get { self[PropertyInspectorDisabledKey.self] }
-        set { self[PropertyInspectorDisabledKey.self] = newValue }
+    var propertyInspectorHidden: Bool {
+        get { self[DisabledEnvironmentKey.self] }
+        set { self[DisabledEnvironmentKey.self] = newValue }
     }
 }
 
@@ -712,7 +715,7 @@ private struct RowViewBuilder: Hashable, Identifiable {
     }
 }
 
-private struct PropertyInspectorHighlightView<Content: View>: View {
+private struct PropertyHighlight<Content: View>: View {
     @State
     private var animationToken = UUID()
 
@@ -725,9 +728,6 @@ private struct PropertyInspectorHighlightView<Content: View>: View {
     @Environment(\.propertyInspectorCornerRadius)
     private var cornerRadius
 
-    @Environment(\.propertyInspectorDisabled)
-    private var disabled
-
     var transition: AnyTransition {
         .asymmetric(
             insertion: .opacity
@@ -736,15 +736,12 @@ private struct PropertyInspectorHighlightView<Content: View>: View {
         )
     }
 
-    var isVisible: Bool {
-        isOn && !disabled
-    }
-
     var body: some View {
-        content
-            .zIndex(isVisible ? 999 : 0)
+        Self._printChanges()
+        return content
+            .zIndex(isOn ? 999 : 0)
             .overlay {
-                if isVisible {
+                if isOn {
                     RoundedRectangle(cornerRadius: cornerRadius)
                         .stroke(style:  StrokeStyle(
                             lineWidth: 1.5,
@@ -756,7 +753,7 @@ private struct PropertyInspectorHighlightView<Content: View>: View {
                         .transition(transition)
                 }
             }
-            .onChange(of: isVisible) { newValue in
+            .onChange(of: isOn) { newValue in
                 guard newValue else { return }
                 animationToken = UUID()
             }
@@ -771,8 +768,8 @@ private struct PropertyInspectorHighlightView<Content: View>: View {
     }
 }
 
-private struct PropertyInspectorRow: View, Equatable {
-    static func == (lhs: PropertyInspectorRow, rhs: PropertyInspectorRow) -> Bool {
+private struct PropertyRow: View, Equatable {
+    static func == (lhs: PropertyRow, rhs: PropertyRow) -> Bool {
         lhs.data == rhs.data
     }
 
