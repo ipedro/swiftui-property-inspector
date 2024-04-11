@@ -71,10 +71,10 @@ import SwiftUI
 /// The `PropertyInspector` leverages SwiftUI's preference system to collect property information
 /// from descendant views into a consolidated list, which is then presented in an inspector pane
 /// when the `isPresented` binding is toggled to `true`.
-public struct PropertyInspector<Content: View>: View {
-    private var content: Content
+public struct PropertyInspector: View {
+    private var initialHighlight: Bool
 
-    let initialHighlight: Bool
+    private var content: AnyView
 
     @StateObject
     private var data = Storage()
@@ -82,56 +82,35 @@ public struct PropertyInspector<Content: View>: View {
     @Environment(\.inspectorStyle)
     private var style
 
-    public init(
+    public init<Content: View>(
         initialHighlight: Bool = false,
         @ViewBuilder content: () -> Content
     ) {
         self.initialHighlight = initialHighlight
-        self.content = content()
+        self.content = AnyView(content())
     }
 
     private var configuration: PropertyInspectorStyleConfiguration {
-        PropertyInspectorStyleConfiguration(content)
+        PropertyInspectorStyleConfiguration(content: content)
     }
 
     public var body: some View {
         AnyView(style.resolve(configuration: configuration))
-            .toggleStyle(PropertyInspectorToggle())
             .environment(\.inspectorInitialHighlight, initialHighlight)
-            .environmentObject(data)
-    }
-}
-
-public struct PropertyInspectorStyleConfiguration {
-    public let content: PropertyInspectorContent
-
-    init<V: View>(_ view: V) {
-        self.content = PropertyInspectorContent(view)
-    }
-
-    public let header = PropertyInspectorHeader()
-
-    public let rows = PropertyInspectorRows()
-}
-
-public struct PropertyInspectorContent: View {
-    @EnvironmentObject
-    private var data: Storage
-
-    let content: AnyView
-
-    init<Content: View>(_ content: Content) {
-        self.content = AnyView(content)
-    }
-
-    public var body: some View {
-        content
+            .toggleStyle(PropertyInspectorToggle())
             .onPreferenceChange(RowDetailPreference.self) { data.details = $0 }
             .onPreferenceChange(RowIconPreference.self) { data.icons = $0  }
             .onPreferenceChange(RowLabelPreference.self) { data.labels = $0 }
             .onPreferenceChange(TitlePreference.self) { data.title = $0 }
             .onPreferenceChange(PropertyPreference.self) { data.properties = Set($0).sorted() }
+            .environmentObject(data)
     }
+}
+
+public struct PropertyInspectorStyleConfiguration {
+    public let content: AnyView
+    public let header = PropertyInspectorHeader()
+    public let rows = PropertyInspectorRows()
 }
 
 public struct PropertyInspectorHeader: View {
@@ -151,7 +130,7 @@ public struct PropertyInspectorHeader: View {
                     $0.isHighlighted = newValue
                 }
             }) {
-                Text(data.title).bold().font(.title2)
+                data.title?.value.font(.title2.bold())
             }
 
             searchField()
@@ -496,20 +475,19 @@ public extension View {
     ///   - file: A `String` representing the path of the source file in which the property is being inspected. Defaults to the caller file path.
     ///
     /// - Returns: A view modified to include the specified properties in the inspection.
-    func inspectProperty(
-        _ values: Any...,
+    func inspectProperty<T>(
+        _ values: T...,
         function: String = #function,
         line: Int = #line,
         file: String = #file
     ) -> some View {
-        modifier(
-            PropertyPreferenceModifier(
-                values: values,
-                location: .init(
-                    function: function,
-                    file: file,
-                    line: line
-                )
+        PropertyHighlightModifier(
+            content: self,
+            values: values,
+            location: .init(
+                function: function,
+                file: file,
+                line: line
             )
         )
     }
@@ -549,8 +527,13 @@ public extension View {
         setPreferenceChange(RowIconPreference.self, content: icon)
     }
 
-    func propertyInspectorTitle(_ title: LocalizedStringKey) -> some View {
-        setPreferenceChange(TitlePreference.self, value: title)
+    func propertyInspectorTitle(_ title: LocalizedStringKey?) -> some View {
+        setPreferenceChange(TitlePreference.self, value: {
+            if let title {
+                return HashableBox(value: Text(title))
+            }
+            return nil
+        }())
     }
 
     /// Registers a custom label view for a specific type to be displayed in the Property Inspector's UI.
@@ -662,7 +645,7 @@ private final class Storage: ObservableObject {
 /// - Note: Conforms to `Identifiable`, `Comparable`, and `Hashable` to support efficient collection operations and UI presentation.
 private struct Property: Identifiable, Comparable, Hashable {
     /// A unique identifier for the inspector item, necessary for conforming to `Identifiable`.
-    var id: String { sortString }
+    let id: String
 
     /// The value of the property being inspected. This is stored as `Any` to accommodate any property type.
     let value: Any
@@ -683,11 +666,13 @@ private struct Property: Identifiable, Comparable, Hashable {
     private let sortString: String
 
     init(
+        id: String,
         value: Any,
         isHighlighted: Binding<Bool>,
         location: PropertyLocation,
         index: Int = 0
     ) {
+        self.id = id
         self.value = value
         self._isHighlighted = isHighlighted
         self.location = location
@@ -802,52 +787,40 @@ private struct Row: View {
     }
 }
 
-private struct PropertyPreferenceModifier: ViewModifier  {
-    @Environment(\.inspectorInitialHighlight)
-    private var isHighlighted
-
-    @Environment(\.inspectorDisabled)
-    private var disabled
-
-    var values: [Any]
-
-    var location: PropertyLocation
-
-    func body(content: Content) -> some View {
-        content.modifier(
-            PropertyHighlightModifier(
-                isOn: disabled ? false : isHighlighted,
-                values: disabled ? [] : values,
-                location: location
-            )
-        )
-    }
-}
-
-private struct PropertyHighlightModifier: ViewModifier {
+private struct PropertyHighlightModifier<Content: View, Value>: View {
     @State
     private var animationToken = UUID()
 
     @State
-    var isOn: Bool
+    var isOn: Bool = false
 
-    var values: [Any]
+    @State
+    var id = UUID()
+
+    var content: Content
+
+    var values: [Value]
 
     var location: PropertyLocation
 
     @Environment(\.inspectorHighlightTint)
     private var tint
 
+    @Environment(\.inspectorDisabled)
+    private var disabled
+
     @Environment(\.colorScheme)
     private var colorScheme
 
-    private func data() -> [Property] {
-        values.enumerated().map {
+    private var data: [Property] {
+        if disabled { return [] }
+        return values.enumerated().map { (offset, value) in
             Property(
-                value: $0.element,
+                id: "\(id.uuidString)-\(offset)",
+                value: value,
                 isHighlighted: $isOn,
                 location: location,
-                index: $0.offset
+                index: offset
             )
         }
     }
@@ -869,21 +842,12 @@ private struct PropertyHighlightModifier: ViewModifier {
         isOn ? 999 : 0
     }
 
-    @State
-    private var id: String = UUID().uuidString {
-        didSet {
-            print(oldValue, id, separator: "\n")
-        }
-    }
-
-    func body(content: Content) -> some View {
-        let data = data()
-        return content
-            .id(id)
+    var body: some View {
+        content
             .setPreferenceChange(PropertyPreference.self, value: data)
             .zIndex(zIndex)
             .overlay {
-                if isOn {
+                if !disabled, isOn {
                     Rectangle()
                         .stroke(lineWidth: 1.5)
                         .fill(tintShape)
@@ -892,17 +856,9 @@ private struct PropertyHighlightModifier: ViewModifier {
                 }
             }
             .onChange(of: isOn) { newValue in
-                guard newValue else { return }
+                guard !disabled, newValue else { return }
                 animationToken = UUID()
             }
-            .onChange(of: data, perform: { newData in
-                DispatchQueue.main.async {
-                    let newId = newData.map(\.id).joined()
-                    if newId != self.id {
-                        self.id = newId
-                    }
-                }
-            })
             .animation(animation, value: animationToken)
 
     }
@@ -966,9 +922,30 @@ private struct PreferenceKeyState<K: PreferenceKey>: DynamicProperty {
 
 // MARK: - Preference Keys
 
+private struct HashableBox<Value>: Identifiable, Hashable, CustomStringConvertible {
+    static func == (lhs: HashableBox<Value>, rhs: HashableBox<Value>) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    var id: String { description }
+
+    let value: Value
+
+    let description: String
+
+    init(value: Value) {
+        self.value = value
+        self.description = String(describing: value)
+    }
+}
+
 private struct TitlePreference: PreferenceKey {
-    static let defaultValue = LocalizedStringKey("Properties")
-    static func reduce(value: inout LocalizedStringKey, nextValue: () -> LocalizedStringKey) {}
+    static var defaultValue: HashableBox<Text>?
+    static func reduce(value: inout HashableBox<Text>?, nextValue: () -> HashableBox<Text>?) {}
 }
 
 private struct PropertyPreference: PreferenceKey {
@@ -1007,17 +984,21 @@ private struct RowLabelPreference: PreferenceKey {
 
 // MARK: - Row Builder
 
-private struct RowViewBuilder: Equatable, Identifiable {
+private struct RowViewBuilder: Hashable, Identifiable {
     let id = UUID()
     let view: (Any) -> AnyView?
 
     static func == (lhs: RowViewBuilder, rhs: RowViewBuilder) -> Bool {
         lhs.id == rhs.id
     }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
 }
 
 /// A modifier that you apply to a view or another view modifier to set a value for any given preference key.
-private struct PreferenceValueModifier<K: PreferenceKey>: ViewModifier {
+private struct PreferenceValueModifier<K: PreferenceKey>: ViewModifier where K.Value: Hashable {
     let value: K.Value
 
     init(_ key: K.Type = K.self, _ value: K.Value) {
@@ -1026,7 +1007,7 @@ private struct PreferenceValueModifier<K: PreferenceKey>: ViewModifier {
 
     func body(content: Content) -> some View {
         content.background(
-            Spacer().preference(key: K.self, value: value)
+            Color.clear.preference(key: K.self, value: value).id(String(describing: value))
         )
     }
 }
@@ -1035,7 +1016,7 @@ private extension View {
     func setPreferenceChange<K: PreferenceKey>(
         _ key: K.Type,
         value: K.Value
-    ) -> some View {
+    ) -> some View where K.Value: Hashable {
         modifier(PreferenceValueModifier(key, value))
     }
 
