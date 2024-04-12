@@ -67,6 +67,11 @@ public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: 
     @Binding
     private var isPresented: Bool
 
+    @State
+    private var bottomInset: Double = 0
+
+    private let highlightOnPresent: Bool
+
     @StateObject
     private var data = PropertyStore()
 
@@ -75,6 +80,7 @@ public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: 
     ///
     /// - Parameters:
     ///   - title: An optional title for the property inspector pane.
+    ///   - highlightOnPresent: Highlights properties when presenting and hides them when dismissed.
     ///   - isPresented: A binding to control the presentation state of the inspector.
     ///   - content: A closure providing the main content view.
     ///   - icon: A closure providing an icon view for each property value.
@@ -99,6 +105,7 @@ public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: 
     /// ```
     public init(
         _ title: String? = nil,
+        highlightOnPresent: Bool = false,
         isPresented: Binding<Bool>,
         @ViewBuilder content: () -> Content,
         @ViewBuilder icon: @escaping (Any) -> Icon,
@@ -106,6 +113,7 @@ public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: 
         @ViewBuilder detail: @escaping (Any) -> Detail
     ) {
         self.title = title
+        self.highlightOnPresent = highlightOnPresent
         self._isPresented = isPresented
         self.content = content()
         self.icon = icon
@@ -113,50 +121,22 @@ public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: 
         self.detail = detail
     }
 
-
-    /// Initializes a `PropertyInspector` with the simplest configuration.
-    ///
-    /// - Parameters:
-    ///   - title: An optional title for the property inspector pane.
-    ///   - isPresented: A binding to control the presentation state of the inspector.
-    ///   - content: A closure providing the main content view.
-    ///
-    /// Usage example:
-    /// ```
-    /// @State private var isInspectorPresented = false
-    ///
-    /// var body: some View {
-    ///     PropertyInspector("Properties", MyValueType.self, isPresented: $isInspectorPresented) {
-    ///         // Main content view goes here
-    ///     }
-    /// }
-    /// ```
-    public init(
-        _ title: String? = nil,
-        isPresented: Binding<Bool>,
-        @ViewBuilder content: () -> Content
-    ) where Icon == EmptyView, Label == EmptyView, Detail == EmptyView {
-        self.title = title
-        self._isPresented = isPresented
-        self.content = content()
-        self.icon = { _ in EmptyView() }
-        self.label = { _ in EmptyView() }
-        self.detail = { _ in EmptyView() }
-    }
-
     public var body: some View {
+        // 1. content
         content
-            .safeAreaInset(edge: .bottom) {
-                if isPresented {
-                    Spacer().frame(height: UIScreen.main.bounds.midY)
-                }
+        // 2. inspector views
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Spacer().frame(height: bottomInset)
             }
             .toolbar {
                 Button {
                     isPresented.toggle()
                 } label: {
-                    Image(systemName: isPresented ? "xmark.circle" : "magnifyingglass.circle")
+                    Image(systemName: isPresented ? "xmark.circle.fill" : "magnifyingglass.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
                         .rotationEffect(.degrees(isPresented ? 180 : 0))
+                        .font(.title3)
+
                 }
             }
             .animation(.snappy, value: isPresented)
@@ -170,16 +150,27 @@ public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: 
                     )
                 }
             }
+        // 3. preference keys
             .onPreferenceChange(PropertyPreferenceKey.self) { newValue in
-                let newValue = newValue.unique().sorted()
-                if data.properties != newValue {
-                    data.properties = newValue
+                let uniqueProperties = newValue
+                    .removingDuplicates()
+                    .sorted()
+
+                if data.properties != uniqueProperties {
+                    data.properties = uniqueProperties
                 }
             }
-            .onChange(of: isPresented) { newValue in
-                DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
-                    data.properties.forEach {
-                        $0.isHighlighted = newValue
+            .onChange(of: isPresented) { _ in
+                bottomInset = isPresented ? UIScreen.main.bounds.midY : 0
+
+                guard highlightOnPresent else {
+                    return
+                }
+                withAnimation(.default.delay(250)) {
+                    data.properties.enumerated().forEach { (offset, property) in
+                        withAnimation(.default.delay(TimeInterval(50 * offset))) {
+                            property.isHighlighted = isPresented
+                        }
                     }
                 }
             }
@@ -216,7 +207,7 @@ public extension View {
     /// `#line`, and `#file` to capture the context where the property is being inspected. This context
     /// information is used to provide insightful details within the property inspector.
     func inspectProperty(
-        _ values: [Any],
+        _ values: Any...,
         function: String = #function,
         line: Int = #line,
         file: String = #file
@@ -269,9 +260,9 @@ public extension View {
     }
 }
 
-extension [Property] {
-    func unique() -> Self {
-        var seenIDs = Set<Property.ID>()
+extension Collection where Element: Identifiable {
+    func removingDuplicates() -> [Element] {
+        var seenIDs = Set<Element.ID>()
         return filter {
             seenIDs.insert($0.id).inserted
         }
@@ -436,6 +427,7 @@ private struct PropertyInspectorList<Label: View, Detail: View, Icon: View>: Vie
         .presentationCornerRadius(20)
         .presentationBackground(Material.thinMaterial)
         .toggleStyle(PropertyInspectorToggleStyle(alignment: .firstTextBaseline))
+        .symbolRenderingMode(.hierarchical)
     }
 
     private var emptyMessage: String {
@@ -447,7 +439,7 @@ private struct PropertyInspectorList<Label: View, Detail: View, Icon: View>: Vie
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             if let title {
-                Text(title).bold().font(.title3)
+                Text(title).bold().font(.title2)
             }
 
             TextField(
@@ -605,25 +597,31 @@ private struct PropertyInspectorHighlightViewModifier: ViewModifier {
                 if isOn {
                     RoundedRectangle(cornerRadius: cornerRadius)
                         .stroke(lineWidth: 1.5)
-                        .fill(isOn ? Color.blue : Color.blue.opacity(0))
-                        .transition(transition)
+                        .fill(.cyan.opacity(isOn ? 1 : 0))
+                        .transition(
+                            .asymmetric(
+                                insertion: insertion,
+                                removal: removal
+                            )
+                        )
                 }
             }
     }
 
-    private var transition: AnyTransition {
-        .asymmetric(
-            insertion: .opacity
-                .combined(with: .scale(scale: .random(in: 2 ... 2.5)))
-                .animation(insertionAnimation),
-            removal: .opacity
-                .combined(with: .scale(scale: .random(in: 1 ... 1.5)))
-                .animation(removalAnimation)
-        )
+    private var insertion: AnyTransition {
+        .opacity
+        .combined(with: .scale(scale: .random(in: 2 ... 2.5)))
+        .animation(insertionAnimation)
+    }
+
+    private var removal: AnyTransition {
+        .opacity
+        .combined(with: .scale(scale: .random(in: 1.1 ... 1.4)))
+        .animation(removalAnimation)
     }
 
     private var removalAnimation: Animation {
-        .easeIn(duration: .random(in: 0.1...0.25))
+        .smooth(duration: .random(in: 0.1...0.35))
         .delay(.random(in: 0 ... 0.15))
     }
 
@@ -634,3 +632,4 @@ private struct PropertyInspectorHighlightViewModifier: ViewModifier {
         .delay(.random(in: 0 ... 0.3))
     }
 }
+#endif
