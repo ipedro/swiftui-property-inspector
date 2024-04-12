@@ -122,9 +122,12 @@ public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: 
     }
 
     public var body: some View {
-        // 1. content
+        // Do not change the following order:
+        //   1. view modifiers
+        //   2. data listeners
+        //   3. data store
         content
-        // 2. inspector views
+            // 1. view modifiers
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 Spacer().frame(height: bottomInset)
             }
@@ -150,7 +153,7 @@ public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: 
                     )
                 }
             }
-        // 3. preference keys
+            // 2. data listeners
             .onPreferenceChange(PropertyPreferenceKey.self) { newValue in
                 let uniqueProperties = newValue
                     .removingDuplicates()
@@ -174,6 +177,7 @@ public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: 
                     }
                 }
             }
+            // 3. data store
             .environmentObject(data)
     }
 }
@@ -408,6 +412,7 @@ private struct PropertyInspectorList<Label: View, Detail: View, Icon: View>: Vie
                         .frame(maxWidth: .infinity, minHeight: UIScreen.main.bounds.height / 5)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
+                        .multilineTextAlignment(.center)
                 }
 
                 ForEach(filteredData, content: row(_ :))
@@ -415,6 +420,7 @@ private struct PropertyInspectorList<Label: View, Detail: View, Icon: View>: Vie
                 header
             }
         }
+        .multilineTextAlignment(.leading)
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .presentationDetents([
@@ -466,7 +472,7 @@ private struct PropertyInspectorList<Label: View, Detail: View, Icon: View>: Vie
 
     private func row(_ item: Property) -> some View {
         Toggle(isOn: item.$isHighlighted) {
-            HStack {
+            HStack(alignment: .firstTextBaseline) {
                 if Icon.self == EmptyView.self {
                     Image(systemName: "info.circle.fill")
                 } else {
@@ -474,11 +480,9 @@ private struct PropertyInspectorList<Label: View, Detail: View, Icon: View>: Vie
                 }
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Spacer().frame(height: 3) // padding doesn't work
-
                     Group {
                         if Label.self == EmptyView.self {
-                            Text(verbatim: item.stringValue)
+                            Text(verbatim: item.stringValue).minimumScaleFactor(0.8)
                         } else {
                             label(item.value)
                         }
@@ -492,16 +496,15 @@ private struct PropertyInspectorList<Label: View, Detail: View, Icon: View>: Vie
                     } else {
                         detail(item.value)
                     }
-
-                    Spacer().frame(height: 3) // padding doesn't work
                 }
-                .foregroundStyle(.secondary)
-                .font(.caption2)
             }
+            .foregroundStyle(.secondary)
+            .allowsTightening(true)
+            .font(.caption2)
             .contentShape(Rectangle())
         }
         .listRowBackground(Color.clear)
-        .toggleStyle(PropertyInspectorToggleStyle())
+        .toggleStyle(PropertyInspectorToggleStyle(alignment: .firstTextBaseline))
     }
 }
 
