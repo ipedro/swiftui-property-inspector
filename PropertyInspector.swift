@@ -20,6 +20,11 @@
 
 import SwiftUI
 
+private final class PropertyStore: ObservableObject {
+    @Published
+    var properties: [Property] = []
+}
+
 /// `PropertyInspector` provides a SwiftUI view that presents a customizable inspector pane
 /// for properties, allowing users to dynamically explore and interact with property values.
 /// It supports customizable title, content, icons, labels, and detailed views for each property.
@@ -52,23 +57,24 @@ import SwiftUI
 /// from descendant views into a consolidated list, which is then presented in an inspector pane
 /// when the `isPresented` binding is toggled to `true`.
 @available(iOS 16.4, *)
-public struct PropertyInspector<Content: View>: View {
+public struct PropertyInspector<Content: View, Label: View, Detail: View, Icon: View>: View {
     private var title: String?
-
     private var content: Content
+    private var icon: (Any) -> Icon
+    private var label: (Any) -> Label
+    private var detail: (Any) -> Detail
 
     @Binding
     private var isPresented: Bool
 
     @StateObject
-    private var data = PropertyInspectorStorage()
+    private var data = PropertyStore()
 
     /// Initializes a `PropertyInspector` with the most detailed configuration, including title, content,
     /// icon, label, and detail views for each property.
     ///
     /// - Parameters:
     ///   - title: An optional title for the property inspector pane.
-    ///   - value: The property value type.
     ///   - isPresented: A binding to control the presentation state of the inspector.
     ///   - content: A closure providing the main content view.
     ///   - icon: A closure providing an icon view for each property value.
@@ -94,21 +100,56 @@ public struct PropertyInspector<Content: View>: View {
     public init(
         _ title: String? = nil,
         isPresented: Binding<Bool>,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder icon: @escaping (Any) -> Icon,
+        @ViewBuilder label: @escaping (Any) -> Label,
+        @ViewBuilder detail: @escaping (Any) -> Detail
     ) {
         self.title = title
         self._isPresented = isPresented
         self.content = content()
+        self.icon = icon
+        self.label = label
+        self.detail = detail
     }
 
-    private var bottomInset: CGFloat {
-        isPresented ? UIScreen.main.bounds.midY : 0
+
+    /// Initializes a `PropertyInspector` with the simplest configuration.
+    ///
+    /// - Parameters:
+    ///   - title: An optional title for the property inspector pane.
+    ///   - isPresented: A binding to control the presentation state of the inspector.
+    ///   - content: A closure providing the main content view.
+    ///
+    /// Usage example:
+    /// ```
+    /// @State private var isInspectorPresented = false
+    ///
+    /// var body: some View {
+    ///     PropertyInspector("Properties", MyValueType.self, isPresented: $isInspectorPresented) {
+    ///         // Main content view goes here
+    ///     }
+    /// }
+    /// ```
+    public init(
+        _ title: String? = nil,
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: () -> Content
+    ) where Icon == EmptyView, Label == EmptyView, Detail == EmptyView {
+        self.title = title
+        self._isPresented = isPresented
+        self.content = content()
+        self.icon = { _ in EmptyView() }
+        self.label = { _ in EmptyView() }
+        self.detail = { _ in EmptyView() }
     }
 
     public var body: some View {
         content
             .safeAreaInset(edge: .bottom) {
-                Spacer().frame(height: bottomInset)
+                if isPresented {
+                    Spacer().frame(height: UIScreen.main.bounds.midY)
+                }
             }
             .toolbar {
                 Button {
@@ -121,111 +162,32 @@ public struct PropertyInspector<Content: View>: View {
             .animation(.snappy, value: isPresented)
             .overlay {
                 Spacer().sheet(isPresented: $isPresented) {
-                    PropertyInspectorList(title: {
-                        if let title { return Text(title) }
-                        return nil
-                    }())
+                    PropertyInspectorList(
+                        title: title,
+                        icon: icon,
+                        label: label,
+                        detail: detail
+                    )
                 }
             }
-            .onPreferenceChange(PropertyPreferenceKey.self) {
-                let newValue = ($0).sorted()
-                if newValue != data.properties {
+            .onPreferenceChange(PropertyPreferenceKey.self) { newValue in
+                let newValue = newValue.unique().sorted()
+                if data.properties != newValue {
                     data.properties = newValue
                 }
             }
-            .onPreferenceChange(RowDetailPreferenceKey.self) { data.details = $0 }
-            .onPreferenceChange(RowIconPreferenceKey.self) { data.icons = $0  }
-            .onPreferenceChange(RowLabelPreferenceKey.self) { data.labels = $0 }
+            .onChange(of: isPresented) { newValue in
+                DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
+                    data.properties.forEach {
+                        $0.isHighlighted = newValue
+                    }
+                }
+            }
             .environmentObject(data)
     }
 }
 
 public extension View {
-
-    /// Registers a custom icon view for a specific type to be used in the Property Inspector's UI.
-    ///
-    /// This function allows you to provide a custom icon representation for a given type when displayed in the property inspector. The icon view is constructed using the provided value of the specified type.
-    ///
-    /// Usage Example:
-    /// ```swift
-    /// struct ContentView: View {
-    ///     var body: some View {
-    ///         Text("Hello, World!")
-    ///             .propertyInspectorRowIcon(for: String.self) { stringValue in
-    ///                 Image(systemName: "text.quote")
-    ///             }
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// - Parameters:
-    ///   - type: The type of value for which the custom icon view is provided.
-    ///   - icon: A closure that takes an instance of the specified type and returns a view to be used as an icon.
-    /// - Returns: A view modified to include a custom icon view for a specific type in the property inspector.
-    func propertyInspectorRowIcon<Value, Icon: View>(
-        for type: Value.Type,
-        @ViewBuilder icon: @escaping (Value) -> Icon
-    ) -> some View {
-        changePreference(RowIconPreferenceKey.self, content: icon)
-    }
-
-    /// Registers a custom label view for a specific type to be displayed in the Property Inspector's UI.
-    ///
-    /// Use this function to define how the label for a given type should be displayed in the property inspector. The label is generated dynamically based on the value of the specified type.
-    ///
-    /// Usage Example:
-    /// ```swift
-    /// struct ContentView: View {
-    ///     var body: some View {
-    ///         Text("Important")
-    ///             .propertyInspectorRowLabel(for: String.self) { stringValue in
-    ///                 Text(stringValue).fontWeight(.bold)
-    ///             }
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// - Parameters:
-    ///   - type: The type of value for which the custom label view is provided.
-    ///   - label: A closure that takes an instance of the specified type and returns a view to be used as a label.
-    /// - Returns: A view modified to include a custom label view for a specific type in the property inspector.
-    func propertyInspectorRowLabel<Value, Label: View>(
-        for type: Value.Type,
-        @ViewBuilder label: @escaping (Value) -> Label
-    ) -> some View {
-        changePreference(RowLabelPreferenceKey.self, content: label)
-    }
-
-    /// Registers a custom detail view for a specific type to be shown in the Property Inspector's UI.
-    ///
-    /// This function enables the customization of the detail view presented for a given type within the property inspector. It allows for detailed, context-specific views based on the provided value.
-    ///
-    /// Usage Example:
-    /// ```swift
-    /// struct ContentView: View {
-    ///     var body: some View {
-    ///         Text("User Detail")
-    ///             .propertyInspectorRowDetail(for: String.self) { stringValue in
-    ///                 HStack {
-    ///                     Text("Detail:")
-    ///                     Text(stringValue).italic()
-    ///                 }
-    ///             }
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// - Parameters:
-    ///   - type: The type of value for which the custom detail view is provided.
-    ///   - detail: A closure that takes an instance of the specified type and returns a view to be used as a detail view.
-    /// - Returns: A view modified to include a custom detail view for a specific type in the property inspector.
-    func propertyInspectorRowDetail<Value, Detail: View>(
-        for type: Value.Type,
-        @ViewBuilder detail: @escaping (Value) -> Detail
-    ) -> some View {
-        changePreference(RowDetailPreferenceKey.self, content: detail)
-    }
-
     /// Attaches a property inspector to the view, which can be used to inspect the specified value when
     /// the inspector is presented. The view will collect information about the property and make it available
     /// for inspection in the UI.
@@ -260,8 +222,8 @@ public extension View {
         file: String = #file
     ) -> some View {
         modifier(
-            PropertyViewModifier(
-                data: values,
+            PropertyInspectorViewModifier(
+                values: values,
                 location: .init(
                     function: function,
                     file: file,
@@ -271,9 +233,15 @@ public extension View {
         )
     }
 
-    /// Hides this view and its children from the property inspection.
-    func propertyInspectorHidden(_ hidden: Bool = true) -> some View {
-        environment(\.propertyInspectorHidden, hidden)
+    /// Disables the property inspection functionality for this view. When inspection is disabled, the view
+    /// will not collect property information for the inspector.
+    ///
+    /// - Parameter disabled: A Boolean value that determines whether the property inspection is disabled.
+    ///   The default value is `true`.
+    ///
+    /// - Returns: A view that conditionally disables property inspection.
+    func inspectingDisabled(_ disabled: Bool = true) -> some View {
+        environment(\.propertyInspectorDisabled, disabled)
     }
 
     /// An extension on `View` to set the corner radius for `PropertyInspectorHighlightView`.
@@ -296,8 +264,17 @@ public extension View {
     /// inspector will display with rounded corners of the specified radius. This can be used to
     /// maintain consistent styling within your app, especially if you have a design system with
     /// specific corner radius values.
-    func propertyInspectorCornerRadius(_ radius: CGFloat) -> some View {
+    func inspectorHighlightCornerRadius(_ radius: CGFloat) -> some View {
         environment(\.propertyInspectorCornerRadius, radius)
+    }
+}
+
+extension [Property] {
+    func unique() -> Self {
+        var seenIDs = Set<Property.ID>()
+        return filter {
+            seenIDs.insert($0.id).inserted
+        }
     }
 }
 
@@ -311,7 +288,8 @@ private struct Property: Identifiable, Comparable, CustomStringConvertible, Hash
     let value: Any
 
     /// A binding to a Boolean value that determines whether this item is currently highlighted within the UI.
-    @Binding var isHighlighted: Bool
+    @Binding
+    var isHighlighted: Bool
 
     /// The location within the source code where this item was tagged for inspection.
     /// This includes the function name, file name, and line number.
@@ -335,21 +313,21 @@ private struct Property: Identifiable, Comparable, CustomStringConvertible, Hash
         value: Any,
         isHighlighted: Binding<Bool>,
         location: PropertyLocation,
-        level: Int,
         index: Int
     ) {
         self.value = value
         self._isHighlighted = isHighlighted
         self.location = location
         self.sortString = [
-            String(level) + String(index),
             location.id,
+            String(index),
             String(describing: value)
         ].joined(separator: "_")
     }
 
     static func == (lhs: Property, rhs: Property) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id &&
+        lhs.isHighlighted == rhs.isHighlighted
     }
 
     static func < (lhs: Property, rhs: Property) -> Bool {
@@ -361,9 +339,9 @@ private struct Property: Identifiable, Comparable, CustomStringConvertible, Hash
     }
 }
 
-/// Represents the location within the source code where a `PropertyInspectorItem` was defined.
+/// Represents the location within the source code where a `Property` was defined.
 /// This includes the function or variable name, the file name, and the line number.
-struct PropertyLocation: Identifiable, Comparable, CustomStringConvertible {
+private struct PropertyLocation: Identifiable, Comparable, CustomStringConvertible {
     let id: String
 
     /// The name of the function or variable where the inspection item is defined.
@@ -397,51 +375,53 @@ struct PropertyLocation: Identifiable, Comparable, CustomStringConvertible {
     }
 }
 
-private final class PropertyInspectorStorage: ObservableObject {
-    @Published var searchQuery = ""
-    @Published var properties = [Property]() {
-        didSet {
-            print(properties)
-        }
-    }
-    @Published var icons = [String: RowViewBuilder]()
-    @Published var labels = [String: RowViewBuilder]()
-    @Published var details = [String: RowViewBuilder]()
-
-    var emptyMessage: Text? {
-        guard searchResults.isEmpty else { return nil }
-        let message = searchQuery.isEmpty ?
-        "Nothing to inspect" :
-        "No results for '\(searchQuery)'"
-
-        return Text(message)
-    }
-
-    var searchResults: [Property] {
-        lazy var query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard
-            !properties.isEmpty,
-            !query.isEmpty,
-            query.count > 1
-        else {
-            return properties
-        }
-        return properties.filter { item in
-            (item.stringValue + item.location.description).localizedCaseInsensitiveContains(query)
-        }
+private extension EnvironmentValues {
+    var propertyInspectorDisabled: Bool {
+        get { self[PropertyInspectorDisabledKey.self] }
+        set { self[PropertyInspectorDisabledKey.self] = newValue }
     }
 }
 
+private struct PropertyInspectorDisabledKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
 @available(iOS 16.4, *)
-private struct PropertyInspectorList: View {
-    let title: Text?
+private struct PropertyInspectorList<Label: View, Detail: View, Icon: View>: View {
+    let title: String?
+    let icon: (Any) -> Icon
+    let label: (Any) -> Label
+    let detail: (Any) -> Detail
+
+    @EnvironmentObject
+    private var data: PropertyStore
+
+    @State
+    private var searchQuery = ""
+
+    private var filteredData: [Property] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard query.count > 1 else { return data.properties }
+        return data.properties.filter {
+            String(describing: $0).localizedCaseInsensitiveContains(query)
+        }
+    }
 
     var body: some View {
         List {
             Section {
-                PropertyInspectorRows().listRowBackground(Color.clear)
+                if filteredData.isEmpty {
+                    Text(emptyMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: UIScreen.main.bounds.height / 5)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+
+                ForEach(filteredData, content: row(_ :))
             } header: {
-                PropertyInspectorHeader(title: title)
+                header
             }
         }
         .listStyle(.plain)
@@ -457,65 +437,31 @@ private struct PropertyInspectorList: View {
         .presentationBackground(Material.thinMaterial)
         .toggleStyle(PropertyInspectorToggleStyle(alignment: .firstTextBaseline))
     }
-}
 
-private struct PropertyInspectorRows: View {
-    @EnvironmentObject
-    private var data: PropertyInspectorStorage
-
-    var body: some View {
-        data.emptyMessage?
-            .foregroundStyle(.tertiary)
-            .frame(maxWidth: .infinity)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-
-        ForEach(data.searchResults) {
-            PropertyRow(
-                data: $0,
-                icon: makeBody(configuration: ($0, data.icons)),
-                label: makeBody(configuration: ($0, data.labels)),
-                detail: makeBody(configuration: ($0, data.details))
-            )
-        }
-        .toggleStyle(PropertyInspectorToggleStyle(alignment: .firstTextBaseline))
+    private var emptyMessage: String {
+        searchQuery.isEmpty ?
+        "Empty" :
+        "No results for '\(searchQuery)'"
     }
 
-    private func makeBody(configuration: (item: Property, source: [String: RowViewBuilder])) -> AnyView? {
-        for key in configuration.source.keys {
-            if let view = configuration.source[key]?.view(configuration.item.value) {
-                return view
-            }
-        }
-        return nil
-    }
-}
-
-private struct PropertyInspectorHeader: View {
-    let title: Text?
-
-    @EnvironmentObject
-    private var data: PropertyInspectorStorage
-
-    var body: some View {
+    private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            title?
-                .bold()
-                .font(.title2)
+            if let title {
+                Text(title).bold().font(.title3)
+            }
 
             TextField(
-                "Search \(data.searchResults.count) items",
-                text: $data.searchQuery
+                "Search \(filteredData.count) items",
+                text: $searchQuery
             )
             .frame(maxWidth: .infinity)
 
-            if #available(iOS 16.0, *) {
-                Toggle(sources: data.searchResults, isOn: \.$isHighlighted) {
-                    EmptyView()
-                }
+            Toggle(sources: filteredData, isOn: \.$isHighlighted) {
+                EmptyView()
             }
         }
         .foregroundStyle(.primary)
+        .tint(.primary)
         .padding(
             EdgeInsets(
                 top: 16,
@@ -526,6 +472,45 @@ private struct PropertyInspectorHeader: View {
         )
     }
 
+    private func row(_ item: Property) -> some View {
+        Toggle(isOn: item.$isHighlighted) {
+            HStack {
+                if Icon.self == EmptyView.self {
+                    Image(systemName: "info.circle.fill")
+                } else {
+                    icon(item.value)
+                }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Spacer().frame(height: 3) // padding doesn't work
+
+                    Group {
+                        if Label.self == EmptyView.self {
+                            Text(verbatim: item.stringValue)
+                        } else {
+                            label(item.value)
+                        }
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.primary)
+                    .bold()
+
+                    if Detail.self == EmptyView.self {
+                        Text(verbatim: item.location.description)
+                    } else {
+                        detail(item.value)
+                    }
+
+                    Spacer().frame(height: 3) // padding doesn't work
+                }
+                .foregroundStyle(.secondary)
+                .font(.caption2)
+            }
+            .contentShape(Rectangle())
+        }
+        .listRowBackground(Color.clear)
+        .toggleStyle(PropertyInspectorToggleStyle())
+    }
 }
 
 private struct PropertyInspectorToggleStyle: ToggleStyle {
@@ -548,87 +533,39 @@ private struct PropertyInspectorToggleStyle: ToggleStyle {
     }
 }
 
-private struct PropertyViewModifier: ViewModifier  {
-    let data: [Any]
+private struct PropertyInspectorViewModifier: ViewModifier  {
+    let values: [Any]
     let location: PropertyLocation
 
     @State
-    private var isHighlighted = false
+    private var isOn = false
 
-    @Environment(\.propertyInspectorHidden)
-    private var hidden
+    @Environment(\.propertyInspectorDisabled)
+    private var disabled
 
-    @State
-    private var level = 0
-
-    private var properties: [Property] {
-        if hidden { return [] }
-        return data.enumerated().map { (offset, value) in
+    var data: [Property] {
+        if disabled {
+            return []
+        }
+        return values.enumerated().map { (index, value) in
             Property(
                 value: value,
-                isHighlighted: $isHighlighted,
+                isHighlighted: $isOn,
                 location: location,
-                level: level,
-                index: offset
+                index: index
             )
         }
     }
 
     func body(content: Content) -> some View {
-        PropertyHighlight(isOn: $isHighlighted) {
-            content
-                .changePreference(PropertyPreferenceKey.self, value: properties)
-                .changePreference(LevelPreferenceKey.self, value: level + 1)
-        }
-        .onPreferenceChange(LevelPreferenceKey.self) { value in
-            level = value
-        }
-    }
-}
-
-// MARK: - Preference View Modifiers
-
-private extension View {
-    func changePreference<K: PreferenceKey>(
-        _ key: K.Type,
-        value: K.Value
-    ) -> some View where K.Value: Hashable {
-        modifier(PreferenceKeyChangeModifier(key, value))
-    }
-
-    func changePreference<K: PreferenceKey, C: View, T>(
-        _ key: K.Type,
-        @ViewBuilder content: @escaping (T) -> C
-    ) -> some View where K.Value == [String: RowViewBuilder] {
-        let dataType = String(describing: T.self)
-        let viewBuilder = RowViewBuilder { value in
-            if let castedValue = value as? T {
-                return AnyView(content(castedValue))
-            }
-            return nil
-        }
-        let value = [dataType: viewBuilder]
-        return modifier(PreferenceKeyChangeModifier(key, value))
-    }
-}
-
-/// A modifier that you apply to a view or another view modifier to set a value for any given preference key.
-private struct PreferenceKeyChangeModifier<K: PreferenceKey>: ViewModifier where K.Value: Hashable {
-    let value: K.Value
-
-    init(_ key: K.Type = K.self, _ value: K.Value) {
-        self.value = value
-    }
-
-    func body(content: Content) -> some View {
         content.background(
-            Color.clear
-                .preference(key: K.self, value: value)
+            Spacer().preference(key: PropertyPreferenceKey.self, value: data)
+        )
+        .modifier(
+            PropertyInspectorHighlightViewModifier(isOn: isOn)
         )
     }
 }
-
-// MARK: - Preference Keys
 
 private struct PropertyPreferenceKey: PreferenceKey {
     /// The default value for the dynamic value entries.
@@ -644,180 +581,56 @@ private struct PropertyPreferenceKey: PreferenceKey {
     }
 }
 
-private struct RowDetailPreferenceKey: PreferenceKey {
-    static let defaultValue = [String: RowViewBuilder]()
-    static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
-        value.merge(nextValue()) { content, _ in
-            content
-        }
-    }
-}
-
-private struct RowIconPreferenceKey: PreferenceKey {
-    static let defaultValue = [String: RowViewBuilder]()
-    static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
-        value.merge(nextValue()) { content, _ in
-            content
-        }
-    }
-}
-
-private struct RowLabelPreferenceKey: PreferenceKey {
-    static let defaultValue = [String: RowViewBuilder]()
-    static func reduce(value: inout [String: RowViewBuilder], nextValue: () -> [String: RowViewBuilder]) {
-        value.merge(nextValue()) { content, _ in
-            content
-        }
-    }
-}
-
-private struct LevelPreferenceKey: PreferenceKey {
-    static let defaultValue: Int = 0
-    static func reduce(value: inout Int, nextValue: () -> Int) {
-        value += nextValue()
-    }
-}
-
-// MARK: - Environment Keys
-
-private struct CornerRadiusEnvironmentKey: EnvironmentKey {
+private struct PropertyInspectorHighlightCornerRadiusKey: EnvironmentKey {
     static let defaultValue: CGFloat = 0
-}
-
-private struct DisabledEnvironmentKey: EnvironmentKey {
-    static let defaultValue: Bool = false
 }
 
 private extension EnvironmentValues {
     var propertyInspectorCornerRadius: CGFloat {
-        get { self[CornerRadiusEnvironmentKey.self] }
-        set { self[CornerRadiusEnvironmentKey.self] = newValue }
-    }
-
-    var propertyInspectorHidden: Bool {
-        get { self[DisabledEnvironmentKey.self] }
-        set { self[DisabledEnvironmentKey.self] = newValue }
+        get { self[PropertyInspectorHighlightCornerRadiusKey.self] }
+        set { self[PropertyInspectorHighlightCornerRadiusKey.self] = newValue }
     }
 }
 
-// MARK: - Row Builder
-
-private struct RowViewBuilder: Hashable, Identifiable {
-    let id = UUID()
-    let view: (Any) -> AnyView?
-
-    static func == (lhs: RowViewBuilder, rhs: RowViewBuilder) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-}
-
-private struct PropertyHighlight<Content: View>: View {
-    @State
-    private var animationToken = UUID()
-
-    @Binding
+private struct PropertyInspectorHighlightViewModifier: ViewModifier {
     var isOn: Bool
-
-    @ViewBuilder
-    var content: Content
 
     @Environment(\.propertyInspectorCornerRadius)
     private var cornerRadius
 
-    var transition: AnyTransition {
-        .asymmetric(
-            insertion: .opacity
-                .combined(with: .scale(scale: .random(in: 2 ... 2.5))),
-            removal: .identity
-        )
-    }
-
-    var body: some View {
-        Self._printChanges()
-        return content
+    func body(content: Content) -> some View {
+        content
             .zIndex(isOn ? 999 : 0)
             .overlay {
                 if isOn {
                     RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(style:  StrokeStyle(
-                            lineWidth: 1.5,
-                            lineCap: .round,
-                            lineJoin: .round
-                        ))
-                        .fill(Color.blue)
-                        .id(animationToken)
+                        .stroke(lineWidth: 1.5)
+                        .fill(isOn ? Color.blue : Color.blue.opacity(0))
                         .transition(transition)
                 }
             }
-            .onChange(of: isOn) { newValue in
-                guard newValue else { return }
-                animationToken = UUID()
-            }
-            .animation(animation, value: animationToken)
     }
 
-    var animation: Animation {
+    private var transition: AnyTransition {
+        .asymmetric(
+            insertion: .opacity
+                .combined(with: .scale(scale: .random(in: 2 ... 2.5)))
+                .animation(insertionAnimation),
+            removal: .opacity
+                .combined(with: .scale(scale: .random(in: 1 ... 1.5)))
+                .animation(removalAnimation)
+        )
+    }
+
+    private var removalAnimation: Animation {
+        .easeIn(duration: .random(in: 0.1...0.25))
+        .delay(.random(in: 0 ... 0.15))
+    }
+
+    private var insertionAnimation: Animation {
         .snappy(
             duration: .random(in: 0.2 ... 0.5),
             extraBounce: .random(in: 0 ... 0.1))
         .delay(.random(in: 0 ... 0.3))
-    }
-}
-
-private struct PropertyRow: View, Equatable {
-    static func == (lhs: PropertyRow, rhs: PropertyRow) -> Bool {
-        lhs.data == rhs.data
-    }
-
-    var data: Property
-    var icon: AnyView?
-    var label: AnyView?
-    var detail: AnyView?
-
-    var body: some View {
-        Toggle(isOn: data.$isHighlighted) {
-            HStack(alignment: .firstTextBaseline) {
-                Group {
-                    if let icon {
-                        icon
-                    } else {
-                        Image(systemName: "info.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                    }
-                }
-                .font(.footnote.bold())
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Spacer().frame(height: 3) // padding doesn't work
-
-                    Group {
-                        if let label {
-                            label
-                        } else {
-                            Text(verbatim: String(describing: data.value))
-                        }
-                    }
-                    .font(.footnote.bold())
-                    .foregroundStyle(.primary)
-
-                    if let detail {
-                        detail
-                    } else {
-                        Text(verbatim: data.location.function) +
-                        Text(verbatim: " — ") +
-                        Text(verbatim: data.location.description)
-                    }
-
-                    Spacer().frame(height: 3) // padding doesn't work
-                }
-            }
-            .foregroundStyle(.secondary)
-            .font(.caption2)
-            .multilineTextAlignment(.leading)
-        }
     }
 }
