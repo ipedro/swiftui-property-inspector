@@ -15,9 +15,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "PropertyInspector",
-            path: ".",
-            sources: ["PropertyInspector.swift"]
+            name: "PropertyInspector"
         ),
     ]
 )
