@@ -25,9 +25,9 @@ struct Row<ID: Hashable, Icon: View, Label: View, Detail: View>: View, Equatable
     var id: ID
     var hideIcon: Bool
     @Binding var isOn: Bool
-    @ViewBuilder var icon: Icon
-    @ViewBuilder var label: Label
-    @ViewBuilder var detail: Detail
+    var icon: Icon
+    var label: Label
+    var detail: Detail
 
     private var leading: CGFloat? {
         hideIcon ? 0 : 25

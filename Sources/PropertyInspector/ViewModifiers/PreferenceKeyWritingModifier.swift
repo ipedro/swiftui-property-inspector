@@ -29,9 +29,7 @@ extension View {
     func setPreference<K: PreferenceKey, D, C: View>(_ key: K.Type, @ViewBuilder body: @escaping (D) -> C) -> some View where K.Value == RowBuilderRegistry {
         let builder = RowBuilder(body: body)
         return modifier(
-            PreferenceKeyWritingModifier<K>(
-                value: K.defaultValue.merged(RowBuilderRegistry(builder))
-            )
+            PreferenceKeyWritingModifier<K>(value: RowBuilderRegistry(builder))
         )
     }
 }

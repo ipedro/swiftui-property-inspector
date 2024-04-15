@@ -51,7 +51,7 @@ struct RowBuilderRegistry: Hashable {
         return copy
     }
 
-    func makeBody(_ property: Property, cache keyPath: KeyPath<Property, Binding<ObjectIdentifier?>>) -> AnyView? {
+    func makeBody(for property: Property, cache keyPath: KeyPath<Property, Binding<ObjectIdentifier?>>) -> AnyView? {
         let cache = property[keyPath: keyPath]
 
         if let key = cache.wrappedValue {
@@ -66,7 +66,7 @@ struct RowBuilderRegistry: Hashable {
             }
         }
 
-        cache.wrappedValue = ObjectIdentifier(Any.self)
+        cache.wrappedValue = ObjectIdentifier(Never.self)
         return nil
     }
 }

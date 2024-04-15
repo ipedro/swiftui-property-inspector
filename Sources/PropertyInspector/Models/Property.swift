@@ -21,39 +21,61 @@
 import Foundation
 import SwiftUI
 
+/// `Property` encapsulates details about a specific property within a view or model, including its value, display metadata, and location.
+/// This struct is intended for internal use within the `PropertyInspector` framework to track and manage property information dynamically.
 struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
+    /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
     let id = UUID()
 
+    /// The value of the property stored as `Any`, allowing it to accept any property type.
     let value: Any
 
+    /// A binding to a Boolean that indicates whether the property is currently highlighted in the UI.
     @Binding
     var isHighlighted: Bool
 
+    /// A binding to an optional `ObjectIdentifier` that refers to a custom icon representation for the property.
     @Binding
     var icon: ObjectIdentifier?
 
+    /// A binding to an optional `ObjectIdentifier` that refers to a custom label representation for the property.
     @Binding
     var label: ObjectIdentifier?
 
+    /// A binding to an optional `ObjectIdentifier` that refers to a custom detail view for the property.
     @Binding
     var detail: ObjectIdentifier?
 
+    /// The location of the property within the source code, provided for better traceability and debugging.
     let location: PropertyLocation
 
+    /// A computed string that provides a sortable representation of the property based on its location and index.
+    private let sortString: String
+
+    /// Returns a string representation of the property used for sorting purposes.
     var description: String {
         sortString
     }
 
+    /// Returns the type of the value as a string, useful for dynamic type checks or displays.
     var stringValueType: String {
         String(describing: type(of: value))
     }
 
+    /// Returns the string representation of the property's value.
     var stringValue: String {
         String(describing: value)
     }
 
-    private let sortString: String
-
+    /// Initializes a new `Property` with detailed information about its value and location.
+    /// - Parameters:
+    ///   - value: The value of the property.
+    ///   - isHighlighted: A binding to the Boolean indicating if the property is highlighted.
+    ///   - icon: A binding to an optional identifier for a custom icon.
+    ///   - label: A binding to an optional identifier for a custom label.
+    ///   - detail: A binding to an optional identifier for a custom detail view.
+    ///   - location: The location of the property in the source code.
+    ///   - index: An index used to uniquely sort the property when multiple properties share the same location.
     init(
         value: Any,
         isHighlighted: Binding<Bool>,
@@ -76,15 +98,17 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
         ].joined(separator: "_")
     }
 
+    /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
     static func == (lhs: Property, rhs: Property) -> Bool {
-        lhs.id == rhs.id &&
-        lhs.isHighlighted == rhs.isHighlighted
+        lhs.id == rhs.id && lhs.isHighlighted == rhs.isHighlighted
     }
 
+    /// Determines if one `Property` should precede another in a sorted list, based on a composite string that includes their location and value.
     static func < (lhs: Property, rhs: Property) -> Bool {
         lhs.sortString.localizedStandardCompare(rhs.sortString) == .orderedAscending
     }
 
+    /// Contributes to the hashability of the property, incorporating its unique identifier into the hash.
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }

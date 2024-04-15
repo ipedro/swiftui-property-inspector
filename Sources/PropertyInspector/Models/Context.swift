@@ -63,16 +63,31 @@ final class Context: ObservableObject {
         }
     }
 
-    func icon(for property: Property) -> AnyView? {
-        iconRegistry.makeBody(property, cache: \.$icon)
+    @ViewBuilder
+    func icon(for property: Property) -> some View {
+        if let icon = iconRegistry.makeBody(for: property, cache: \.$icon) {
+            icon
+        } else if !iconRegistry.isEmpty {
+            Image(systemName: "info.circle.fill")
+        }
     }
 
-    func label(for property: Property) -> AnyView? {
-        labelRegistry.makeBody(property, cache: \.$label)
+    @ViewBuilder
+    func label(for property: Property) -> some View {
+        if let label = labelRegistry.makeBody(for: property, cache: \.$label) {
+            label
+        } else {
+            Text(verbatim: property.stringValue)
+        }
     }
 
-    func detail(for property: Property) -> AnyView? {
-        detailRegistry.makeBody(property, cache: \.$detail)
+    @ViewBuilder
+    func detail(for property: Property) -> some View {
+        if let detail = detailRegistry.makeBody(for: property, cache: \.$detail) {
+            detail
+        } else {
+            Text(verbatim: property.location.description)
+        }
     }
 
     func updateAllObjects(highlight newValue: Bool) {
