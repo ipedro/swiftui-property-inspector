@@ -26,17 +26,13 @@ extension View {
         modifier(PreferenceKeyWritingModifier<K>(value: value))
     }
 
-    func setPreference<K: PreferenceKey, D, C: View>(_ key: K.Type, @ViewBuilder body: @escaping (D) -> C) -> some View where K.Value == ViewBuilderRegistry {
-        let id = ObjectIdentifier(D.self)
-
-        let body = ViewBuilderRegistry.ViewBuilder(id: id) { value in
-            if let castedValue = value as? D {
-                return AnyView(body(castedValue))
-            }
-            return nil
-        }
-
-        return modifier(PreferenceKeyWritingModifier<K>(value: ViewBuilderRegistry([id: body])))
+    func setPreference<K: PreferenceKey, D, C: View>(_ key: K.Type, @ViewBuilder body: @escaping (D) -> C) -> some View where K.Value == RowBuilderRegistry {
+        let builder = RowBuilder(body: body)
+        return modifier(
+            PreferenceKeyWritingModifier<K>(
+                value: K.defaultValue.merged(RowBuilderRegistry(builder))
+            )
+        )
     }
 }
 

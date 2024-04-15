@@ -34,22 +34,22 @@ struct TitlePreferenceKey: PreferenceKey {
 }
 
 struct RowDetailPreferenceKey: PreferenceKey {
-    static let defaultValue = ViewBuilderRegistry()
-    static func reduce(value: inout ViewBuilderRegistry, nextValue: () -> ViewBuilderRegistry) {
+    static let defaultValue = RowBuilderRegistry()
+    static func reduce(value: inout RowBuilderRegistry, nextValue: () -> RowBuilderRegistry) {
         value.merge(nextValue())
     }
 }
 
 struct RowIconPreferenceKey: PreferenceKey {
-    static let defaultValue = ViewBuilderRegistry()
-    static func reduce(value: inout ViewBuilderRegistry, nextValue: () -> ViewBuilderRegistry) {
+    static let defaultValue = RowBuilderRegistry()
+    static func reduce(value: inout RowBuilderRegistry, nextValue: () -> RowBuilderRegistry) {
         value.merge(nextValue())
     }
 }
 
 struct RowLabelPreferenceKey: PreferenceKey {
-    static let defaultValue = ViewBuilderRegistry()
-    static func reduce(value: inout ViewBuilderRegistry, nextValue: () -> ViewBuilderRegistry) {
+    static let defaultValue = RowBuilderRegistry()
+    static func reduce(value: inout RowBuilderRegistry, nextValue: () -> RowBuilderRegistry) {
         value.merge(nextValue())
     }
 }

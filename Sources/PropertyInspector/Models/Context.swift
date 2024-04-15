@@ -29,7 +29,7 @@ final class Context: ObservableObject {
     var searchQuery = ""
 
     @Published
-    var iconRegistry = ViewBuilderRegistry() {
+    var iconRegistry = RowBuilderRegistry() {
         willSet {
             for property in allObjects where property.icon != nil {
                 property.icon = nil
@@ -38,7 +38,7 @@ final class Context: ObservableObject {
     }
 
     @Published
-    var labelRegistry = ViewBuilderRegistry() {
+    var labelRegistry = RowBuilderRegistry() {
         willSet {
             for property in allObjects where property.label != nil {
                 property.label = nil
@@ -47,7 +47,7 @@ final class Context: ObservableObject {
     }
 
     @Published
-    var detailRegistry = ViewBuilderRegistry() {
+    var detailRegistry = RowBuilderRegistry() {
         willSet {
             for property in allObjects where property.detail != nil {
                 property.detail = nil

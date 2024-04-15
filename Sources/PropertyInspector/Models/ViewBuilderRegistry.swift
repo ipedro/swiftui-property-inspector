@@ -21,40 +21,34 @@
 import Foundation
 import SwiftUI
 
-struct ViewBuilderRegistry: Hashable {
+struct RowBuilderRegistry: Hashable {
+    private var data: [ObjectIdentifier: RowBuilder]
 
-    struct ViewBuilder: Hashable, Identifiable {
-        let id: ObjectIdentifier
-        let body: (Any) -> AnyView?
-
-        static func == (lhs: ViewBuilder, rhs: ViewBuilder) -> Bool {
-            lhs.id == rhs.id
-        }
-
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(id)
-        }
-    }
-
-    private var data: [ObjectIdentifier: ViewBuilder]
-
-    init(_ data: [ObjectIdentifier : ViewBuilder] = [:]) {
-        self.data = data
+    init(_ values: RowBuilder...) {
+        self.data = values.reduce(into: [:], { partialResult, builder in
+            partialResult[builder.id] = builder
+        })
     }
 
     var isEmpty: Bool { data.isEmpty }
 
     var identifiers: [ObjectIdentifier] { Array(data.keys) }
 
-    subscript(id: ObjectIdentifier) -> ViewBuilder? {
+    subscript(id: ObjectIdentifier) -> RowBuilder? {
         get { data[id] }
         set { data[id] = newValue }
     }
 
-    mutating func merge(_ other: ViewBuilderRegistry) {
+    mutating func merge(_ other: RowBuilderRegistry) {
         data.merge(other.data) { content, _ in
             content
         }
+    }
+
+    func merged(_ other: RowBuilderRegistry) -> Self {
+        var copy = self
+        copy.merge(other)
+        return copy
     }
 
     func makeBody(_ property: Property, cache keyPath: KeyPath<Property, Binding<ObjectIdentifier?>>) -> AnyView? {
@@ -75,5 +69,27 @@ struct ViewBuilderRegistry: Hashable {
         cache.wrappedValue = ObjectIdentifier(Any.self)
         return nil
     }
+}
 
+struct RowBuilder: Hashable, Identifiable {
+    let id: ObjectIdentifier
+    let body: (Any) -> AnyView?
+
+    init<D, C: View>(@ViewBuilder body: @escaping (D) -> C) {
+        self.id = ObjectIdentifier(D.self)
+        self.body = { anyValue in
+            guard let castedValue = anyValue as? D else {
+                return nil
+            }
+            return AnyView(body(castedValue))
+        }
+    }
+
+    static func == (lhs: RowBuilder, rhs: RowBuilder) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
 }
