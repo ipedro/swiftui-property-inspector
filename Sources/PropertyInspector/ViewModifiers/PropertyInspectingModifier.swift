@@ -25,46 +25,25 @@ struct PropertyInspectingModifier: ViewModifier  {
     var data: [Any]
     var location: PropertyLocation
 
-    init(data: [Any], location: PropertyLocation) {
-        self.data = data
-        self.location = location
-        self._ids = State(initialValue: data.map({ _ in UUID() }))
-    }
-
-    @State
-    private var ids: [UUID]
-
     @State
     private var isOn = false
-    
+
     @Environment(\.propertyInspectorHidden)
     private var disabled
 
     func body(content: Content) -> some View {
         content
             .setPreference(PropertyPreferenceKey.self, value: Set(properties))
-            .zIndex(isOn ? 999 : 0)
-            .overlay {
-                if isOn {
-                    Rectangle()
-                        .stroke(lineWidth: 1.5)
-                        .fill(.cyan.opacity(isOn ? 1 : 0))
-                        .transition(
-                            .asymmetric(
-                                insertion: insertion,
-                                removal: removal
-                            )
-                        )
-                }
-            }
+            .modifier(
+                PropertyHighlightModifier(isOn: $isOn)
+            )
     }
 
     private var properties: [Property] {
         if disabled { return [] }
 
         return data.enumerated().map { (index, value) in
-            return Property(
-                id: ids[index],
+            Property(
                 value: value,
                 isHighlighted: $isOn,
                 location: location,
@@ -73,27 +52,4 @@ struct PropertyInspectingModifier: ViewModifier  {
         }
     }
 
-    private var insertion: AnyTransition {
-        .opacity
-        .combined(with: .scale(scale: .random(in: 2 ... 2.5)))
-        .animation(insertionAnimation)
-    }
-
-    private var removal: AnyTransition {
-        .opacity
-        .combined(with: .scale(scale: .random(in: 1.1 ... 1.4)))
-        .animation(removalAnimation)
-    }
-
-    private var removalAnimation: Animation {
-        .smooth(duration: .random(in: 0.1...0.35))
-        .delay(.random(in: 0 ... 0.15))
-    }
-
-    private var insertionAnimation: Animation {
-        .snappy(
-            duration: .random(in: 0.2 ... 0.5),
-            extraBounce: .random(in: 0 ... 0.1))
-        .delay(.random(in: 0 ... 0.3))
-    }
 }

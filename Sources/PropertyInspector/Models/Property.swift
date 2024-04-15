@@ -25,7 +25,7 @@ import SwiftUI
 /// This struct is intended for internal use within the `PropertyInspector` framework to track and manage property information dynamically.
 struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
     /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
-    let id: UUID
+    let id: UUID = UUID()
 
     /// The value of the property stored as `Any`, allowing it to accept any property type.
     let value: Any
@@ -62,13 +62,11 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
     ///   - location: The location of the property in the source code.
     ///   - index: An index used to uniquely sort the property when multiple properties share the same location.
     init(
-        id: UUID = UUID(),
         value: Any,
         isHighlighted: Binding<Bool>,
         location: PropertyLocation,
         index: Int
     ) {
-        self.id = id
         self.value = value
         self._isHighlighted = isHighlighted
         self.location = location
