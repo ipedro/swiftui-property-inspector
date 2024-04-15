@@ -37,6 +37,8 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
     /// The location of the property within the source code, provided for better traceability and debugging.
     let location: PropertyLocation
 
+    let createdAt: Date
+
     /// A computed string that provides a sortable representation of the property based on its location and index.
     private let sortString: String
 
@@ -65,15 +67,17 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
         value: Any,
         isHighlighted: Binding<Bool>,
         location: PropertyLocation,
-        index: Int
+        index: Int,
+        createdAt: Date
     ) {
         self.value = value
         self._isHighlighted = isHighlighted
         self.location = location
+        self.createdAt = createdAt
         self.sortString = [
             location.id,
-            String(index),
-            String(describing: value)
+            String(createdAt.timeIntervalSince1970),
+            String(index)
         ].joined(separator: "_")
     }
 

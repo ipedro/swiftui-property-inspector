@@ -52,7 +52,7 @@ public extension View {
      */
     func inspectProperty(_ values: Any..., function: String = #function, line: Int = #line, file: String = #file) -> some View {
         modifier(
-            PropertyInspectingModifier(
+            InspectPropertyModifier(
                 data: values,
                 location: .init(
                     function: function,

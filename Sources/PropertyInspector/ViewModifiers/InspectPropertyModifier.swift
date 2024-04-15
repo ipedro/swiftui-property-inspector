@@ -21,22 +21,34 @@
 import Foundation
 import SwiftUI
 
-struct PropertyInspectingModifier: ViewModifier  {
+struct InspectPropertyModifier: ViewModifier  {
     var data: [Any]
     var location: PropertyLocation
 
     @State
-    private var isOn = false
+    private var createdAt = Date()
+
+    @State
+    private var _isOn = false
+
+    private var isOn: Binding<Bool> {
+        Binding {
+            !disabled && _isOn
+        } set: { newValue in
+            _isOn = newValue
+        }
+    }
 
     @Environment(\.propertyInspectorHidden)
     private var disabled
 
     func body(content: Content) -> some View {
-        content
-            .setPreference(PropertyPreferenceKey.self, value: Set(properties))
-            .modifier(
-                PropertyHighlightModifier(isOn: $isOn)
-            )
+        content.setPreference(
+            PropertyPreferenceKey.self, value: Set(properties)
+        )
+        .modifier(
+            PropertyHighlightModifier(isOn: isOn)
+        )
     }
 
     private var properties: [Property] {
@@ -45,9 +57,10 @@ struct PropertyInspectingModifier: ViewModifier  {
         return data.enumerated().map { (index, value) in
             Property(
                 value: value,
-                isHighlighted: $isOn,
+                isHighlighted: isOn,
                 location: location,
-                index: index
+                index: index,
+                createdAt: createdAt
             )
         }
     }
