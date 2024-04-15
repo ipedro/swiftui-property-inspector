@@ -121,4 +121,3 @@ struct RowBuilderRegistry: Hashable {
         return AnyView(fallback())
     }
 }
-

@@ -20,7 +20,7 @@
 
 import SwiftUI
 
-struct PropertyHighlightModifier: ViewModifier  {
+struct HighlightModifier: ViewModifier  {
     @Binding var isOn: Bool
 
     func body(content: Content) -> some View {

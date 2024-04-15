@@ -21,7 +21,7 @@
 import Foundation
 import SwiftUI
 
-struct InspectPropertyModifier: ViewModifier  {
+struct InspectionModifier: ViewModifier  {
     var data: [Any]
     var location: PropertyLocation
 
@@ -47,7 +47,7 @@ struct InspectPropertyModifier: ViewModifier  {
             PropertyPreferenceKey.self, value: Set(properties)
         )
         .modifier(
-            PropertyHighlightModifier(isOn: isOn)
+            HighlightModifier(isOn: isOn)
         )
     }
 
