@@ -22,18 +22,17 @@ import Foundation
 import SwiftUI
 
 struct PropertyInspectingModifier: ViewModifier  {
-    let data: [Any]
-    let location: PropertyLocation
+    var data: [Any]
+    var location: PropertyLocation
 
     @State
     private var isOn = false
     @State
-    private var icons = [Int: ObjectIdentifier]()
+    private var iconBuilders = [Int: ObjectIdentifier]()
     @State
-    private var labels = [Int: ObjectIdentifier]()
+    private var labelBuilders = [Int: ObjectIdentifier]()
     @State
-    private var details = [Int: ObjectIdentifier]()
-
+    private var detailBuilders = [Int: ObjectIdentifier]()
     @Environment(\.propertyInspectorHidden)
     private var disabled
 
@@ -60,30 +59,30 @@ struct PropertyInspectingModifier: ViewModifier  {
         if disabled { return [] }
 
         return data.enumerated().map { (index, value) in
-            let icon = Binding {
-                icons[index]
+            let iconBuilder = Binding {
+                iconBuilders[index]
             } set: { newValue in
-                icons[index] = newValue
+                iconBuilders[index] = newValue
             }
 
-            let label = Binding {
-                labels[index]
+            let labelBuilder = Binding {
+                labelBuilders[index]
             } set: { newValue in
-                labels[index] = newValue
+                labelBuilders[index] = newValue
             }
 
-            let detail = Binding {
-                details[index]
+            let detailBuilder = Binding {
+                detailBuilders[index]
             } set: { newValue in
-                details[index] = newValue
+                detailBuilders[index] = newValue
             }
 
             return Property(
                 value: value,
                 isHighlighted: $isOn,
-                icon: icon,
-                label: label,
-                detail: detail,
+                icon: iconBuilder,
+                label: labelBuilder,
+                detail: detailBuilder,
                 location: location,
                 index: index
             )

@@ -30,13 +30,13 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
     var isHighlighted: Bool
 
     @Binding
-    var icon: ObjectIdentifier?
+    var iconBuilder: ObjectIdentifier?
 
     @Binding
-    var label: ObjectIdentifier?
+    var labelBuilder: ObjectIdentifier?
 
     @Binding
-    var detail: ObjectIdentifier?
+    var detailBuilder: ObjectIdentifier?
 
     let location: PropertyLocation
 
@@ -66,9 +66,9 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
         self.value = value
         self._isHighlighted = isHighlighted
         self.location = location
-        self._icon = icon
-        self._label = label
-        self._detail = detail
+        self._iconBuilder = icon
+        self._labelBuilder = label
+        self._detailBuilder = detail
         self.sortString = [
             location.id,
             String(index),

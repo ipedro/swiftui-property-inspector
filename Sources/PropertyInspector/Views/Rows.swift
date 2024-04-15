@@ -48,7 +48,7 @@ struct Rows: View {
         ForEach(data.properties) { property in
             Row(
                 id: property.id,
-                hideIcon: data.rowIcons.isEmpty,
+                hideIcon: data.iconBuilders.isEmpty,
                 isOn: property.$isHighlighted,
                 icon: {
                     if let icon = data.makeIcon(property) { icon }

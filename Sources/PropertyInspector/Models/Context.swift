@@ -29,28 +29,28 @@ final class Context: ObservableObject {
     var searchQuery = ""
 
     @Published
-    var rowIcons = ViewBuilderRegistry() {
+    var iconBuilders = ViewBuilderRegistry() {
         willSet {
-            for property in allObjects where property.icon != nil {
-                property.icon = nil
+            for property in allObjects where property.iconBuilder != nil {
+                property.iconBuilder = nil
             }
         }
     }
 
     @Published
-    var rowLabels = ViewBuilderRegistry() {
+    var labelBuilders = ViewBuilderRegistry() {
         willSet {
-            for property in allObjects where property.label != nil {
-                property.label = nil
+            for property in allObjects where property.labelBuilder != nil {
+                property.labelBuilder = nil
             }
         }
     }
 
     @Published
-    var rowDetails = ViewBuilderRegistry() {
+    var detailBuilders = ViewBuilderRegistry() {
         willSet {
-            for property in allObjects where property.detail != nil {
-                property.detail = nil
+            for property in allObjects where property.detailBuilder != nil {
+                property.detailBuilder = nil
             }
         }
     }
@@ -64,15 +64,15 @@ final class Context: ObservableObject {
     }
 
     func makeIcon(_ property: Property) -> AnyView? {
-        makeBody(property, location: rowIcons, cache: \.$icon)
+        makeBody(property, location: iconBuilders, cache: \.$iconBuilder)
     }
 
     func makeLabel(_ property: Property) -> AnyView? {
-        makeBody(property, location: rowLabels, cache: \.$label)
+        makeBody(property, location: labelBuilders, cache: \.$labelBuilder)
     }
 
     func makeDetail(_ property: Property) -> AnyView? {
-        makeBody(property, location: rowDetails, cache: \.$detail)
+        makeBody(property, location: detailBuilders, cache: \.$detailBuilder)
     }
 
     private func makeBody(
