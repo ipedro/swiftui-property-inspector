@@ -25,14 +25,18 @@ struct PropertyInspectingModifier: ViewModifier  {
     var data: [Any]
     var location: PropertyLocation
 
+    init(data: [Any], location: PropertyLocation) {
+        self.data = data
+        self.location = location
+        self._ids = State(initialValue: data.map({ _ in UUID() }))
+    }
+
+    @State
+    private var ids: [UUID]
+
     @State
     private var isOn = false
-    @State
-    private var iconBuilders = [Int: ObjectIdentifier]()
-    @State
-    private var labelBuilders = [Int: ObjectIdentifier]()
-    @State
-    private var detailBuilders = [Int: ObjectIdentifier]()
+    
     @Environment(\.propertyInspectorHidden)
     private var disabled
 
@@ -59,30 +63,10 @@ struct PropertyInspectingModifier: ViewModifier  {
         if disabled { return [] }
 
         return data.enumerated().map { (index, value) in
-            let iconBuilder = Binding {
-                iconBuilders[index]
-            } set: { newValue in
-                iconBuilders[index] = newValue
-            }
-
-            let labelBuilder = Binding {
-                labelBuilders[index]
-            } set: { newValue in
-                labelBuilders[index] = newValue
-            }
-
-            let detailBuilder = Binding {
-                detailBuilders[index]
-            } set: { newValue in
-                detailBuilders[index] = newValue
-            }
-
             return Property(
+                id: ids[index],
                 value: value,
                 isHighlighted: $isOn,
-                icon: iconBuilder,
-                label: labelBuilder,
-                detail: detailBuilder,
                 location: location,
                 index: index
             )

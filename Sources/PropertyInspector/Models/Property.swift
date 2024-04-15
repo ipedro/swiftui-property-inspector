@@ -25,7 +25,7 @@ import SwiftUI
 /// This struct is intended for internal use within the `PropertyInspector` framework to track and manage property information dynamically.
 struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
     /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
-    let id = UUID()
+    let id: UUID
 
     /// The value of the property stored as `Any`, allowing it to accept any property type.
     let value: Any
@@ -33,18 +33,6 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
     /// A binding to a Boolean that indicates whether the property is currently highlighted in the UI.
     @Binding
     var isHighlighted: Bool
-
-    /// A binding to an optional `ObjectIdentifier` that refers to a custom icon representation for the property.
-    @Binding
-    var icon: ObjectIdentifier?
-
-    /// A binding to an optional `ObjectIdentifier` that refers to a custom label representation for the property.
-    @Binding
-    var label: ObjectIdentifier?
-
-    /// A binding to an optional `ObjectIdentifier` that refers to a custom detail view for the property.
-    @Binding
-    var detail: ObjectIdentifier?
 
     /// The location of the property within the source code, provided for better traceability and debugging.
     let location: PropertyLocation
@@ -71,26 +59,19 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
     /// - Parameters:
     ///   - value: The value of the property.
     ///   - isHighlighted: A binding to the Boolean indicating if the property is highlighted.
-    ///   - icon: A binding to an optional identifier for a custom icon.
-    ///   - label: A binding to an optional identifier for a custom label.
-    ///   - detail: A binding to an optional identifier for a custom detail view.
     ///   - location: The location of the property in the source code.
     ///   - index: An index used to uniquely sort the property when multiple properties share the same location.
     init(
+        id: UUID = UUID(),
         value: Any,
         isHighlighted: Binding<Bool>,
-        icon: Binding<ObjectIdentifier?>,
-        label: Binding<ObjectIdentifier?>,
-        detail: Binding<ObjectIdentifier?>,
         location: PropertyLocation,
         index: Int
     ) {
+        self.id = id
         self.value = value
         self._isHighlighted = isHighlighted
         self.location = location
-        self._icon = icon
-        self._label = label
-        self._detail = detail
         self.sortString = [
             location.id,
             String(index),

@@ -19,36 +19,24 @@
 //  SOFTWARE.
 
 import Foundation
-import SwiftUI
 
-struct ContextModifier: ViewModifier {
-    @StateObject
-    private var data = Context()
+final class Cache<Key: Hashable, Value: Hashable>: Hashable  {
+    static func == (lhs: Cache<Key, Value>, rhs: Cache<Key, Value>) -> Bool {
+        lhs.data == rhs.data
+    }
 
-    func body(content: Content) -> some View {
-        content
-            .onPreferenceChange(PropertyPreferenceKey.self, perform: { newValue in
-                let uniqueProperties = newValue.sorted()
+    private var data = [Key: Value]()
 
-                if data.allObjects != uniqueProperties {
-                    data.allObjects = uniqueProperties
-                }
-            })
-            .onPreferenceChange(RowDetailPreferenceKey.self, perform: { newValue in
-                if data.detailRegistry != newValue {
-                    data.detailRegistry = newValue
-                }
-            })
-            .onPreferenceChange(RowIconPreferenceKey.self, perform: { newValue in
-                if data.iconRegistry != newValue {
-                    data.iconRegistry = newValue
-                }
-            })
-            .onPreferenceChange(RowLabelPreferenceKey.self, perform: { newValue in
-                if data.labelRegistry != newValue {
-                    data.labelRegistry = newValue
-                }
-            })
-            .environmentObject(data)
+    subscript(id: Key) -> Value? {
+        get { data[id] }
+        set { data[id] = newValue }
+    }
+
+    func hash(into hasher: inout Hasher) {
+        data.hash(into: &hasher)
+    }
+
+    func removeAll() {
+        data.removeAll(keepingCapacity: true)
     }
 }

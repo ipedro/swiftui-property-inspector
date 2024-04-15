@@ -50,11 +50,31 @@ struct Rows: View {
                 id: property.id,
                 hideIcon: data.iconRegistry.isEmpty,
                 isOn: property.$isHighlighted,
-                icon:  data.icon(for: property),
-                label: data.label(for: property),
-                detail: data.detail(for: property)
+                icon:  icon(for: property),
+                label: label(for: property),
+                detail: detail(for: property)
             )
             .equatable()
         }
+    }
+
+    private func icon(for property: Property) -> AnyView {
+        data.iconRegistry.makeBody(property: property, fallback: {
+            if !data.iconRegistry.isEmpty {
+                Image(systemName: "info.circle.fill")
+            }
+        })
+    }
+
+    private func label(for property: Property) -> AnyView {
+        data.labelRegistry.makeBody(property: property, fallback: {
+            Text(verbatim: property.stringValue)
+        })
+    }
+
+    private func detail(for property: Property) -> AnyView {
+        data.detailRegistry.makeBody(property: property, fallback: {
+            Text(verbatim: property.location.description)
+        })
     }
 }

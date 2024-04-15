@@ -29,70 +29,19 @@ final class Context: ObservableObject {
     var searchQuery = ""
 
     @Published
-    var iconRegistry = RowBuilderRegistry() {
-        willSet {
-            for property in allObjects where property.icon != nil {
-                property.icon = nil
-            }
-        }
-    }
+    var iconRegistry = RowBuilderRegistry()
 
     @Published
-    var labelRegistry = RowBuilderRegistry() {
-        willSet {
-            for property in allObjects where property.label != nil {
-                property.label = nil
-            }
-        }
-    }
+    var labelRegistry = RowBuilderRegistry()
 
     @Published
-    var detailRegistry = RowBuilderRegistry() {
-        willSet {
-            for property in allObjects where property.detail != nil {
-                property.detail = nil
-            }
-        }
-    }
+    var detailRegistry = RowBuilderRegistry()
 
     var properties: [Property] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard query.count > 1 else { return allObjects }
         return allObjects.filter {
             String(describing: $0).localizedCaseInsensitiveContains(query)
-        }
-    }
-
-    @ViewBuilder
-    func icon(for property: Property) -> some View {
-        if let icon = iconRegistry.makeBody(for: property, cache: \.$icon) {
-            icon
-        } else if !iconRegistry.isEmpty {
-            Image(systemName: "info.circle.fill")
-        }
-    }
-
-    @ViewBuilder
-    func label(for property: Property) -> some View {
-        if let label = labelRegistry.makeBody(for: property, cache: \.$label) {
-            label
-        } else {
-            Text(verbatim: property.stringValue)
-        }
-    }
-
-    @ViewBuilder
-    func detail(for property: Property) -> some View {
-        if let detail = detailRegistry.makeBody(for: property, cache: \.$detail) {
-            detail
-        } else {
-            Text(verbatim: property.location.description)
-        }
-    }
-
-    func updateAllObjects(highlight newValue: Bool) {
-        allObjects.enumerated().forEach { (offset, property) in
-            property.isHighlighted = newValue
         }
     }
 }

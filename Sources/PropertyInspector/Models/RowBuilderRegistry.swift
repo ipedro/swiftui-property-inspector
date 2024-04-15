@@ -22,7 +22,28 @@ import Foundation
 import SwiftUI
 
 struct RowBuilderRegistry: Hashable {
-    private var data: [ObjectIdentifier: RowBuilder]
+
+    struct Key: Identifiable, Hashable {
+        let id: ObjectIdentifier
+        let type: Any.Type
+
+        init<D>(_ data: D.Type = D.self) {
+            self.id = ObjectIdentifier(data)
+            self.type = data
+        }
+
+        static func == (lhs: RowBuilderRegistry.Key, rhs: RowBuilderRegistry.Key) -> Bool {
+            lhs.id == rhs.id
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+    }
+
+    private var data: [Key: RowBuilder]
+
+    private let cache = Cache<UUID, Key>()
 
     init(_ values: RowBuilder...) {
         self.data = values.reduce(into: [:], { partialResult, builder in
@@ -32,11 +53,19 @@ struct RowBuilderRegistry: Hashable {
 
     var isEmpty: Bool { data.isEmpty }
 
-    var identifiers: [ObjectIdentifier] { Array(data.keys) }
+    var identifiers: [Key] {
+        Array(data.keys)
+    }
 
-    subscript(id: ObjectIdentifier) -> RowBuilder? {
-        get { data[id] }
-        set { data[id] = newValue }
+    subscript(id: Key) -> RowBuilder? {
+        get {
+            data[id]
+        }
+        set {
+            if data[id] != newValue {
+                data[id] = newValue
+            }
+        }
     }
 
     mutating func merge(_ other: RowBuilderRegistry) {
@@ -51,45 +80,45 @@ struct RowBuilderRegistry: Hashable {
         return copy
     }
 
-    func makeBody(for property: Property, cache keyPath: KeyPath<Property, Binding<ObjectIdentifier?>>) -> AnyView? {
-        let cache = property[keyPath: keyPath]
-
-        if let key = cache.wrappedValue {
-            let view = self[key]?.body(property.value)
-            return view
+    func makeBody<V: View>(property: Property, @ViewBuilder fallback: () -> V) -> AnyView {
+        if let key = cache[property.id] {
+            if let view = data[key]?.body(property.value) {
+                return view
+            } else {
+                cache[property.id] = nil
+                print("busted stale cache")
+            }
         }
+
+        var matches = [RowBuilderRegistry.Key: AnyView]()
 
         for id in identifiers {
-            if let view = self[id]?.body(property.value) {
-                cache.wrappedValue = id
-                return view
+            if let view = data[id]?.body(property.value) {
+                matches[id] = view
             }
         }
 
-        cache.wrappedValue = ObjectIdentifier(Never.self)
-        return nil
-    }
-}
+        #if DEBUG
+        if matches.keys.count > 1 {
+            let matchingTypes = matches.keys.map({ String(describing: $0.type) })
 
-struct RowBuilder: Hashable, Identifiable {
-    let id: ObjectIdentifier
-    let body: (Any) -> AnyView?
-
-    init<D, C: View>(@ViewBuilder body: @escaping (D) -> C) {
-        self.id = ObjectIdentifier(D.self)
-        self.body = { anyValue in
-            guard let castedValue = anyValue as? D else {
-                return nil
-            }
-            return AnyView(body(castedValue))
+            print(
+                "[PropertyInspector]",
+                "⚠️ Warning:",
+                #function,
+                "–",
+                "Multiple row builders match value of type '\(property.stringValueType)' which can cause undefined behavior:",
+                matchingTypes.sorted().joined(separator: ", ")
+            )
         }
-    }
+        #endif
 
-    static func == (lhs: RowBuilder, rhs: RowBuilder) -> Bool {
-        lhs.id == rhs.id
-    }
+        if let match = matches.first {
+            cache[property.id] = match.key
+            return match.value
+        }
 
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+        return AnyView(fallback())
     }
 }
+

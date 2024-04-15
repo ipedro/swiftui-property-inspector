@@ -137,7 +137,9 @@ public struct SheetPropertyInspectorStyle<Style: ListStyle, RowBackground: View>
         default: return
         }
 
-        data.updateAllObjects(highlight: newValue)
+        data.allObjects.forEach { property in
+            property.isHighlighted = newValue
+        }
     }
 }
 

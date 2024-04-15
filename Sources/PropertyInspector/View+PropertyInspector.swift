@@ -105,7 +105,7 @@ public extension View {
 
      - seeAlso: ``propertyInspectorRowLabel(for:label:)``, ``propertyInspectorRowDetail(for:detail:)``
      */
-    func propertyInspectorRowIcon<D, Icon: View>(for data: D.Type, @ViewBuilder icon: @escaping (D) -> Icon) -> some View {
+    func propertyInspectorRowIcon<D, Icon: View>(for data: D.Type = Any.self, @ViewBuilder icon: @escaping (D) -> Icon) -> some View {
         setPreference(RowIconPreferenceKey.self, body: icon)
     }
 
@@ -130,7 +130,7 @@ public extension View {
 
      - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowDetail(for:detail:)``
      */
-    func propertyInspectorRowLabel<D, Label: View>(for data: D.Type, @ViewBuilder label: @escaping (D) -> Label) -> some View {
+    func propertyInspectorRowLabel<D, Label: View>(for data: D.Type = Any.self, @ViewBuilder label: @escaping (D) -> Label) -> some View {
         setPreference(RowLabelPreferenceKey.self, body: label)
     }
 
@@ -155,7 +155,7 @@ public extension View {
 
      - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowLabel(for:label:)``
      */
-    func propertyInspectorRowDetail<D, Detail: View>(for data: D.Type, @ViewBuilder detail: @escaping (D) -> Detail) -> some View {
+    func propertyInspectorRowDetail<D, Detail: View>(for data: D.Type = Any.self, @ViewBuilder detail: @escaping (D) -> Detail) -> some View {
         setPreference(RowDetailPreferenceKey.self, body: detail)
     }
 }

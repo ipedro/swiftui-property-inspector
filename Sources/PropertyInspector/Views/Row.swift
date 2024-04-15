@@ -67,6 +67,6 @@ struct Row<ID: Hashable, Icon: View, Label: View, Detail: View>: View, Equatable
     }
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.id == rhs.id && lhs.isOn == rhs.isOn
+        lhs.id == rhs.id
     }
 }

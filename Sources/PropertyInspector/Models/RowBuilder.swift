@@ -21,34 +21,25 @@
 import Foundation
 import SwiftUI
 
-struct ContextModifier: ViewModifier {
-    @StateObject
-    private var data = Context()
+struct RowBuilder: Hashable, Identifiable {
+    let id: RowBuilderRegistry.Key
+    let body: (Any) -> AnyView?
 
-    func body(content: Content) -> some View {
-        content
-            .onPreferenceChange(PropertyPreferenceKey.self, perform: { newValue in
-                let uniqueProperties = newValue.sorted()
+    init<D, C: View>(@ViewBuilder body: @escaping (D) -> C) {
+        self.id = RowBuilderRegistry.Key(D.self)
+        self.body = { anyValue in
+            guard let castedValue = anyValue as? D else {
+                return nil
+            }
+            return AnyView(body(castedValue))
+        }
+    }
 
-                if data.allObjects != uniqueProperties {
-                    data.allObjects = uniqueProperties
-                }
-            })
-            .onPreferenceChange(RowDetailPreferenceKey.self, perform: { newValue in
-                if data.detailRegistry != newValue {
-                    data.detailRegistry = newValue
-                }
-            })
-            .onPreferenceChange(RowIconPreferenceKey.self, perform: { newValue in
-                if data.iconRegistry != newValue {
-                    data.iconRegistry = newValue
-                }
-            })
-            .onPreferenceChange(RowLabelPreferenceKey.self, perform: { newValue in
-                if data.labelRegistry != newValue {
-                    data.labelRegistry = newValue
-                }
-            })
-            .environmentObject(data)
+    static func == (lhs: RowBuilder, rhs: RowBuilder) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
