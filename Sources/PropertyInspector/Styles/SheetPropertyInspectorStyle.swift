@@ -115,7 +115,8 @@ public struct SheetPropertyInspectorStyle<Style: ListStyle, RowBackground: View>
                         ListPropertyInspectorStyle(
                             title: title,
                             listStyle: listStyle,
-                            listRowBackground: listRowBackground
+                            listRowBackground: listRowBackground,
+                            contentPadding: false
                         )
                     )
                 )
@@ -136,9 +137,7 @@ public struct SheetPropertyInspectorStyle<Style: ListStyle, RowBackground: View>
         default: return
         }
 
-        data.allObjects.enumerated().forEach { (offset, property) in
-            property.isHighlighted = newValue
-        }
+        data.updateAllObjects(highlight: newValue)
     }
 }
 

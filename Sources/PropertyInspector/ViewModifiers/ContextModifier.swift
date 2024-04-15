@@ -35,13 +35,13 @@ struct ContextModifier: ViewModifier {
                 }
             })
             .onPreferenceChange(RowDetailPreferenceKey.self, perform: { value in
-                data.detailBuilders = value
+                data.detailRegistry = value
             })
             .onPreferenceChange(RowIconPreferenceKey.self, perform: { value in
-                data.iconBuilders = value
+                data.iconRegistry = value
             })
             .onPreferenceChange(RowLabelPreferenceKey.self, perform: { value in
-                data.labelBuilders = value
+                data.labelRegistry = value
             })
             .environmentObject(data)
     }

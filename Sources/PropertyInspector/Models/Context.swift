@@ -29,28 +29,28 @@ final class Context: ObservableObject {
     var searchQuery = ""
 
     @Published
-    var iconBuilders = ViewBuilderRegistry() {
+    var iconRegistry = ViewBuilderRegistry() {
         willSet {
-            for property in allObjects where property.iconBuilder != nil {
-                property.iconBuilder = nil
+            for property in allObjects where property.icon != nil {
+                property.icon = nil
             }
         }
     }
 
     @Published
-    var labelBuilders = ViewBuilderRegistry() {
+    var labelRegistry = ViewBuilderRegistry() {
         willSet {
-            for property in allObjects where property.labelBuilder != nil {
-                property.labelBuilder = nil
+            for property in allObjects where property.label != nil {
+                property.label = nil
             }
         }
     }
 
     @Published
-    var detailBuilders = ViewBuilderRegistry() {
+    var detailRegistry = ViewBuilderRegistry() {
         willSet {
-            for property in allObjects where property.detailBuilder != nil {
-                property.detailBuilder = nil
+            for property in allObjects where property.detail != nil {
+                property.detail = nil
             }
         }
     }
@@ -63,38 +63,21 @@ final class Context: ObservableObject {
         }
     }
 
-    func makeIcon(_ property: Property) -> AnyView? {
-        makeBody(property, location: iconBuilders, cache: \.$iconBuilder)
+    func icon(for property: Property) -> AnyView? {
+        iconRegistry.makeBody(property, cache: \.$icon)
     }
 
-    func makeLabel(_ property: Property) -> AnyView? {
-        makeBody(property, location: labelBuilders, cache: \.$labelBuilder)
+    func label(for property: Property) -> AnyView? {
+        labelRegistry.makeBody(property, cache: \.$label)
     }
 
-    func makeDetail(_ property: Property) -> AnyView? {
-        makeBody(property, location: detailBuilders, cache: \.$detailBuilder)
+    func detail(for property: Property) -> AnyView? {
+        detailRegistry.makeBody(property, cache: \.$detail)
     }
 
-    private func makeBody(
-        _ property: Property,
-        location: ViewBuilderRegistry,
-        cache keyPath: KeyPath<Property, Binding<ObjectIdentifier?>>
-    ) -> AnyView? {
-        let cache = property[keyPath: keyPath]
-
-        if let key = cache.wrappedValue {
-            let view = location[key]?.body(property.value)
-            return view
+    func updateAllObjects(highlight newValue: Bool) {
+        allObjects.enumerated().forEach { (offset, property) in
+            property.isHighlighted = newValue
         }
-
-        for id in location.identifiers {
-            if let view = location[id]?.body(property.value) {
-                cache.wrappedValue = id
-                return view
-            }
-        }
-
-        cache.wrappedValue = ObjectIdentifier(Any.self)
-        return nil
     }
 }

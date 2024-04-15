@@ -57,4 +57,23 @@ struct ViewBuilderRegistry: Hashable {
         }
     }
 
+    func makeBody(_ property: Property, cache keyPath: KeyPath<Property, Binding<ObjectIdentifier?>>) -> AnyView? {
+        let cache = property[keyPath: keyPath]
+
+        if let key = cache.wrappedValue {
+            let view = self[key]?.body(property.value)
+            return view
+        }
+
+        for id in identifiers {
+            if let view = self[id]?.body(property.value) {
+                cache.wrappedValue = id
+                return view
+            }
+        }
+
+        cache.wrappedValue = ObjectIdentifier(Any.self)
+        return nil
+    }
+
 }

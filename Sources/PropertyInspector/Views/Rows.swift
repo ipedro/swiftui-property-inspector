@@ -48,18 +48,18 @@ struct Rows: View {
         ForEach(data.properties) { property in
             Row(
                 id: property.id,
-                hideIcon: data.iconBuilders.isEmpty,
+                hideIcon: data.iconRegistry.isEmpty,
                 isOn: property.$isHighlighted,
                 icon: {
-                    if let icon = data.makeIcon(property) { icon }
+                    if let icon = data.icon(for: property) { icon }
                     else { Image(systemName: "info.circle.fill") }
                 },
                 label: {
-                    if let label = data.makeLabel(property) { label }
+                    if let label = data.label(for: property) { label }
                     else { Text(verbatim: property.stringValue) }
                 },
                 detail: {
-                    if let detail = data.makeDetail(property) { detail }
+                    if let detail = data.detail(for: property) { detail }
                     else { Text(verbatim: property.location.description) }
                 }
             )

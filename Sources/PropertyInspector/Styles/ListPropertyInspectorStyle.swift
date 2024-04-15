@@ -42,7 +42,7 @@ public struct ListPropertyInspectorStyle<Style: ListStyle, RowBackground: View>:
     var title: String?
     var listStyle: Style
     var listRowBackground: RowBackground?
-    var contentPadding: Bool = false
+    var contentPadding: Bool
 
     public func body(content: Content) -> some View {
         List {
