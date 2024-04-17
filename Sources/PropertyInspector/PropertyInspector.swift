@@ -44,7 +44,7 @@ import SwiftUI
 
  - Note: The `PropertyInspector` is a generic struct that requires specifying a view type for its label and a style type. It does not manage state internally but relies on the surrounding environment to provide and manage the data it displays.
 
- - seeAlso: ``inspectProperty(_:function:line:file:)``, ``propertyInspectorHidden()``, and ``inspectSelf()``
+ - seeAlso: ``inspectProperty(_:function:line:file:)``, ``propertyInspectorHidden()``, and ``inspectSelf(function:line:file:)``
  */
 public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: View {
     /**

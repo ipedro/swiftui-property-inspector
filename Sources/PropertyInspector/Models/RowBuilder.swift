@@ -22,13 +22,31 @@ import Foundation
 import SwiftUI
 
 struct RowBuilder: Hashable, Identifiable {
-    let id: RowBuilderRegistry.Key
-    let body: (PropertyValue) -> AnyView?
+    struct ID: Hashable {
+        let typeID: ObjectIdentifier
+        let type: Any.Type
+
+        init<D>(_ data: D.Type = D.self) {
+            self.typeID = ObjectIdentifier(data)
+            self.type = data
+        }
+
+        static func == (lhs: RowBuilder.ID, rhs: RowBuilder.ID) -> Bool {
+            lhs.typeID == rhs.typeID
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(typeID)
+        }
+    }
+
+    let id: ID
+    let body: (Property) -> AnyView?
 
     init<D, C: View>(@ViewBuilder body: @escaping (D) -> C) {
-        self.id = RowBuilderRegistry.Key(D.self)
-        self.body = { value in
-            guard let castedValue = value.rawValue as? D else {
+        self.id = ID(D.self)
+        self.body = { property in
+            guard let castedValue = property.value.rawValue as? D else {
                 return nil
             }
             return AnyView(body(castedValue))

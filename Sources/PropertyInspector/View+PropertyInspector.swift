@@ -48,7 +48,7 @@ public extension View {
 
      This can be particularly useful when paired with logging or during step-by-step debugging to monitor how and when your view's state changes.
 
-     - seeAlso: ``propertyInspectorHidden()``
+     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(function:line:file:)``
      */
     func inspectProperty(_ values: Any..., function: String = #function, line: Int = #line, file: String = #file) -> some View {
         modifier(

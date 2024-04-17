@@ -39,10 +39,4 @@ final class Cache<Key: Hashable, Value: Hashable>: Hashable  {
     func removeAll() {
         data.removeAll(keepingCapacity: true)
     }
-
-    func merge(_ other: Cache<Key, Value>) {
-        data.merge(other.data) { content, _ in
-            content
-        }
-    }
 }

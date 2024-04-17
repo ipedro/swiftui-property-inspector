@@ -53,12 +53,12 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
 
     /// Returns the type of the value as a string, useful for dynamic type checks or displays.
     var stringValueType: String {
-        String(describing: type(of: value))
+        String(describing: type(of: value.rawValue))
     }
 
     /// Returns the string representation of the property's value.
     var stringValue: String {
-        String(describing: value)
+        String(describing: value.rawValue)
     }
 
     /// Initializes a new `Property` with detailed information about its value and location.

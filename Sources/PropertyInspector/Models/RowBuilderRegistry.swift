@@ -22,26 +22,7 @@ import Foundation
 import SwiftUI
 
 struct RowBuilderRegistry: Hashable {
-
-    struct Key: Identifiable, Hashable {
-        let id: ObjectIdentifier
-        let type: Any.Type
-
-        init<D>(_ data: D.Type = D.self) {
-            self.id = ObjectIdentifier(data)
-            self.type = data
-        }
-
-        static func == (lhs: RowBuilderRegistry.Key, rhs: RowBuilderRegistry.Key) -> Bool {
-            lhs.id == rhs.id
-        }
-
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(id)
-        }
-    }
-
-    private var data: [Key: RowBuilder]
+    private var data: [RowBuilder.ID: RowBuilder]
 
     private let cache = Cache<PropertyValue.ID, HashableBox<AnyView>>()
 
@@ -53,11 +34,11 @@ struct RowBuilderRegistry: Hashable {
 
     var isEmpty: Bool { data.isEmpty }
 
-    var identifiers: [Key] {
+    var identifiers: [RowBuilder.ID] {
         Array(data.keys)
     }
 
-    subscript(id: Key) -> RowBuilder? {
+    subscript(id: RowBuilder.ID) -> RowBuilder? {
         get {
             data[id]
         }
@@ -72,7 +53,6 @@ struct RowBuilderRegistry: Hashable {
         data.merge(other.data) { content, _ in
             content
         }
-        cache.merge(other.cache)
     }
 
     func merged(_ other: RowBuilderRegistry) -> Self {
@@ -105,10 +85,10 @@ struct RowBuilderRegistry: Hashable {
 
     #if DEBUG
     private func createBody(property: Property) -> AnyView? {
-        var matches = [RowBuilderRegistry.Key: AnyView]()
+        var matches = [RowBuilder.ID: AnyView]()
 
         for id in identifiers {
-            if let view = data[id]?.body(property.value) {
+            if let view = data[id]?.body(property) {
                 matches[id] = view
             }
         }
@@ -135,7 +115,7 @@ struct RowBuilderRegistry: Hashable {
     #else
     private func createBody(property: Property) -> AnyView? {
         for id in identifiers {
-            if let view = data[id]?.body(property.value) {
+            if let view = data[id]?.body(property) {
                 cache[property.value.id] = HashableBox(view)
                 return view
             }
