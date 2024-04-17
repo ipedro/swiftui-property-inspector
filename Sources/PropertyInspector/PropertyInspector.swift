@@ -234,7 +234,7 @@ public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: Vi
      }
      ```
 
-     - seeAlso: ``init(_:isPresented:listStyle:listRowBackground:label:)`` for modal presentation styles, or  ``init(_:listStyle:listRowBackground:label:)`` for list-based styles with more extensive customization options.
+     - seeAlso: ``init(_:isPresented:listStyle:listRowBackground:label:)`` for modal presentation styles, or  ``init(_:listStyle:listRowBackground:label:)-87xpv`` for list-based styles with more extensive customization options.
      */
     public init(
         _ title: String? = nil,
