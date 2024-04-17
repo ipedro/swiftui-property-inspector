@@ -23,8 +23,8 @@ import SwiftUI
 
 public extension View {
     /// Inspects the view itself.
-    func inspectSelf() -> some View {
-        inspectProperty(self)
+    func inspectSelf(function: String = #function, line: Int = #line, file: String = #file) -> some View {
+        inspectProperty(self, function: function, line: line, file: file)
     }
 
      /**

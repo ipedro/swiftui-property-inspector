@@ -269,7 +269,7 @@ public protocol _PropertyInspectorStyle: ViewModifier {}
             Text("Placeholder").inspectSelf()
             Button("Tap Me", action: {}).inspectSelf()
         })
-        .propertyInspectorRowIcon(for: Rows.self) { _ in
+        .propertyInspectorRowIcon(for: Any.self) { _ in
             Image(systemName: "list.bullet")
         }
         .propertyInspectorRowIcon(for: Text.self) { _ in

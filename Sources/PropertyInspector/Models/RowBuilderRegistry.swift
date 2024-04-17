@@ -81,6 +81,19 @@ struct RowBuilderRegistry: Hashable {
     }
 
     func makeBody<V: View>(property: Property, @ViewBuilder fallback: () -> V) -> AnyView {
+        if let cached = resolveFromCache(property: property) {
+            print(property.id, "return from cache")
+            return cached
+        }
+        else if let body = createBody(property: property) {
+            print(property.id, "fresh compute")
+            return body
+        }
+        print(property.id, "fallback")
+        return AnyView(fallback())
+    }
+
+    private func resolveFromCache(property: Property) -> AnyView? {
         if let key = cache[property.id] {
             if let view = data[key]?.body(property.value) {
                 return view
@@ -91,14 +104,11 @@ struct RowBuilderRegistry: Hashable {
                 #endif
             }
         }
-
-        let body = resolveBody(property: property)
-
-        return body ?? AnyView(fallback())
+        return nil
     }
 
     #if DEBUG
-    func resolveBody(property: Property) -> AnyView? {
+    private func createBody(property: Property) -> AnyView? {
         var matches = [RowBuilderRegistry.Key: AnyView]()
 
         for id in identifiers {
@@ -113,8 +123,8 @@ struct RowBuilderRegistry: Hashable {
                 "[PropertyInspector]",
                 "⚠️ Warning:",
                 "Undefined behavior.",
-                "Multiple row builders match property '\(property.stringValueType)' declared in '\(property.location)'.",
-                "Matches:",
+                "Multiple row builders",
+                "match '\(property.stringValueType)' declared in '\(property.location)':",
                 matchingTypes.sorted().joined(separator: ", ")
             )
         }
@@ -127,7 +137,7 @@ struct RowBuilderRegistry: Hashable {
         return nil
     }
     #else
-    func resolveBody(property: Property) -> AnyView? {
+    private func createBody(property: Property) -> AnyView? {
         for id in identifiers {
             if let view = data[id]?.body(property.value) {
                 cache[property.id] = id
