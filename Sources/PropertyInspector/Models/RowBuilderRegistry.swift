@@ -43,7 +43,7 @@ struct RowBuilderRegistry: Hashable {
 
     private var data: [Key: RowBuilder]
 
-    private let cache = Cache<UUID, Key>()
+    private let cache = Cache<UUID, HashableBox<AnyView>>()
 
     init(_ values: RowBuilder...) {
         self.data = values.reduce(into: [:], { partialResult, builder in
@@ -82,27 +82,22 @@ struct RowBuilderRegistry: Hashable {
 
     func makeBody<V: View>(property: Property, @ViewBuilder fallback: () -> V) -> AnyView {
         if let cached = resolveFromCache(property: property) {
-            print(property.id, "return from cache")
+            print(property.id, "✅ return from cache")
             return cached
         }
         else if let body = createBody(property: property) {
-            print(property.id, "fresh compute")
+            print(property.id, "🆕 fresh compute")
             return body
         }
-        print(property.id, "fallback")
-        return AnyView(fallback())
+        print(property.id, "🍁🔙 fallback")
+        let fallback = AnyView(fallback())
+        cache[property.id] = HashableBox(fallback)
+        return fallback
     }
 
     private func resolveFromCache(property: Property) -> AnyView? {
-        if let key = cache[property.id] {
-            if let view = data[key]?.body(property.value) {
-                return view
-            } else {
-                cache[property.id] = nil
-                #if DEBUG
-                print("[PropertyInspector]", #function, "Busted stale cache for")
-                #endif
-            }
+        if let cached = cache[property.id] {
+            return cached.value
         }
         return nil
     }
@@ -130,7 +125,7 @@ struct RowBuilderRegistry: Hashable {
         }
 
         if let match = matches.first {
-            cache[property.id] = match.key
+            cache[property.id] = HashableBox(match.value)
             return match.value
         }
 
@@ -140,7 +135,7 @@ struct RowBuilderRegistry: Hashable {
     private func createBody(property: Property) -> AnyView? {
         for id in identifiers {
             if let view = data[id]?.body(property.value) {
-                cache[property.id] = id
+                cache[property.id] = HashableBox(view)
                 return view
             }
         }
