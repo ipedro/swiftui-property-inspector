@@ -72,6 +72,7 @@ struct RowBuilderRegistry: Hashable {
         data.merge(other.data) { content, _ in
             content
         }
+        cache.merge(other.cache)
     }
 
     func merged(_ other: RowBuilderRegistry) -> Self {
