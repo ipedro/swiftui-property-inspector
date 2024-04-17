@@ -47,7 +47,7 @@ struct Rows: View {
 
         ForEach(data.properties) { property in
             Row(
-                id: property.id,
+                id: property.value.id,
                 hideIcon: data.iconRegistry.isEmpty,
                 isOn: property.$isHighlighted,
                 icon:  icon(for: property),

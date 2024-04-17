@@ -41,9 +41,7 @@ struct RowBuilderRegistry: Hashable {
         }
     }
 
-    private var data: [Key: RowBuilder] {
-        didSet { cache.removeAll() }
-    }
+    private var data: [Key: RowBuilder]
 
     private let cache = Cache<PropertyValue.ID, HashableBox<AnyView>>()
 
@@ -84,7 +82,7 @@ struct RowBuilderRegistry: Hashable {
 
     func makeBody<V: View>(property: Property, @ViewBuilder fallback: () -> V) -> AnyView {
         if let cached = resolveFromCache(property: property) {
-            print(property.value.id, "✅ return from cache")
+            //print(property.value.id, "✅ return from cache")
             return cached
         }
         else if let body = createBody(property: property) {
