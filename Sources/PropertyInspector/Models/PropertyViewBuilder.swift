@@ -21,7 +21,7 @@
 import Foundation
 import SwiftUI
 
-struct RowBuilder: Hashable, Identifiable {
+struct PropertyViewBuilder: Hashable, Identifiable {
     struct ID: Hashable {
         let typeID: ObjectIdentifier
         let type: Any.Type
@@ -31,7 +31,7 @@ struct RowBuilder: Hashable, Identifiable {
             self.type = data
         }
 
-        static func == (lhs: RowBuilder.ID, rhs: RowBuilder.ID) -> Bool {
+        static func == (lhs: PropertyViewBuilder.ID, rhs: PropertyViewBuilder.ID) -> Bool {
             lhs.typeID == rhs.typeID
         }
 
@@ -53,7 +53,7 @@ struct RowBuilder: Hashable, Identifiable {
         }
     }
 
-    static func == (lhs: RowBuilder, rhs: RowBuilder) -> Bool {
+    static func == (lhs: PropertyViewBuilder, rhs: PropertyViewBuilder) -> Bool {
         lhs.id == rhs.id
     }
 

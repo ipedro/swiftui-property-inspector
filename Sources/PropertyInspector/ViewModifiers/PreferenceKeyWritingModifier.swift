@@ -26,10 +26,10 @@ extension View {
         modifier(PreferenceKeyWritingModifier<K>(value: value))
     }
 
-    func setPreference<K: PreferenceKey, D, C: View>(_ key: K.Type, @ViewBuilder body: @escaping (D) -> C) -> some View where K.Value == RowBuilderRegistry {
-        let builder = RowBuilder(body: body)
+    func setPreference<K: PreferenceKey, D, C: View>(_ key: K.Type, @ViewBuilder body: @escaping (D) -> C) -> some View where K.Value == PropertyViewBuilderRegistry {
+        let builder = PropertyViewBuilder(body: body)
         return modifier(
-            PreferenceKeyWritingModifier<K>(value: RowBuilderRegistry(builder))
+            PreferenceKeyWritingModifier<K>(value: PropertyViewBuilderRegistry(builder))
         )
     }
 }

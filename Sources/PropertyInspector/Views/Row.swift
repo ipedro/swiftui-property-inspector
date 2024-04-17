@@ -21,13 +21,13 @@
 import Foundation
 import SwiftUI
 
-struct Row<ID: Hashable, Icon: View, Label: View, Detail: View>: View, Equatable {
+struct Row<ID: Hashable>: View, Equatable {
     var id: ID
     var hideIcon: Bool
     @Binding var isOn: Bool
-    var icon: Icon
-    var label: Label
-    var detail: Detail
+    var icon: AnyView
+    var label: AnyView
+    var detail: AnyView
 
     private var leading: CGFloat? {
         hideIcon ? 0 : 25

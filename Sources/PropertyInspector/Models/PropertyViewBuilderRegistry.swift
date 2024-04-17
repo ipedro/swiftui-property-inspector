@@ -21,12 +21,12 @@
 import Foundation
 import SwiftUI
 
-struct RowBuilderRegistry: Hashable {
-    private var data: [RowBuilder.ID: RowBuilder]
+struct PropertyViewBuilderRegistry: Hashable {
+    private var data: [PropertyViewBuilder.ID: PropertyViewBuilder]
 
     private let cache = Cache<PropertyValue.ID, HashableBox<AnyView>>()
 
-    init(_ values: RowBuilder...) {
+    init(_ values: PropertyViewBuilder...) {
         self.data = values.reduce(into: [:], { partialResult, builder in
             partialResult[builder.id] = builder
         })
@@ -34,11 +34,11 @@ struct RowBuilderRegistry: Hashable {
 
     var isEmpty: Bool { data.isEmpty }
 
-    var identifiers: [RowBuilder.ID] {
+    var identifiers: [PropertyViewBuilder.ID] {
         Array(data.keys)
     }
 
-    subscript(id: RowBuilder.ID) -> RowBuilder? {
+    subscript(id: PropertyViewBuilder.ID) -> PropertyViewBuilder? {
         get {
             data[id]
         }
@@ -49,13 +49,13 @@ struct RowBuilderRegistry: Hashable {
         }
     }
 
-    mutating func merge(_ other: RowBuilderRegistry) {
+    mutating func merge(_ other: PropertyViewBuilderRegistry) {
         data.merge(other.data) { content, _ in
             content
         }
     }
 
-    func merged(_ other: RowBuilderRegistry) -> Self {
+    func merged(_ other: PropertyViewBuilderRegistry) -> Self {
         var copy = self
         copy.merge(other)
         return copy
@@ -85,7 +85,7 @@ struct RowBuilderRegistry: Hashable {
 
     #if DEBUG
     private func createBody(property: Property) -> AnyView? {
-        var matches = [RowBuilder.ID: AnyView]()
+        var matches = [PropertyViewBuilder.ID: AnyView]()
 
         for id in identifiers {
             if let view = data[id]?.body(property) {

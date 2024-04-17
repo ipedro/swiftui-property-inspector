@@ -29,13 +29,13 @@ final class Context: ObservableObject {
     var searchQuery = ""
 
     @Published
-    var iconRegistry = RowBuilderRegistry()
+    var iconRegistry = PropertyViewBuilderRegistry()
 
     @Published
-    var labelRegistry = RowBuilderRegistry()
+    var labelRegistry = PropertyViewBuilderRegistry()
 
     @Published
-    var detailRegistry = RowBuilderRegistry()
+    var detailRegistry = PropertyViewBuilderRegistry()
 
     var properties: [Property] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
