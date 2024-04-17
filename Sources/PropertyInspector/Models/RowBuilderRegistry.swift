@@ -86,10 +86,19 @@ struct RowBuilderRegistry: Hashable {
                 return view
             } else {
                 cache[property.id] = nil
-                print("busted stale cache")
+                #if DEBUG
+                print("[PropertyInspector]", #function, "Busted stale cache for")
+                #endif
             }
         }
 
+        let body = resolveBody(property: property)
+
+        return body ?? AnyView(fallback())
+    }
+
+    #if DEBUG
+    func resolveBody(property: Property) -> AnyView? {
         var matches = [RowBuilderRegistry.Key: AnyView]()
 
         for id in identifiers {
@@ -98,26 +107,34 @@ struct RowBuilderRegistry: Hashable {
             }
         }
 
-        #if DEBUG
         if matches.keys.count > 1 {
             let matchingTypes = matches.keys.map({ String(describing: $0.type) })
-
             print(
                 "[PropertyInspector]",
                 "⚠️ Warning:",
-                #function,
-                "–",
-                "Multiple row builders match value of type '\(property.stringValueType)' which can cause undefined behavior:",
+                "Undefined behavior.",
+                "Multiple row builders match property '\(property.stringValueType)' declared in '\(property.location)'.",
+                "Matches:",
                 matchingTypes.sorted().joined(separator: ", ")
             )
         }
-        #endif
 
         if let match = matches.first {
             cache[property.id] = match.key
             return match.value
         }
 
-        return AnyView(fallback())
+        return nil
     }
+    #else
+    func resolveBody(property: Property) -> AnyView? {
+        for id in identifiers {
+            if let view = data[id]?.body(property.value) {
+                cache[property.id] = id
+                return view
+            }
+        }
+        return nil
+    }
+    #endif
 }
