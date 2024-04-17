@@ -41,9 +41,11 @@ struct RowBuilderRegistry: Hashable {
         }
     }
 
-    private var data: [Key: RowBuilder]
+    private var data: [Key: RowBuilder] {
+        didSet { cache.removeAll() }
+    }
 
-    private let cache = Cache<UUID, HashableBox<AnyView>>()
+    private let cache = Cache<PropertyValue.ID, HashableBox<AnyView>>()
 
     init(_ values: RowBuilder...) {
         self.data = values.reduce(into: [:], { partialResult, builder in
@@ -82,21 +84,21 @@ struct RowBuilderRegistry: Hashable {
 
     func makeBody<V: View>(property: Property, @ViewBuilder fallback: () -> V) -> AnyView {
         if let cached = resolveFromCache(property: property) {
-            print(property.id, "✅ return from cache")
+            print(property.value.id, "✅ return from cache")
             return cached
         }
         else if let body = createBody(property: property) {
-            print(property.id, "🆕 fresh compute")
+            print(property.value.id, "🆕 fresh compute")
             return body
         }
-        print(property.id, "🍁🔙 fallback")
+        print(property.value.id, "🍁🔙 fallback")
         let fallback = AnyView(fallback())
-        cache[property.id] = HashableBox(fallback)
+        cache[property.value.id] = HashableBox(fallback)
         return fallback
     }
 
     private func resolveFromCache(property: Property) -> AnyView? {
-        if let cached = cache[property.id] {
+        if let cached = cache[property.value.id] {
             return cached.value
         }
         return nil
@@ -125,7 +127,7 @@ struct RowBuilderRegistry: Hashable {
         }
 
         if let match = matches.first {
-            cache[property.id] = HashableBox(match.value)
+            cache[property.value.id] = HashableBox(match.value)
             return match.value
         }
 
@@ -135,7 +137,7 @@ struct RowBuilderRegistry: Hashable {
     private func createBody(property: Property) -> AnyView? {
         for id in identifiers {
             if let view = data[id]?.body(property.value) {
-                cache[property.id] = HashableBox(view)
+                cache[property.value.id] = HashableBox(view)
                 return view
             }
         }

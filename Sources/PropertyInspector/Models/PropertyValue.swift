@@ -19,10 +19,24 @@
 //  SOFTWARE.
 
 import Foundation
-import SwiftUI
 
-struct _ButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+struct PropertyValue: Identifiable {
+    struct ID: Hashable {
+        let hash: Int
+        let typeID: ObjectIdentifier
+        init<T>(_ value: T) {
+            hash = String(describing: value).hashValue
+            typeID = ObjectIdentifier(T.self)
+        }
+    }
+
+    let id: ID
+    let rawValue: Any
+    let typeID: ObjectIdentifier
+
+    init<T>(_ value: T) {
+        self.id = ID(value)
+        self.rawValue = value
+        self.typeID = ObjectIdentifier(T.self)
     }
 }

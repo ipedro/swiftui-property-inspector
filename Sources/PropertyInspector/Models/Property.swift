@@ -22,13 +22,17 @@ import Foundation
 import SwiftUI
 
 /// `Property` encapsulates details about a specific property within a view or model, including its value, display metadata, and location.
-/// This struct is intended for internal use within the `PropertyInspector` framework to track and manage property information dynamically.
+/// This struct is intended for internal use within the ``PropertyInspector`` framework to track and manage property information dynamically.
 struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
+    struct ID: Hashable {
+        private let id = UUID()
+    }
+
     /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
-    let id: UUID = UUID()
+    let id: ID = ID()
 
     /// The value of the property stored as `Any`, allowing it to accept any property type.
-    let value: Any
+    let value: PropertyValue
 
     /// A binding to a Boolean that indicates whether the property is currently highlighted in the UI.
     @Binding
@@ -70,7 +74,7 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
         index: Int,
         createdAt: Date
     ) {
-        self.value = value
+        self.value = PropertyValue(value)
         self._isHighlighted = isHighlighted
         self.location = location
         self.createdAt = createdAt

@@ -23,12 +23,12 @@ import SwiftUI
 
 struct RowBuilder: Hashable, Identifiable {
     let id: RowBuilderRegistry.Key
-    let body: (Any) -> AnyView?
+    let body: (PropertyValue) -> AnyView?
 
     init<D, C: View>(@ViewBuilder body: @escaping (D) -> C) {
         self.id = RowBuilderRegistry.Key(D.self)
-        self.body = { anyValue in
-            guard let castedValue = anyValue as? D else {
+        self.body = { value in
+            guard let castedValue = value.rawValue as? D else {
                 return nil
             }
             return AnyView(body(castedValue))

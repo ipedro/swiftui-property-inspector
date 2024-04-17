@@ -36,7 +36,7 @@ struct Row<ID: Hashable, Icon: View, Label: View, Detail: View>: View, Equatable
     var body: some View {
         Toggle(isOn: $isOn, label: content)
             .toggleStyle(
-                _ToggleStyle(alignment: .firstTextBaseline)
+                PropertyToggleStyle(alignment: .firstTextBaseline)
             )
             .foregroundStyle(.secondary)
             .symbolRenderingMode(.hierarchical)

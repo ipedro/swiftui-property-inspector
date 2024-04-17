@@ -18,7 +18,7 @@ import SwiftUI
 
  ## Usage
 
- You don't instantiate `ListPropertyInspectorStyle` directly. Instead, use it when initializing your `PropertyInspector` to apply a list-style layout. Here's an example configuration:
+ You don't instantiate `ListPropertyInspectorStyle` directly. Instead, use it when initializing your ``PropertyInspector`` to apply a list-style layout. Here's an example configuration:
 
  ```swift
  var body: some View {

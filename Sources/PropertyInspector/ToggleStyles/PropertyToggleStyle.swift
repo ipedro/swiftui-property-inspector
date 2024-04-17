@@ -21,7 +21,7 @@
 import Foundation
 import SwiftUI
 
-struct _ToggleStyle: ToggleStyle {
+struct PropertyToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
     var animation: Animation? = .interactiveSpring
 

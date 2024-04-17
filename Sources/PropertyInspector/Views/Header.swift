@@ -44,7 +44,7 @@ struct Header: View {
                     EmptyView()
                 }
                 .toggleStyle(
-                    _ToggleStyle(alignment: .firstTextBaseline)
+                    PropertyToggleStyle(alignment: .firstTextBaseline)
                 )
             }
         }
