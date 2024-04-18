@@ -74,7 +74,7 @@ public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
  */
 @available(iOS 16.4, *)
 public struct SheetPropertyInspectorStyle<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
-    var title: String?
+    var title: LocalizedStringKey?
 
     @Binding
     var isPresented: Bool

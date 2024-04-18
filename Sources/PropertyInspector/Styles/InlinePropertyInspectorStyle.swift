@@ -60,8 +60,6 @@ import SwiftUI
  - seeAlso: ``SheetPropertyInspectorStyle`` and ``ListPropertyInspectorStyle``.
  */
 public struct InlinePropertyInspectorStyle: _PropertyInspectorStyle {
-    var title: String?
-
     public func body(content: Content) -> some View {
         content.safeAreaInset(edge: .bottom) {
             LazyVStack(alignment: .leading, spacing: 15) {

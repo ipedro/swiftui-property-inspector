@@ -39,7 +39,7 @@ import SwiftUI
  - seeAlso: ``SheetPropertyInspectorStyle`` and ``InlinePropertyInspectorStyle``
 */
 public struct ListPropertyInspectorStyle<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
-    var title: String?
+    var title: LocalizedStringKey?
     var listStyle: Style
     var listRowBackground: RowBackground?
     var contentPadding: Bool
@@ -55,7 +55,7 @@ public struct ListPropertyInspectorStyle<Style: ListStyle, RowBackground: View>:
                         .padding(contentPadding ? .vertical : [])
                         .padding(contentPadding ? .vertical : [])
 
-                    Header(title: title)
+                    Header(title: title ?? "Inspect")
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .multilineTextAlignment(.leading)
                 }

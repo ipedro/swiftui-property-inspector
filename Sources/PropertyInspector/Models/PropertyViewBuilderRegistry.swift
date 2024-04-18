@@ -63,14 +63,14 @@ struct PropertyViewBuilderRegistry: Hashable {
 
     func makeBody<V: View>(property: Property, @ViewBuilder fallback: () -> V) -> AnyView {
         if let cached = resolveFromCache(property: property) {
-            //print(property.value.id, "✅ return from cache")
+            print("[PropertyInspector]", "♻️", property.value.id, "resolved from cache")
             return cached
         }
         else if let body = createBody(property: property) {
-            print(property.value.id, "🆕 fresh compute")
+            print("[PropertyInspector]", "🆕", property.value.id, "created custom view")
             return body
         }
-        print(property.value.id, "🍁🔙 fallback")
+        print("[PropertyInspector]", "🍁", property.value.id, "created fallback view")
         let fallback = AnyView(fallback())
         cache[property.value.id] = HashableBox(fallback)
         return fallback

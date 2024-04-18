@@ -22,23 +22,15 @@ import Foundation
 import SwiftUI
 
 struct Header: View {
-    var title: String?
+    var title: LocalizedStringKey
 
     @EnvironmentObject
     private var data: Context
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            if let title {
-                Text(title).bold().font(.title2)
-            }
-
-            TextField(
-                "Search \(data.properties.count) items",
-                text: $data.searchQuery
-            )
-            .frame(maxWidth: .infinity)
-
+            Text(title).bold().font(.title2)
+            
             if #available(iOS 16.0, *) {
                 Toggle(sources: data.allObjects, isOn: \.$isHighlighted) {
                     EmptyView()
