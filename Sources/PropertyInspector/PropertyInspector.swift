@@ -20,33 +20,7 @@
 
 import SwiftUI
 
-/**
- A `PropertyInspector` struct provides a customizable interface for inspecting properties within a SwiftUI view.
-
- The `PropertyInspector` is designed to display detailed information about properties, ideal for debugging purposes, configuration settings, or presenting detailed data about objects in a clear and organized manner. It leverages generics to support various content and styling options, making it a versatile tool for building dynamic and informative user interfaces.
-
- ## Usage
-
- The `PropertyInspector` is typically initialized with a label and a style. The label defines the content that will be displayed, while the style dictates how this content is presented. Below is an example of how to instantiate and use a `PropertyInspector` with a custom style and label:
-
- ```swift
- struct ContentView: View {
-     var body: some View {
-         PropertyInspector("User Details", label: {
-             VStack(alignment: .leading) {
-                 Text("Username: user123")
-                 Text("Status: Active")
-             }
-         })
-     }
- }
- ```
-
- - Note: The `PropertyInspector` is a generic struct that requires specifying a view type for its label and a style type. It does not manage state internally but relies on the surrounding environment to provide and manage the data it displays.
-
- - seeAlso: ``inspectProperty(_:function:line:file:)``, ``propertyInspectorHidden()``, and ``inspectSelf(function:line:file:)``
- */
-public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: View {
+public extension PropertyInspector {
     /**
      Initializes property inspector presented as a sheet with minimal styling.
 
@@ -75,8 +49,8 @@ public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: Vi
      - seeAlso: ``PropertyInspector/init(_:isPresented:listStyle:listRowBackground:label:)`` for more customized sheet styles.
     */
     @available(iOS 16.4, *)
-    public init(
-        _ title: String? = nil,
+    init(
+        _ title: LocalizedStringKey? = nil,
         isPresented: Binding<Bool>,
         @ViewBuilder label: () -> Label
     ) where Style == SheetPropertyInspectorStyle<PlainListStyle, Color> {
@@ -119,8 +93,8 @@ public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: Vi
      - seeAlso: ``init(_:isPresented:label:)`` for a simpler, default styling setup, or ``init(_:isPresented:listStyle:listRowBackground:label:)`` for variations with more specific list styles.
      */
     @available(iOS 16.4, *)
-    public init<L: ListStyle>(
-        _ title: String? = nil,
+    init<L: ListStyle>(
+        _ title: LocalizedStringKey? = nil,
         isPresented: Binding<Bool>,
         listStyle: L,
         listRowBackground: Color? = nil,
@@ -158,8 +132,8 @@ public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: Vi
 
      - seeAlso: ``init(_:isPresented:listStyle:listRowBackground:label:)`` for a version of this initializer that supports modal presentation with `isPresented` binding.
      */
-    public init<L: ListStyle>(
-        _ title: String? = nil,
+    init<L: ListStyle>(
+        _ title: LocalizedStringKey? = nil,
         listStyle: L,
         listRowBackground: Color? = nil,
         @ViewBuilder label: () -> Label
@@ -196,8 +170,8 @@ public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: Vi
 
      - seeAlso: ``init(_:isPresented:listStyle:listRowBackground:label:)`` for a version of this initializer that supports modal presentation with `isPresented` binding.
      */
-    public init<L: ListStyle, B: View>(
-        _ title: String? = nil,
+    init<L: ListStyle, B: View>(
+        _ title: LocalizedStringKey? = nil,
         listStyle: L,
         listRowBackground: B,
         @ViewBuilder label: () -> Label
@@ -236,14 +210,40 @@ public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: Vi
 
      - seeAlso: ``init(_:isPresented:listStyle:listRowBackground:label:)`` for modal presentation styles, or  ``init(_:listStyle:listRowBackground:label:)-87xpv`` for list-based styles with more extensive customization options.
      */
-    public init(
-        _ title: String? = nil,
-        @ViewBuilder label: () -> Label
-    ) where Style == InlinePropertyInspectorStyle {
+    init(@ViewBuilder label: () -> Label) where Style == InlinePropertyInspectorStyle {
         self.label = label()
-        self.style = InlinePropertyInspectorStyle(title: title)
+        self.style = InlinePropertyInspectorStyle()
     }
 
+}
+
+/**
+ A `PropertyInspector` struct provides a customizable interface for inspecting properties within a SwiftUI view.
+
+ The `PropertyInspector` is designed to display detailed information about properties, ideal for debugging purposes, configuration settings, or presenting detailed data about objects in a clear and organized manner. It leverages generics to support various content and styling options, making it a versatile tool for building dynamic and informative user interfaces.
+
+ ## Usage
+
+ The `PropertyInspector` is typically initialized with a label and a style. The label defines the content that will be displayed, while the style dictates how this content is presented. Below is an example of how to instantiate and use a `PropertyInspector` with a custom style and label:
+
+ ```swift
+ struct ContentView: View {
+     var body: some View {
+         PropertyInspector("User Details", label: {
+             VStack(alignment: .leading) {
+                 Text("Username: user123")
+                 Text("Status: Active")
+             }
+         })
+     }
+ }
+ ```
+
+ - Note: The `PropertyInspector` is a generic struct that requires specifying a view type for its label and a style type. It does not manage state internally but relies on the surrounding environment to provide and manage the data it displays.
+
+ - seeAlso: ``inspectProperty(_:function:line:file:)``, ``propertyInspectorHidden()``, and ``inspectSelf(function:line:file:)``
+ */
+public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: View {
     var label: Label
 
     var style: Style
@@ -251,9 +251,9 @@ public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: Vi
     public var body: some View {
         // Do not change the following order:
         label
-            // 1. content modifiers
+            // 1. content
             .modifier(style)
-            // 2. data modifiers
+            // 2. data
             .modifier(ContextModifier())
     }
 }
