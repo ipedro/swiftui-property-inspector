@@ -38,10 +38,19 @@ final class Context: ObservableObject {
     var detailRegistry = PropertyViewBuilderRegistry()
 
     var properties: [Property] {
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        var query = searchQuery
+        if query.isEmpty { return allObjects }
+        query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard query.count > 1 else { return allObjects }
         return allObjects.filter {
-            String(describing: $0).localizedCaseInsensitiveContains(query)
+            if $0.stringValue.localizedCaseInsensitiveContains(query) {
+                return true
+            }
+            if $0.stringValueType.localizedStandardContains(query) {
+                return true
+            }
+
+            return $0.location.description.localizedStandardContains(query)
         }
     }
 }
