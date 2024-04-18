@@ -23,7 +23,7 @@ import SwiftUI
 
 /// `Property` encapsulates details about a specific property within a view or model, including its value, display metadata, and location.
 /// This struct is intended for internal use within the ``PropertyInspector`` framework to track and manage property information dynamically.
-struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
+struct Property: Identifiable, Comparable, Hashable {
     struct ID: Hashable {
         private let id = UUID()
     }
@@ -45,11 +45,6 @@ struct Property: Identifiable, Comparable, CustomStringConvertible, Hashable {
 
     /// A computed string that provides a sortable representation of the property based on its location and index.
     private let sortString: String
-
-    /// Returns a string representation of the property used for sorting purposes.
-    var description: String {
-        sortString
-    }
 
     /// Returns the type of the value as a string, useful for dynamic type checks or displays.
     var stringValueType: String {
