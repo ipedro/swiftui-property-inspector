@@ -40,7 +40,6 @@ struct Row: View {
             )
             .foregroundStyle(.secondary)
             .symbolRenderingMode(.hierarchical)
-            .drawingGroup()
     }
 
     private func content() -> some View {

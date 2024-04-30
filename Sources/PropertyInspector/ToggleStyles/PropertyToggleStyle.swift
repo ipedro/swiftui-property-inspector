@@ -28,7 +28,9 @@ struct PropertyToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            configuration.isOn.toggle()
+            withAnimation(animation) {
+                configuration.isOn.toggle()
+            }
         } label: {
             HStack(alignment: alignment) {
                 configuration.label
