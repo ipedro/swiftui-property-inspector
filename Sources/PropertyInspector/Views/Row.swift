@@ -21,8 +21,7 @@
 import Foundation
 import SwiftUI
 
-struct Row<ID: Hashable>: View, Equatable {
-    var id: ID
+struct Row: View {
     var hideIcon: Bool
     @Binding var isOn: Bool
     var icon: AnyView
@@ -34,12 +33,14 @@ struct Row<ID: Hashable>: View, Equatable {
     }
 
     var body: some View {
-        Toggle(isOn: $isOn, label: content)
+        Row._printChanges()
+        return Toggle(isOn: $isOn, label: content)
             .toggleStyle(
                 PropertyToggleStyle(alignment: .firstTextBaseline)
             )
             .foregroundStyle(.secondary)
             .symbolRenderingMode(.hierarchical)
+            .drawingGroup()
     }
 
     private func content() -> some View {
@@ -64,9 +65,5 @@ struct Row<ID: Hashable>: View, Equatable {
         }
         .font(.footnote.bold())
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.id == rhs.id
     }
 }

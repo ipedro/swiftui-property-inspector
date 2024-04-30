@@ -25,8 +25,26 @@ struct InspectionModifier: ViewModifier  {
     var data: [Any]
     var location: PropertyLocation
 
+    init(data: [Any], location: PropertyLocation) {
+        self.data = data
+        self.location = location
+        self._ids = State(initialValue: data.map { _ in
+            Property.ID()
+        })
+    }
+
+    @State
+    private var ids: [Property.ID]
+
     @State
     private var createdAt = Date()
+
+    @State
+    private var changes = 0 {
+        didSet {
+            print("[PropertyInspector]", "🆕", String(describing: data), "updated count")
+        }
+    }
 
     @State
     private var _isOn = false
@@ -43,7 +61,8 @@ struct InspectionModifier: ViewModifier  {
     private var disabled
 
     func body(content: Content) -> some View {
-        content.setPreference(
+        InspectionModifier._printChanges()
+        return content.setPreference(
             PropertyPreferenceKey.self, value: Set(properties)
         )
         .modifier(
@@ -54,13 +73,23 @@ struct InspectionModifier: ViewModifier  {
     private var properties: [Property] {
         if disabled { return [] }
 
-        return data.enumerated().map { (index, value) in
+        return data.enumerated().map { (index, element) in
             Property(
-                value: value,
-                isHighlighted: isOn,
+                id: ids[index],
+                value: element,
+                isHighlighted: Binding(
+                    get: {
+                        isOn.wrappedValue
+                    },
+                    set: { newValue in
+                        isOn.wrappedValue = newValue
+                        changes += 1
+                    }
+                ),
                 location: location,
                 index: index,
-                createdAt: createdAt
+                createdAt: createdAt,
+                changes: changes
             )
         }
     }

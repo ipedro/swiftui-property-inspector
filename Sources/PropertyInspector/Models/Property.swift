@@ -29,7 +29,7 @@ struct Property: Identifiable, Comparable, Hashable {
     }
 
     /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
-    let id: ID = ID()
+    let id: ID
 
     /// The value of the property stored as `Any`, allowing it to accept any property type.
     let value: PropertyValue
@@ -42,6 +42,9 @@ struct Property: Identifiable, Comparable, Hashable {
     let location: PropertyLocation
 
     let createdAt: Date
+
+    /// Signal view updates
+    let changeToken: Int
 
     /// A computed string that provides a sortable representation of the property based on its location and index.
     private let sortString: String
@@ -63,16 +66,20 @@ struct Property: Identifiable, Comparable, Hashable {
     ///   - location: The location of the property in the source code.
     ///   - index: An index used to uniquely sort the property when multiple properties share the same location.
     init(
+        id: ID = ID(),
         value: Any,
         isHighlighted: Binding<Bool>,
         location: PropertyLocation,
         index: Int,
-        createdAt: Date
+        createdAt: Date,
+        changes: Int
     ) {
+        self.id = id
         self.value = PropertyValue(value)
         self._isHighlighted = isHighlighted
         self.location = location
         self.createdAt = createdAt
+        self.changeToken = changes
         self.sortString = [
             location.id,
             String(createdAt.timeIntervalSince1970),
@@ -82,7 +89,8 @@ struct Property: Identifiable, Comparable, Hashable {
 
     /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
     static func == (lhs: Property, rhs: Property) -> Bool {
-        lhs.id == rhs.id && lhs.isHighlighted == rhs.isHighlighted
+        lhs.id == rhs.id && 
+        lhs.changeToken == rhs.changeToken
     }
 
     /// Determines if one `Property` should precede another in a sorted list, based on a composite string that includes their location and value.
@@ -93,5 +101,6 @@ struct Property: Identifiable, Comparable, Hashable {
     /// Contributes to the hashability of the property, incorporating its unique identifier into the hash.
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+        hasher.combine(changeToken)
     }
 }

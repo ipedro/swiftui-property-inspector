@@ -32,29 +32,29 @@ struct Rows: View {
     }
 
     var body: some View {
-        if data.properties.isEmpty {
-            Text(emptyMessage)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .multilineTextAlignment(.center)
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: 200
-                )
-        }
-
-        ForEach(data.properties) { property in
+        Rows._printChanges()
+        return ForEach(data.properties) { property in
             Row(
-                id: property.value.id,
                 hideIcon: data.iconRegistry.isEmpty,
                 isOn: property.$isHighlighted,
                 icon:  icon(for: property),
                 label: label(for: property),
                 detail: detail(for: property)
             )
-            .equatable()
+        }
+        .safeAreaInset(edge: .bottom, spacing: .zero) {
+            if data.properties.isEmpty {
+                Text(emptyMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .multilineTextAlignment(.center)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: 200
+                    )
+            }
         }
     }
 
