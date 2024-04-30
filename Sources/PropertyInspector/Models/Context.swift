@@ -18,15 +18,18 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 
-import Foundation
-import SwiftUI
+import Combine
+import UIKit
 
 final class Context: ObservableObject {
-    @Published
-    var allObjects = [Property]()
+    private var cancellables = Set<AnyCancellable>()
 
-    @Published
-    var searchQuery = ""
+    private var _allObjects = [Property]()
+
+    private var _searchQuery = ""
+
+    @Published 
+    var properties = [Property]()
 
     @Published
     var iconRegistry = PropertyViewBuilderRegistry()
@@ -37,20 +40,65 @@ final class Context: ObservableObject {
     @Published
     var detailRegistry = PropertyViewBuilderRegistry()
 
-    var properties: [Property] {
-        var query = searchQuery
-        if query.isEmpty { return allObjects }
-        query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard query.count > 1 else { return allObjects }
-        return allObjects.filter {
-            if $0.stringValue.localizedCaseInsensitiveContains(query) {
+    var allObjects: [Property] {
+        get { _allObjects }
+        set {
+            guard _allObjects != newValue else { return }
+            objectWillChange.send()
+            _allObjects = newValue
+            updateFilteredProperties(searchQuery: _searchQuery, allObjects: newValue)
+        }
+    }
+
+    var searchQuery: String {
+        get { _searchQuery }
+        set {
+            guard _searchQuery != newValue else { return }
+            objectWillChange.send()
+            _searchQuery = newValue
+            updateFilteredProperties(searchQuery: newValue, allObjects: _allObjects)
+        }
+    }
+
+    init() {
+        setupDebouncing()
+    }
+
+    private func setupDebouncing() {
+        Just(_searchQuery)
+            .removeDuplicates()
+            .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
+            .sink(receiveValue: { [unowned self] newValue in
+                self.updateFilteredProperties(
+                    searchQuery: newValue,
+                    allObjects: self._allObjects
+                )
+            })
+            .store(in: &cancellables)
+    }
+
+    private func updateFilteredProperties(searchQuery: String, allObjects: [Property]) {
+        guard !searchQuery.isEmpty else {
+            properties = allObjects
+            return
+        }
+
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard query.count > 1 else {
+            properties = allObjects
+            return
+        }
+
+        properties = allObjects.filter { property in
+            if property.stringValue.localizedCaseInsensitiveContains(query) {
                 return true
             }
-            if $0.stringValueType.localizedStandardContains(query) {
+            if property.stringValueType.localizedStandardContains(query) {
                 return true
             }
 
-            return $0.location.description.localizedStandardContains(query)
+            return property.location.description.localizedStandardContains(query)
         }
     }
 }
+
