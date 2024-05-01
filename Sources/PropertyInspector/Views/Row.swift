@@ -21,48 +21,59 @@
 import Foundation
 import SwiftUI
 
-struct Row: View {
+struct Row<Icon: View, Label: View, Detail: View>: View {
     var hideIcon: Bool
     @Binding var isOn: Bool
-    var icon: AnyView
-    var label: AnyView
-    var detail: AnyView
-
-    private var leading: CGFloat? {
-        hideIcon ? 0 : 25
-    }
-
+    var icon: Icon
+    var label: Label
+    var detail: Detail
+    
     var body: some View {
         Row._printChanges()
         return Toggle(isOn: $isOn, label: content)
             .toggleStyle(
-                PropertyToggleStyle(alignment: .firstTextBaseline)
+                PropertyToggleStyle()
             )
             .foregroundStyle(.secondary)
             .symbolRenderingMode(.hierarchical)
+            .padding(.vertical, 4)
     }
 
     private func content() -> some View {
-        VStack(alignment: .leading) {
-            iconAndLabel
-
-            detail.font(.caption).padding(.leading, leading)
+        VStack(alignment: .leading, spacing: 4) {
+            label.foregroundStyle(.primary)
+            detail.font(.caption)
         }
         .allowsTightening(true)
-        .contentShape(Rectangle())
         .multilineTextAlignment(.leading)
-    }
-
-    private var iconAndLabel: some View {
-        HStack(alignment: .firstTextBaseline, spacing: .zero) {
-            icon.opacity(hideIcon ? 0 : 1).frame(
-                width: leading,
-                alignment: .leading
-            )
-
-            label.foregroundStyle(.primary)
+        .contentShape(Rectangle())
+        .safeAreaInset(edge: .leading, alignment: .firstTextBaseline) {
+            if !hideIcon {
+                icon.scaledToFit().frame(width: 25)
+            }
         }
         .font(.footnote.bold())
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+}
+
+#Preview {
+    Row(
+        hideIcon: false,
+        isOn: .constant(true),
+        icon: Image(systemName: "circle"),
+        label: Text(verbatim: "Some text"),
+        detail: Text(verbatim: "Some detail")
+    )
+}
+
+
+#Preview {
+    Row(
+        hideIcon: true,
+        isOn: .constant(true),
+        icon: Image(systemName: "circle"),
+        label: Text(verbatim: "Some text"),
+        detail: Text(verbatim: "Some detail")
+    )
 }

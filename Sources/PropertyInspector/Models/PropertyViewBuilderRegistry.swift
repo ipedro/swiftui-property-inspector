@@ -61,7 +61,7 @@ struct PropertyViewBuilderRegistry: Hashable {
         return copy
     }
 
-    func makeBody<V: View>(property: Property, @ViewBuilder fallback: () -> V) -> AnyView {
+    func makeBody<V: View>(property: Property, @ViewBuilder fallback: () -> V = EmptyView.init) -> AnyView {
         if let cached = resolveFromCache(property: property) {
             //print("[PropertyInspector]", "♻️", property.stringValue, "resolved from cache")
             return cached

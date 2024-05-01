@@ -23,7 +23,11 @@ import SwiftUI
 
 public extension View {
     /// Inspects the view itself.
-    func inspectSelf(function: String = #function, line: Int = #line, file: String = #file) -> some View {
+    func inspectSelf(
+        function: String = #function,
+        line: Int = #line,
+        file: String = #file
+    ) -> some View {
         inspectProperty(self, function: function, line: line, file: file)
     }
 
@@ -50,7 +54,12 @@ public extension View {
 
      - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(function:line:file:)``
      */
-    func inspectProperty(_ values: Any..., function: String = #function, line: Int = #line, file: String = #file) -> some View {
+    func inspectProperty(
+        _ values: Any...,
+        function: String = #function,
+        line: Int = #line,
+        file: String = #file
+    ) -> some View {
         modifier(
             InspectionModifier(
                 data: values,
@@ -105,7 +114,10 @@ public extension View {
 
      - seeAlso: ``propertyInspectorRowLabel(for:label:)``, ``propertyInspectorRowDetail(for:detail:)``
      */
-    func propertyInspectorRowIcon<D, Icon: View>(for data: D.Type = Any.self, @ViewBuilder icon: @escaping (D) -> Icon) -> some View {
+    func propertyInspectorRowIcon<D, Icon: View>(
+        for data: D.Type = Any.self,
+        @ViewBuilder icon: @escaping (_ data: D) -> Icon
+    ) -> some View {
         setPreference(RowIconPreferenceKey.self, body: icon)
     }
 
@@ -130,7 +142,10 @@ public extension View {
 
      - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowDetail(for:detail:)``
      */
-    func propertyInspectorRowLabel<D, Label: View>(for data: D.Type = Any.self, @ViewBuilder label: @escaping (D) -> Label) -> some View {
+    func propertyInspectorRowLabel<D, Label: View>(
+        for data: D.Type = Any.self,
+        @ViewBuilder label: @escaping (_ data: D) -> Label
+    ) -> some View {
         setPreference(RowLabelPreferenceKey.self, body: label)
     }
 
@@ -155,7 +170,10 @@ public extension View {
 
      - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowLabel(for:label:)``
      */
-    func propertyInspectorRowDetail<D, Detail: View>(for data: D.Type = Any.self, @ViewBuilder detail: @escaping (D) -> Detail) -> some View {
+    func propertyInspectorRowDetail<D, Detail: View>(
+        for data: D.Type = Any.self,
+        @ViewBuilder detail: @escaping (_ data: D) -> Detail
+    ) -> some View {
         setPreference(RowDetailPreferenceKey.self, body: detail)
     }
 }

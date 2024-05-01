@@ -73,9 +73,10 @@ struct Rows: View {
         })
     }
 
-    private func detail(for property: Property) -> AnyView {
-        data.detailRegistry.makeBody(property: property, fallback: {
+    private func detail(for property: Property) -> some View {
+        VStack(alignment: .leading) {
+            data.detailRegistry.makeBody(property: property)
             Text(verbatim: property.location.description)
-        })
+        }
     }
 }

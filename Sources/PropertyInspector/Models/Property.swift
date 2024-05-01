@@ -90,6 +90,7 @@ struct Property: Identifiable, Comparable, Hashable {
     /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
     static func == (lhs: Property, rhs: Property) -> Bool {
         lhs.id == rhs.id && 
+        lhs.stringValue == rhs.stringValue &&
         lhs.changeToken == rhs.changeToken
     }
 
@@ -101,6 +102,7 @@ struct Property: Identifiable, Comparable, Hashable {
     /// Contributes to the hashability of the property, incorporating its unique identifier into the hash.
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+        hasher.combine(stringValue)
         hasher.combine(changeToken)
     }
 }
