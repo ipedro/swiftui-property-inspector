@@ -66,7 +66,7 @@ struct PropertySelector: ViewModifier  {
             PropertyPreferenceKey.self, value: Set(properties)
         )
         .modifier(
-            HighlightModifier(isOn: isOn)
+            PropertyHiglighter(isOn: isOn)
         )
     }
 

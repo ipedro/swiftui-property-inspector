@@ -21,34 +21,29 @@
 import Foundation
 import SwiftUI
 
-struct ContextUpdater: ViewModifier {
+struct ContextWriter: ViewModifier {
     @StateObject
     private var data = Context()
 
     func body(content: Content) -> some View {
-        content
-            .onPreferenceChange(PropertyPreferenceKey.self, perform: { newValue in
-                let uniqueProperties = newValue.sorted()
+        content.onPreferenceChange(PropertyPreferenceKey.self) { newValue in
+            let uniqueProperties = newValue.sorted()
 
-                if data.allObjects != uniqueProperties {
-                    data.allObjects = uniqueProperties
-                }
-            })
-            .onPreferenceChange(RowDetailPreferenceKey.self, perform: { newValue in
-                if data.detailRegistry != newValue {
-                    data.detailRegistry = newValue
-                }
-            })
-            .onPreferenceChange(RowIconPreferenceKey.self, perform: { newValue in
-                if data.iconRegistry != newValue {
-                    data.iconRegistry = newValue
-                }
-            })
-            .onPreferenceChange(RowLabelPreferenceKey.self, perform: { newValue in
-                if data.labelRegistry != newValue {
-                    data.labelRegistry = newValue
-                }
-            })
-            .environmentObject(data)
+            if data.allObjects != uniqueProperties {
+                data.allObjects = uniqueProperties
+            }
+        }.onPreferenceChange(RowDetailPreferenceKey.self) { newValue in
+            if data.detailRegistry != newValue {
+                data.detailRegistry = newValue
+            }
+        }.onPreferenceChange(RowIconPreferenceKey.self) { newValue in
+            if data.iconRegistry != newValue {
+                data.iconRegistry = newValue
+            }
+        }.onPreferenceChange(RowLabelPreferenceKey.self) { newValue in
+            if data.labelRegistry != newValue {
+                data.labelRegistry = newValue
+            }
+        }.environmentObject(data)
     }
 }

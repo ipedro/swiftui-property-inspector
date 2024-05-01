@@ -245,8 +245,8 @@ public extension PropertyInspector {
  */
 public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: View {
     var label: Label
-
     var style: Style
+    var context = ContextWriter()
 
     public var body: some View {
         // Do not change the following order:
@@ -254,7 +254,7 @@ public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: Vi
             // 1. content
             .modifier(style)
             // 2. data
-            .modifier(ContextUpdater())
+            .modifier(context)
     }
 }
 
