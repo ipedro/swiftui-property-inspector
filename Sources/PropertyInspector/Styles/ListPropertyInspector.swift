@@ -55,9 +55,7 @@ public struct ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pro
                         .padding(contentPadding ? .vertical : [])
                         .padding(contentPadding ? .vertical : [])
 
-                    Header(title: title ?? "Inspect")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .multilineTextAlignment(.leading)
+                    Header(data: title)
                 }
             }
         }

@@ -28,25 +28,30 @@ struct Row<Icon: View, Label: View, Detail: View>: View {
     var label: Label
     var detail: Detail
     
+    @Environment(\.labelFont)
+    private var labelFont
+
+    @Environment(\.detailFont)
+    private var detailFont
+
     var body: some View {
         Row._printChanges()
-        return Toggle(isOn: $isOn, label: content)
-            .toggleStyle(
-                PropertyToggleStyle()
-            )
-            .foregroundStyle(.secondary)
-            .symbolRenderingMode(.hierarchical)
-            .padding(.vertical, 4)
+        return Toggle(isOn: $isOn, label: content).toggleStyle(
+            PropertyToggleStyle(impactIntensity: 0.6)
+        )
+        .foregroundStyle(isOn ? .primary : .secondary)
+        .symbolRenderingMode(.hierarchical)
+        .padding(.vertical, 1)
     }
 
     private func content() -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             label.foregroundStyle(.primary)
-            detail.font(.caption)
+            detail.font(detailFont)
         }
-        .transaction({ t in
-            t.animation = nil
-        })
+        .transaction { transaction in
+            transaction.animation = nil
+        }
         .allowsTightening(true)
         .multilineTextAlignment(.leading)
         .contentShape(Rectangle())
@@ -55,9 +60,8 @@ struct Row<Icon: View, Label: View, Detail: View>: View {
                 icon.scaledToFit().frame(width: 25)
             }
         }
-        .font(.footnote.bold())
+        .font(isOn ? labelFont.bold() : labelFont)
     }
-
 }
 
 #Preview {

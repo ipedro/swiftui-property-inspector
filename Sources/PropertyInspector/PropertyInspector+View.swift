@@ -90,7 +90,7 @@ public extension View {
      - seeAlso: ``inspectProperty(_:function:line:file:)``
      */
     func propertyInspectorHidden() -> some View {
-        environment(\.propertyInspectorHidden, true)
+        environment(\.isInspectable, false)
     }
 
     /**
@@ -175,5 +175,28 @@ public extension View {
         @ViewBuilder detail: @escaping (_ data: D) -> Detail
     ) -> some View {
         setPreference(RowDetailPreferenceKey.self, body: detail)
+    }
+
+    /// Modifies the font used for the label text in a property inspector row.
+    ///
+    /// Use this modifier to specify a custom font for the label text within property inspector rows.
+    /// This customization allows for a consistent typographic hierarchy or to emphasize particular content.
+    ///
+    /// - Parameter font: The `Font` to apply to the label text.
+    ///   The default value, used when this modifier is not applied, is `callout`.
+    func propertyInspectorRowLabelFont(_ font: Font) -> some View {
+        environment(\.labelFont, font)
+    }
+
+    /// Modifies the font used for the detail text in a property inspector row.
+    ///
+    /// Apply this modifier to a view to define the appearance of detail text,
+    /// which is typically used for additional information or numeric values associated with a property.
+    /// This modifier helps in maintaining visual consistency or in adjusting readability according to the design requirements.
+    ///
+    /// - Parameter font: The `Font` to use for the detail text.
+    ///   The default value, used when this modifier is not applied, is `caption`.
+    func propertyInspectorRowDetailFont(_ font: Font) -> some View {
+        environment(\.detailFont, font)
     }
 }

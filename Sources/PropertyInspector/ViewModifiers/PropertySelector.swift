@@ -51,14 +51,14 @@ struct PropertySelector: ViewModifier  {
 
     private var isOn: Binding<Bool> {
         Binding {
-            !disabled && _isOn
+            isInspectable && _isOn
         } set: { newValue in
             _isOn = newValue
         }
     }
 
-    @Environment(\.propertyInspectorHidden)
-    private var disabled
+    @Environment(\.isInspectable)
+    private var isInspectable
 
     func body(content: Content) -> some View {
         PropertySelector._printChanges()
@@ -71,7 +71,7 @@ struct PropertySelector: ViewModifier  {
     }
 
     private var properties: [Property] {
-        if disabled { return [] }
+        if !isInspectable { return [] }
 
         return data.enumerated().map { (index, element) in
             Property(

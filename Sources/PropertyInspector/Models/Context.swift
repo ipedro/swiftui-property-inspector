@@ -24,7 +24,7 @@ import UIKit
 final class Context: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
-    private var _allObjects = [Property]()
+    private var _allObjects = Set<Property>()
 
     private var _searchQuery = ""
 
@@ -40,7 +40,7 @@ final class Context: ObservableObject {
     @Published
     var detailRegistry = RowViewBuilderRegistry()
 
-    var allObjects: [Property] {
+    var allObjects: Set<Property> {
         get { _allObjects }
         set {
             guard _allObjects != newValue else { return }
@@ -77,28 +77,25 @@ final class Context: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func updateFilteredProperties(searchQuery: String, allObjects: [Property]) {
+    private func updateFilteredProperties(searchQuery: String, allObjects: Set<Property>) {
         guard !searchQuery.isEmpty else {
-            properties = allObjects
+            properties = allObjects.sorted()
             return
         }
 
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+
         guard query.count > 1 else {
-            properties = allObjects
+            properties = allObjects.sorted()
             return
         }
 
-        properties = allObjects.filter { property in
-            if property.stringValue.localizedCaseInsensitiveContains(query) {
-                return true
-            }
-            if property.stringValueType.localizedStandardContains(query) {
-                return true
-            }
-
-            return property.location.description.localizedStandardContains(query)
+        properties = allObjects.filter {
+            if $0.stringValue.localizedCaseInsensitiveContains(query) { return true }
+            if $0.stringValueType.localizedStandardContains(query) { return true }
+            return $0.location.description.localizedStandardContains(query)
         }
+        .sorted()
     }
 }
 

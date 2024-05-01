@@ -18,34 +18,47 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 
-import Foundation
 import SwiftUI
 
 struct Header: View {
-    var title: LocalizedStringKey
+    var data: LocalizedStringKey
+
+    init?(data: LocalizedStringKey?) {
+        guard let data else { return nil }
+        self.data = data
+    }
 
     @EnvironmentObject
-    private var data: Context
+    private var context: Context
+
+    private var title: some View {
+        Text(data).bold().font(.title3).frame(
+            maxWidth: .infinity,
+            alignment: .leading
+        )
+        .lineLimit(1)
+    }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title).bold().font(.title2)
-            
+        Group {
             if #available(iOS 16.0, *) {
-                Toggle(sources: data.allObjects, isOn: \.$isHighlighted) {
-                    EmptyView()
+                Toggle(sources: context.properties, isOn: \.$isHighlighted) {
+                    title
                 }
                 .toggleStyle(
                     PropertyToggleStyle(alignment: .firstTextBaseline)
                 )
+            } else {
+                title
             }
         }
+        .multilineTextAlignment(.leading)
         .environment(\.textCase, nil)
         .foregroundStyle(.primary)
         .tint(.primary)
         .padding(
             EdgeInsets(
-                top: 16,
+                top: 10,
                 leading: 0,
                 bottom: 8,
                 trailing: 0

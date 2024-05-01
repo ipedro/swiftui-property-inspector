@@ -84,7 +84,7 @@ public struct SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
     var listRowBackground: RowBackground?
 
     @EnvironmentObject
-    private var data: Context
+    private var context: Context
     
     @AppStorage("HighlightBehavior")
     private var highlight = PropertyInspectorHighlightBehavior.manual
@@ -137,7 +137,7 @@ public struct SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
         default: return
         }
 
-        data.allObjects.forEach { property in
+        context.allObjects.forEach { property in
             property.isHighlighted = newValue
         }
     }

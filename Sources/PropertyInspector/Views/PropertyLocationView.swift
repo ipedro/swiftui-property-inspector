@@ -18,30 +18,32 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 
-import Foundation
 import SwiftUI
 
-struct ContextWriter: ViewModifier {
-    @StateObject
-    private var data = Context()
+struct PropertyLocationView: View {
+    var data: PropertyLocation
 
-    func body(content: Content) -> some View {
-        content.onPreferenceChange(PropertyPreferenceKey.self) { newValue in
-            if data.allObjects != newValue {
-                data.allObjects = newValue
-            }
-        }.onPreferenceChange(RowDetailPreferenceKey.self) { newValue in
-            if data.detailRegistry != newValue {
-                data.detailRegistry = newValue
-            }
-        }.onPreferenceChange(RowIconPreferenceKey.self) { newValue in
-            if data.iconRegistry != newValue {
-                data.iconRegistry = newValue
-            }
-        }.onPreferenceChange(RowLabelPreferenceKey.self) { newValue in
-            if data.labelRegistry != newValue {
-                data.labelRegistry = newValue
-            }
-        }.environmentObject(data)
+    var body: some View {
+        text
+            .lineLimit(1)
+            .truncationMode(.head)
+            .foregroundStyle(.secondary)
+    }
+
+    var text: some View {
+        Text(verbatim: data.function) +
+        Text(verbatim: " — ").bold().ios17_quinaryForegroundStyle() +
+        Text(verbatim: data.description)
+    }
+}
+
+private extension Text {
+    func ios17_quinaryForegroundStyle() -> Text {
+        if #available(iOS 17.0, *) {
+            self.foregroundStyle(.quinary)
+        } else {
+            // Fallback on earlier versions
+            self
+        }
     }
 }

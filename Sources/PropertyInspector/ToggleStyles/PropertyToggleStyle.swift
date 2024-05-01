@@ -23,30 +23,65 @@ import SwiftUI
 
 struct PropertyToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
-    var animation: Animation? = .interactiveSpring
+    var animation: Animation? = .snappy
+    var impact: UIImpactFeedbackGenerator = .init(style: .light)
+    var impactIntensity: CGFloat = 1.0
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            impact.impactOccurred(intensity: impactIntensity)
             withAnimation(animation) {
                 configuration.isOn.toggle()
             }
         } label: {
             HStack(alignment: alignment) {
                 configuration.label
+
                 Spacer()
-                Image(systemName: imageName(configuration)).font(.body)
+                
+                Image(systemName: imageName(configuration._state))
+                    .font(.headline)
+                    .ios17_interpolateSymbolEffect(value: configuration._state)
             }
+            .animation(animation, value: configuration._state)
         }
     }
 
-    private func imageName(_ configuration: Configuration) -> String {
-        if #available(iOS 16.0, *), configuration.isMixed {
-            return "minus.circle.fill"
+    private func imageName(_ state: Configuration._State) -> String {
+        switch state {
+        case .mixed: "minus.circle.fill"
+        case .on: "checkmark.circle.fill"
+        case .off: "circle"
         }
-        if configuration.isOn {
-            return "checkmark.circle.fill"
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func ios17_interpolateSymbolEffect<V: Equatable>(value: V) -> some View {
+        if #available(iOS 17.0, *) {
+            self.symbolEffect(
+                .bounce.byLayer.down,
+                options: .speed(1.5),
+                value: value
+            )
+        } else if #available(iOS 16.0, *) {
+            // Fallback on earlier versions
+            self.contentTransition(.interpolate)
+        } else {
+            self
         }
-        return "circle"
+    }
+}
+
+extension ToggleStyleConfiguration {
+    enum _State {
+        case off, mixed, on
+    }
+
+    var _state: _State {
+        if #available(iOS 16.0, *), isMixed { return .mixed }
+        if isOn { return .on }
+        return .off
     }
 }

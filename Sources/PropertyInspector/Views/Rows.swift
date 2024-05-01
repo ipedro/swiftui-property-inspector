@@ -42,7 +42,6 @@ struct Rows: View {
                 detail: detail(for: property)
             )
         }
-        .animation(.interactiveSpring, value: data.properties)
         .safeAreaInset(edge: .bottom, spacing: .zero) {
             if data.properties.isEmpty {
                 Text(emptyMessage)
