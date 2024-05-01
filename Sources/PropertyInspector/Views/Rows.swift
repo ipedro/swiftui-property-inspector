@@ -23,19 +23,19 @@ import SwiftUI
 
 struct Rows: View {
     @EnvironmentObject
-    private var data: Context
+    private var context: Context.Data
 
     private var emptyMessage: String {
-        data.searchQuery.isEmpty ?
+        context.searchQuery.isEmpty ?
         "Empty" :
-        "No results for '\(data.searchQuery)'"
+        "No results for '\(context.searchQuery)'"
     }
 
     var body: some View {
         Rows._printChanges()
-        return ForEach(data.properties) { property in
+        return ForEach(context.properties) { property in
             Row(
-                hideIcon: data.iconRegistry.isEmpty,
+                hideIcon: context.iconRegistry.isEmpty,
                 isOn: property.$isHighlighted,
                 icon:  icon(for: property),
                 label: label(for: property),
@@ -43,7 +43,7 @@ struct Rows: View {
             )
         }
         .safeAreaInset(edge: .bottom, spacing: .zero) {
-            if data.properties.isEmpty {
+            if context.properties.isEmpty {
                 Text(emptyMessage)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -59,22 +59,22 @@ struct Rows: View {
     }
 
     private func icon(for property: Property) -> AnyView {
-        data.iconRegistry.makeBody(property: property, fallback: {
-            if !data.iconRegistry.isEmpty {
+        context.iconRegistry.makeBody(property: property, fallback: {
+            if !context.iconRegistry.isEmpty {
                 Image(systemName: "info.circle.fill")
             }
         })
     }
 
     private func label(for property: Property) -> AnyView {
-        data.labelRegistry.makeBody(property: property, fallback: {
+        context.labelRegistry.makeBody(property: property, fallback: {
             Text(verbatim: property.stringValue)
         })
     }
 
     private func detail(for property: Property) -> some View {
         VStack(alignment: .leading) {
-            data.detailRegistry.makeBody(property: property)
+            context.detailRegistry.makeBody(property: property)
             Text(verbatim: property.location.description)
         }
     }

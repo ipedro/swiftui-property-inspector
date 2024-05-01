@@ -29,7 +29,7 @@ struct Header: View {
     }
 
     @EnvironmentObject
-    private var context: Context
+    private var context: Context.Data
 
     private var title: some View {
         Text(data).bold().font(.title3).frame(

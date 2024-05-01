@@ -84,7 +84,7 @@ public struct SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
     var listRowBackground: RowBackground?
 
     @EnvironmentObject
-    private var context: Context
+    private var context: Context.Data
     
     @AppStorage("HighlightBehavior")
     private var highlight = PropertyInspectorHighlightBehavior.manual

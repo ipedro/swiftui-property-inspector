@@ -21,9 +21,9 @@
 import Foundation
 import SwiftUI
 
-struct ContextWriter: ViewModifier {
+struct Context: ViewModifier {
     @StateObject
-    private var data = Context()
+    private var data = Data()
 
     func body(content: Content) -> some View {
         content.onPreferenceChange(PropertyPreferenceKey.self) { newValue in
