@@ -21,25 +21,43 @@
 import Foundation
 import SwiftUI
 
-extension View {
-    func setPreference<K: PreferenceKey>(_ key: K.Type, value: K.Value) -> some View {
-        modifier(PreferenceKeyWritingModifier<K>(value: value))
+struct RowViewBuilder: Hashable, Identifiable {
+    struct ID: Hashable {
+        let typeID: ObjectIdentifier
+        let type: Any.Type
+
+        init<D>(_ data: D.Type = D.self) {
+            self.typeID = ObjectIdentifier(data)
+            self.type = data
+        }
+
+        static func == (lhs: RowViewBuilder.ID, rhs: RowViewBuilder.ID) -> Bool {
+            lhs.typeID == rhs.typeID
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(typeID)
+        }
     }
 
-    func setPreference<K: PreferenceKey, D, C: View>(_ key: K.Type, @ViewBuilder body: @escaping (D) -> C) -> some View where K.Value == PropertyViewBuilderRegistry {
-        let builder = PropertyViewBuilder(body: body)
-        return modifier(
-            PreferenceKeyWritingModifier<K>(value: PropertyViewBuilderRegistry(builder))
-        )
+    let id: ID
+    let body: (Property) -> AnyView?
+
+    init<D, C: View>(@ViewBuilder body: @escaping (D) -> C) {
+        self.id = ID(D.self)
+        self.body = { property in
+            guard let castedValue = property.value.rawValue as? D else {
+                return nil
+            }
+            return AnyView(body(castedValue))
+        }
     }
-}
 
-struct PreferenceKeyWritingModifier<K: PreferenceKey>: ViewModifier {
-    let value: K.Value
+    static func == (lhs: RowViewBuilder, rhs: RowViewBuilder) -> Bool {
+        lhs.id == rhs.id
+    }
 
-    func body(content: Content) -> some View {
-        content.background(
-            Spacer().preference(key: K.self, value: value)
-        )
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }

@@ -32,7 +32,7 @@ public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
 // MARK: - Sheet Style
 
 /**
- `SheetPropertyInspectorStyle` provides a SwiftUI view modifier that applies a sheet-style presentation to property inspectors.
+ `SheetPropertyInspector` provides a SwiftUI view modifier that applies a sheet-style presentation to property inspectors.
 
  This style organizes properties within a customizable list, using specified list styles and row backgrounds, making it ideal for detailed inspections in a modal sheet format.
 
@@ -46,7 +46,7 @@ public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
 
  ## Usage
 
- You don't instantiate `SheetPropertyInspectorStyle` directly, instead use one of the convenience initializers in ``PropertyInspector``. 
+ You don't instantiate `SheetPropertyInspector` directly, instead use one of the convenience initializers in ``PropertyInspector``. 
  Here’s how you might configure and present a property inspector with a sheet style:
 
  ```swift
@@ -70,10 +70,10 @@ public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
 
  - Note: Requires iOS 16.4 or newer due to specific SwiftUI features utilized.
 
- - seeAlso: ``ListPropertyInspectorStyle`` and ``InlinePropertyInspectorStyle``.
+ - seeAlso: ``ListPropertyInspector`` and ``InlinePropertyInspector``.
  */
 @available(iOS 16.4, *)
-public struct SheetPropertyInspectorStyle<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
+public struct SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
     var title: LocalizedStringKey?
 
     @Binding
@@ -112,7 +112,7 @@ public struct SheetPropertyInspectorStyle<Style: ListStyle, RowBackground: View>
                     isPresented: $isPresented,
                     height: $contentHeight,
                     label: EmptyView().modifier(
-                        ListPropertyInspectorStyle(
+                        ListPropertyInspector(
                             title: title,
                             listStyle: listStyle,
                             listRowBackground: listRowBackground,

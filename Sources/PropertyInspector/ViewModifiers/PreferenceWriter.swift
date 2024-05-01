@@ -21,43 +21,25 @@
 import Foundation
 import SwiftUI
 
-struct PropertyViewBuilder: Hashable, Identifiable {
-    struct ID: Hashable {
-        let typeID: ObjectIdentifier
-        let type: Any.Type
-
-        init<D>(_ data: D.Type = D.self) {
-            self.typeID = ObjectIdentifier(data)
-            self.type = data
-        }
-
-        static func == (lhs: PropertyViewBuilder.ID, rhs: PropertyViewBuilder.ID) -> Bool {
-            lhs.typeID == rhs.typeID
-        }
-
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(typeID)
-        }
+extension View {
+    func setPreference<K: PreferenceKey>(_ key: K.Type, value: K.Value) -> some View {
+        modifier(PreferenceWriter<K>(value: value))
     }
 
-    let id: ID
-    let body: (Property) -> AnyView?
-
-    init<D, C: View>(@ViewBuilder body: @escaping (D) -> C) {
-        self.id = ID(D.self)
-        self.body = { property in
-            guard let castedValue = property.value.rawValue as? D else {
-                return nil
-            }
-            return AnyView(body(castedValue))
-        }
+    func setPreference<K: PreferenceKey, D, C: View>(_ key: K.Type, @ViewBuilder body: @escaping (D) -> C) -> some View where K.Value == RowViewBuilderRegistry {
+        let builder = RowViewBuilder(body: body)
+        return modifier(
+            PreferenceWriter<K>(value: RowViewBuilderRegistry(builder))
+        )
     }
+}
 
-    static func == (lhs: PropertyViewBuilder, rhs: PropertyViewBuilder) -> Bool {
-        lhs.id == rhs.id
-    }
+struct PreferenceWriter<K: PreferenceKey>: ViewModifier {
+    let value: K.Value
 
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+    func body(content: Content) -> some View {
+        content.background(
+            Spacer().preference(key: K.self, value: value)
+        )
     }
 }

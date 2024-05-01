@@ -21,7 +21,7 @@
 import Foundation
 import SwiftUI
 
-struct ContextModifier: ViewModifier {
+struct ContextUpdater: ViewModifier {
     @StateObject
     private var data = Context()
 

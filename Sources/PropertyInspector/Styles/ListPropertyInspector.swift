@@ -4,7 +4,7 @@ import SwiftUI
 // MARK: - List Style
 
 /**
- `ListPropertyInspectorStyle` provides a SwiftUI view modifier that applies a list-style presentation to property inspectors.
+ `ListPropertyInspector` provides a SwiftUI view modifier that applies a list-style presentation to property inspectors.
 
  This style organizes properties into a list, using specified list styles and row backgrounds, suitable for inspections within a non-modal, integrated list environment.
 
@@ -18,7 +18,7 @@ import SwiftUI
 
  ## Usage
 
- You don't instantiate `ListPropertyInspectorStyle` directly. Instead, use it when initializing your ``PropertyInspector`` to apply a list-style layout. Here's an example configuration:
+ You don't instantiate `ListPropertyInspector` directly. Instead, use it when initializing your ``PropertyInspector`` to apply a list-style layout. Here's an example configuration:
 
  ```swift
  var body: some View {
@@ -36,9 +36,9 @@ import SwiftUI
 
  Utilizing complex views as `listRowBackground` may impact performance, especially with very long lists.
 
- - seeAlso: ``SheetPropertyInspectorStyle`` and ``InlinePropertyInspectorStyle``
+ - seeAlso: ``SheetPropertyInspector`` and ``InlinePropertyInspector``
 */
-public struct ListPropertyInspectorStyle<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
+public struct ListPropertyInspector<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
     var title: LocalizedStringKey?
     var listStyle: Style
     var listRowBackground: RowBackground?

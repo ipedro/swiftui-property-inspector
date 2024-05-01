@@ -61,7 +61,7 @@ public extension View {
         file: String = #file
     ) -> some View {
         modifier(
-            InspectionModifier(
+            PropertySelector(
                 data: values,
                 location: .init(
                     function: function,

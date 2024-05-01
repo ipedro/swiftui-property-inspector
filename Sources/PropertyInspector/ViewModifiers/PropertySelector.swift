@@ -21,7 +21,7 @@
 import Foundation
 import SwiftUI
 
-struct InspectionModifier: ViewModifier  {
+struct PropertySelector: ViewModifier  {
     var data: [Any]
     var location: PropertyLocation
 
@@ -61,7 +61,7 @@ struct InspectionModifier: ViewModifier  {
     private var disabled
 
     func body(content: Content) -> some View {
-        InspectionModifier._printChanges()
+        PropertySelector._printChanges()
         return content.setPreference(
             PropertyPreferenceKey.self, value: Set(properties)
         )

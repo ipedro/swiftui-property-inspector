@@ -32,13 +32,13 @@ final class Context: ObservableObject {
     var properties = [Property]()
 
     @Published
-    var iconRegistry = PropertyViewBuilderRegistry()
+    var iconRegistry = RowViewBuilderRegistry()
 
     @Published
-    var labelRegistry = PropertyViewBuilderRegistry()
+    var labelRegistry = RowViewBuilderRegistry()
 
     @Published
-    var detailRegistry = PropertyViewBuilderRegistry()
+    var detailRegistry = RowViewBuilderRegistry()
 
     var allObjects: [Property] {
         get { _allObjects }

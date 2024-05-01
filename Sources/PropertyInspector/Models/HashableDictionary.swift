@@ -20,8 +20,8 @@
 
 import Foundation
 
-final class Cache<Key: Hashable, Value: Hashable>: Hashable  {
-    static func == (lhs: Cache<Key, Value>, rhs: Cache<Key, Value>) -> Bool {
+final class HashableDictionary<Key: Hashable, Value: Hashable>: Hashable  {
+    static func == (lhs: HashableDictionary<Key, Value>, rhs: HashableDictionary<Key, Value>) -> Bool {
         lhs.data == rhs.data
     }
 
