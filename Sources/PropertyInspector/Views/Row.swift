@@ -44,6 +44,9 @@ struct Row<Icon: View, Label: View, Detail: View>: View {
             label.foregroundStyle(.primary)
             detail.font(.caption)
         }
+        .transaction({ t in
+            t.animation = nil
+        })
         .allowsTightening(true)
         .multilineTextAlignment(.leading)
         .contentShape(Rectangle())
