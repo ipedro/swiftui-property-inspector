@@ -42,7 +42,7 @@ struct PropertySelector: ViewModifier  {
     @State
     private var changes = 0 {
         didSet {
-            print("[PropertyInspector]", "🆕", String(describing: data), "updated count")
+            debugPrint("[PropertyInspector]", "🆕", String(describing: data), "updated count")
         }
     }
 

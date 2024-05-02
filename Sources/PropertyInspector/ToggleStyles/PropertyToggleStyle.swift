@@ -23,7 +23,7 @@ import SwiftUI
 
 struct PropertyToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
-    var animation: Animation? = .snappy
+    var animation: Animation? = .snappy(duration: 0.3)
     var impact: UIImpactFeedbackGenerator = .init(style: .light)
     var impactIntensity: CGFloat = 1.0
 
@@ -41,6 +41,7 @@ struct PropertyToggleStyle: ToggleStyle {
                 
                 Image(systemName: imageName(configuration._state))
                     .font(.headline)
+                    .symbolRenderingMode(.multicolor)
                     .ios17_interpolateSymbolEffect(value: configuration._state)
             }
             .animation(animation, value: configuration._state)
@@ -49,9 +50,9 @@ struct PropertyToggleStyle: ToggleStyle {
 
     private func imageName(_ state: Configuration._State) -> String {
         switch state {
-        case .mixed: "minus.circle.fill"
-        case .on: "checkmark.circle.fill"
-        case .off: "circle"
+        case .mixed: "checkmark.circle"
+        case .on:    "checkmark.circle.fill"
+        case .off:   "circle"
         }
     }
 }
@@ -60,7 +61,7 @@ private extension View {
     @ViewBuilder
     func ios17_interpolateSymbolEffect<V: Equatable>(value: V) -> some View {
         if #available(iOS 17.0, *) {
-            self.symbolEffect(
+            self.contentTransition(.interpolate).symbolEffect(
                 .bounce.byLayer.down,
                 options: .speed(1.5),
                 value: value

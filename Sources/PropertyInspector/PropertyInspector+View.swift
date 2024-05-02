@@ -185,7 +185,7 @@ public extension View {
     /// - Parameter font: The `Font` to apply to the label text.
     ///   The default value, used when this modifier is not applied, is `callout`.
     func propertyInspectorRowLabelFont(_ font: Font) -> some View {
-        environment(\.labelFont, font)
+        environment(\.rowLabelFont, font)
     }
 
     /// Modifies the font used for the detail text in a property inspector row.
@@ -197,6 +197,6 @@ public extension View {
     /// - Parameter font: The `Font` to use for the detail text.
     ///   The default value, used when this modifier is not applied, is `caption`.
     func propertyInspectorRowDetailFont(_ font: Font) -> some View {
-        environment(\.detailFont, font)
+        environment(\.rowDetailFont, font)
     }
 }

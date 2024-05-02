@@ -34,12 +34,12 @@ struct RowLabelFontKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    var detailFont: Font {
+    var rowDetailFont: Font {
         get { self[RowDetailFontKey.self] }
         set { self[RowDetailFontKey.self] = newValue }
     }
     
-    var labelFont: Font {
+    var rowLabelFont: Font {
         get { self[RowLabelFontKey.self] }
         set { self[RowLabelFontKey.self] = newValue }
     }

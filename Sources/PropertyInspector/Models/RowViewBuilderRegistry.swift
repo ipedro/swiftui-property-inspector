@@ -61,19 +61,16 @@ struct RowViewBuilderRegistry: Hashable {
         return copy
     }
 
-    func makeBody<V: View>(property: Property, @ViewBuilder fallback: () -> V = EmptyView.init) -> AnyView {
+    func makeBody(property: Property) -> AnyView? {
         if let cached = resolveFromCache(property: property) {
-            //print("[PropertyInspector]", "♻️", property.stringValue, "resolved from cache")
+            debugPrint("[PropertyInspector]", "♻️", property.stringValue, "resolved from cache")
             return cached
         }
         else if let body = createBody(property: property) {
-            //print("[PropertyInspector]", "🆕", property.stringValue, "created custom view")
+            debugPrint("[PropertyInspector]", "🆕", property.stringValue, "created new view")
             return body
         }
-        //print("[PropertyInspector]", "🍁", property.stringValue, "created fallback view")
-        let fallback = AnyView(fallback())
-        cache[property.value.id] = HashableBox(fallback)
-        return fallback
+        return nil
     }
 
     private func resolveFromCache(property: Property) -> AnyView? {
@@ -95,7 +92,7 @@ struct RowViewBuilderRegistry: Hashable {
 
         if matches.keys.count > 1 {
             let matchingTypes = matches.keys.map({ String(describing: $0.type) })
-            print(
+            debugPrint(
                 "[PropertyInspector]",
                 "⚠️ Warning:",
                 "Undefined behavior.",

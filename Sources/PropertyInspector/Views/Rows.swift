@@ -35,12 +35,13 @@ struct Rows: View {
         Rows._printChanges()
         return ForEach(context.properties) { property in
             Row(
-                hideIcon: context.iconRegistry.isEmpty,
                 isOn: property.$isHighlighted,
+                hideIcon: context.iconRegistry.isEmpty,
                 icon:  icon(for: property),
                 label: label(for: property),
                 detail: detail(for: property)
             )
+            .equatable()
         }
         .safeAreaInset(edge: .bottom, spacing: .zero) {
             if context.properties.isEmpty {
@@ -58,20 +59,25 @@ struct Rows: View {
         }
     }
 
-    private func icon(for property: Property) -> AnyView {
-        context.iconRegistry.makeBody(property: property, fallback: {
-            if !context.iconRegistry.isEmpty {
-                Image(systemName: "info.circle.fill")
-            }
-        })
+    @ViewBuilder
+    private func icon(for property: Property) -> some View {
+        if let icon = context.iconRegistry.makeBody(property: property) {
+            icon
+        } else if !context.iconRegistry.isEmpty {
+            Image(systemName: "info.circle.fill")
+        }
     }
 
-    private func label(for property: Property) -> AnyView {
-        context.labelRegistry.makeBody(property: property, fallback: {
+    @ViewBuilder
+    private func label(for property: Property) -> some View {
+        if let label = context.labelRegistry.makeBody(property: property) {
+            label
+        } else {
             Text(verbatim: property.stringValue)
-        })
+        }
     }
 
+    @ViewBuilder
     private func detail(for property: Property) -> some View {
         VStack(alignment: .leading) {
             context.detailRegistry.makeBody(property: property)

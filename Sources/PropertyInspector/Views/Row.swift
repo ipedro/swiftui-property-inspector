@@ -21,17 +21,22 @@
 import Foundation
 import SwiftUI
 
-struct Row<Icon: View, Label: View, Detail: View>: View {
+struct Row<Icon: View, Label: View, Detail: View>: View, Equatable {
+    static func == (lhs: Row<Icon, Label, Detail>, rhs: Row<Icon, Label, Detail>) -> Bool {
+        lhs.isOn == rhs.isOn
+    }
+
+    @Binding
+    var isOn: Bool
     var hideIcon: Bool
-    @Binding var isOn: Bool
     var icon: Icon
     var label: Label
     var detail: Detail
     
-    @Environment(\.labelFont)
+    @Environment(\.rowLabelFont)
     private var labelFont
 
-    @Environment(\.detailFont)
+    @Environment(\.rowDetailFont)
     private var detailFont
 
     var body: some View {
@@ -42,6 +47,9 @@ struct Row<Icon: View, Label: View, Detail: View>: View {
         .foregroundStyle(isOn ? .primary : .secondary)
         .symbolRenderingMode(.hierarchical)
         .padding(.vertical, 1)
+        .listRowBackground(
+            Rectangle().fill(.background.opacity(isOn ? 0.5 : 0))
+        )
     }
 
     private func content() -> some View {
@@ -49,9 +57,7 @@ struct Row<Icon: View, Label: View, Detail: View>: View {
             label.foregroundStyle(.primary)
             detail.font(detailFont)
         }
-        .transaction { transaction in
-            transaction.animation = nil
-        }
+        .ios16_opacityContentTransition()
         .allowsTightening(true)
         .multilineTextAlignment(.leading)
         .contentShape(Rectangle())
@@ -60,14 +66,29 @@ struct Row<Icon: View, Label: View, Detail: View>: View {
                 icon.scaledToFit().frame(width: 25)
             }
         }
-        .font(isOn ? labelFont.bold() : labelFont)
+        .font(labelFont)
+    }
+}
+
+
+private extension View {
+    @ViewBuilder
+    func ios16_opacityContentTransition() -> some View {
+        if #available(iOS 16.0, *) {
+            contentTransition(.opacity)
+        } else {
+            // Fallback on earlier versions
+            transaction { transaction in
+                transaction.animation = nil
+            }
+        }
     }
 }
 
 #Preview {
     Row(
-        hideIcon: false,
         isOn: .constant(true),
+        hideIcon: false,
         icon: Image(systemName: "circle"),
         label: Text(verbatim: "Some text"),
         detail: Text(verbatim: "Some detail")
@@ -77,8 +98,8 @@ struct Row<Icon: View, Label: View, Detail: View>: View {
 
 #Preview {
     Row(
-        hideIcon: true,
         isOn: .constant(true),
+        hideIcon: true,
         icon: Image(systemName: "circle"),
         label: Text(verbatim: "Some text"),
         detail: Text(verbatim: "Some detail")
