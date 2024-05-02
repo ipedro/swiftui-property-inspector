@@ -52,11 +52,13 @@ public struct ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pro
                 VStack(spacing: .zero) {
                     content
                         .environment(\.textCase, nil)
+                        .environment(\.font, nil)
                         .padding(contentPadding ? .vertical : [])
                         .padding(contentPadding ? .vertical : [])
 
                     Header(data: title)
                 }
+                .frame(maxWidth: .infinity)
             }
         }
         .listStyle(listStyle)
