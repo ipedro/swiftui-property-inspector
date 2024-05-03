@@ -21,7 +21,7 @@
 import Foundation
 
 extension Property {
-    struct ID {
+    final class ID {
         private let _uuid = UUID()
 
         /// The location of the property within the source code, provided for better traceability and debugging.

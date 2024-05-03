@@ -23,7 +23,7 @@ import SwiftUI
 
 /// `Property` encapsulates details about a specific property within a view or model, including its value, display metadata, and location.
 /// This struct is intended for internal use within the ``PropertyInspector`` framework to track and manage property information dynamically.
-struct Property: Identifiable, Comparable, Hashable {
+final class Property: Identifiable, Comparable, Hashable {
     /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
     let id: ID
 

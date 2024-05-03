@@ -22,21 +22,21 @@ import Foundation
 
 /// `PropertyLocation` provides detailed information about the source location of a property within the code.
 /// This includes the function, file, and line number where the property is used or modified, which is particularly useful for debugging and logging purposes.
-public struct PropertyLocation: Identifiable, Comparable, CustomStringConvertible {
+final class PropertyLocation: Identifiable, Comparable, CustomStringConvertible {
     /// A unique identifier for the location, composed of the file path, line number, and function name.
-    public let id: String
+    let id: String
 
     /// The name of the function where the location is recorded.
-    public let function: String
+    let function: String
 
     /// The full path of the file where the location is recorded.
-    public let file: String
+    let file: String
 
     /// The line number in the file where the location is recorded.
-    public let line: Int
+    let line: Int
 
     /// A human-readable description of the location, typically formatted as "filename:line".
-    public let description: String
+    let description: String
 
     /// Initializes a new `PropertyLocation` with the specified source code location details.
     /// - Parameters:
@@ -55,13 +55,13 @@ public struct PropertyLocation: Identifiable, Comparable, CustomStringConvertibl
 
     /// Compares two `PropertyLocation` instances for ascending order based on their `id`.
     /// - Returns: `true` if the identifier of the first location is less than the second, otherwise `false`.
-    public static func < (lhs: PropertyLocation, rhs: PropertyLocation) -> Bool {
+    static func < (lhs: PropertyLocation, rhs: PropertyLocation) -> Bool {
         lhs.id.localizedStandardCompare(rhs.id) == .orderedAscending
     }
 
     /// Determines if two `PropertyLocation` instances are equal based on their identifiers.
     /// - Returns: `true` if both locations have the same identifier, otherwise `false`.
-    public static func == (lhs: PropertyLocation, rhs: PropertyLocation) -> Bool {
+    static func == (lhs: PropertyLocation, rhs: PropertyLocation) -> Bool {
         lhs.id == rhs.id
     }
 }
