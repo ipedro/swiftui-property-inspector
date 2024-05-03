@@ -97,7 +97,7 @@ struct RowViewBuilderRegistry: Hashable {
                 "⚠️ Warning:",
                 "Undefined behavior.",
                 "Multiple row builders",
-                "match '\(property.stringValueType)' declared in '\(property.location)':",
+                "match '\(property.stringValueType)' declared in '\(property.id.location)':",
                 matchingTypes.sorted().joined(separator: ", ")
             )
         }

@@ -94,7 +94,7 @@ extension Context {
             properties = allObjects.filter {
                 if $0.stringValue.localizedCaseInsensitiveContains(query) { return true }
                 if $0.stringValueType.localizedStandardContains(query) { return true }
-                return $0.location.description.localizedStandardContains(query)
+                return $0.id.location.description.localizedStandardContains(query)
             }
             .sorted()
         }

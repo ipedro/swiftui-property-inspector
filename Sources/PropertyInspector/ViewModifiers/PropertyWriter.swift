@@ -21,23 +21,24 @@
 import Foundation
 import SwiftUI
 
-struct PropertySelector: ViewModifier  {
+struct PropertyWriter: ViewModifier  {
     var data: [Any]
     var location: PropertyLocation
 
     init(data: [Any], location: PropertyLocation) {
         self.data = data
         self.location = location
-        self._ids = State(initialValue: data.map { _ in
-            Property.ID()
+        self._ids = State(initialValue: (0..<data.count).map { offset in
+            Property.ID(
+                offset: offset,
+                createdAt: Date(),
+                location: location
+            )
         })
     }
 
     @State
     private var ids: [Property.ID]
-
-    @State
-    private var createdAt = Date()
 
     @State
     private var changes = 0 {
@@ -61,7 +62,7 @@ struct PropertySelector: ViewModifier  {
     private var isInspectable
 
     func body(content: Content) -> some View {
-        PropertySelector._printChanges()
+        PropertyWriter._printChanges()
         return content.setPreference(
             PropertyPreferenceKey.self, value: Set(properties)
         )
@@ -73,10 +74,11 @@ struct PropertySelector: ViewModifier  {
     private var properties: [Property] {
         if !isInspectable { return [] }
 
-        return data.enumerated().map { (index, element) in
+        return zip(ids, data).map { (id, value) in
             Property(
-                id: ids[index],
-                value: element,
+                id: id,
+                changes: changes, 
+                value: PropertyValue(value),
                 isHighlighted: Binding(
                     get: {
                         isOn.wrappedValue
@@ -85,11 +87,7 @@ struct PropertySelector: ViewModifier  {
                         isOn.wrappedValue = newValue
                         changes += 1
                     }
-                ),
-                location: location,
-                index: index,
-                createdAt: createdAt,
-                changes: changes
+                )
             )
         }
     }

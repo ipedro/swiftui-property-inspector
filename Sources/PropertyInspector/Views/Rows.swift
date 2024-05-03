@@ -82,7 +82,7 @@ struct Rows: View {
     private func detail(for property: Property) -> some View {
         VStack(alignment: .leading) {
             context.detailRegistry.makeBody(property: property)
-            Text(verbatim: property.location.description).opacity(2/3)
+            Text(verbatim: property.id.location.description).opacity(2/3)
         }
     }
 }

@@ -24,10 +24,6 @@ import SwiftUI
 /// `Property` encapsulates details about a specific property within a view or model, including its value, display metadata, and location.
 /// This struct is intended for internal use within the ``PropertyInspector`` framework to track and manage property information dynamically.
 struct Property: Identifiable, Comparable, Hashable {
-    struct ID: Hashable {
-        private let id = UUID()
-    }
-
     /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
     let id: ID
 
@@ -38,16 +34,8 @@ struct Property: Identifiable, Comparable, Hashable {
     @Binding
     var isHighlighted: Bool
 
-    /// The location of the property within the source code, provided for better traceability and debugging.
-    let location: PropertyLocation
-
-    let createdAt: Date
-
     /// Signal view updates
     let changeToken: Int
-
-    /// A computed string that provides a sortable representation of the property based on its location and index.
-    private let sortString: String
 
     /// Returns the type of the value as a string, useful for dynamic type checks or displays.
     var stringValueType: String {
@@ -64,27 +52,17 @@ struct Property: Identifiable, Comparable, Hashable {
     ///   - value: The value of the property.
     ///   - isHighlighted: A binding to the Boolean indicating if the property is highlighted.
     ///   - location: The location of the property in the source code.
-    ///   - index: An index used to uniquely sort the property when multiple properties share the same location.
+    ///   - offset: An offset used to uniquely sort the property when multiple properties share the same location.
     init(
-        id: ID = ID(),
-        value: Any,
-        isHighlighted: Binding<Bool>,
-        location: PropertyLocation,
-        index: Int,
-        createdAt: Date,
-        changes: Int
+        id: ID,
+        changes: Int,
+        value: PropertyValue,
+        isHighlighted: Binding<Bool>
     ) {
-        self.id = id
-        self.value = PropertyValue(value)
-        self._isHighlighted = isHighlighted
-        self.location = location
-        self.createdAt = createdAt
         self.changeToken = changes
-        self.sortString = [
-            location.id,
-            String(createdAt.timeIntervalSince1970),
-            String(index)
-        ].joined(separator: "_")
+        self.id = id
+        self.value = value
+        self._isHighlighted = isHighlighted
     }
 
     /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
@@ -96,7 +74,7 @@ struct Property: Identifiable, Comparable, Hashable {
 
     /// Determines if one `Property` should precede another in a sorted list, based on a composite string that includes their location and value.
     static func < (lhs: Property, rhs: Property) -> Bool {
-        lhs.sortString.localizedStandardCompare(rhs.sortString) == .orderedAscending
+        lhs.id < rhs.id
     }
 
     /// Contributes to the hashability of the property, incorporating its unique identifier into the hash.
