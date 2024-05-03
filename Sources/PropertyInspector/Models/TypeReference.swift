@@ -19,27 +19,25 @@
 //  SOFTWARE.
 
 import Foundation
-import SwiftUI
 
-struct RowViewBuilder: Hashable, Identifiable {
-    let id: TypeReference
-    let body: (Property) -> AnyView?
+struct TypeReference: Hashable, CustomStringConvertible {
+    let objectIdentifier: ObjectIdentifier
+    let rawValue: Any.Type
 
-    init<D, C: View>(@ViewBuilder body: @escaping (D) -> C) {
-        self.id = ID(D.self)
-        self.body = { property in
-            guard let castedValue = property.value.rawValue as? D else {
-                return nil
-            }
-            return AnyView(body(castedValue))
-        }
+    init<D>(_ data: D.Type = D.self) {
+        self.objectIdentifier = ObjectIdentifier(data)
+        self.rawValue = data
     }
 
-    static func == (lhs: RowViewBuilder, rhs: RowViewBuilder) -> Bool {
-        lhs.id == rhs.id
+    var description: String {
+        "<TypeReference: \(String(describing: rawValue))>"
+    }
+
+    static func == (lhs: RowViewBuilder.ID, rhs: RowViewBuilder.ID) -> Bool {
+        lhs.objectIdentifier == rhs.objectIdentifier
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+        hasher.combine(objectIdentifier)
     }
 }
