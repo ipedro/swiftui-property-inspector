@@ -23,9 +23,9 @@ import SwiftUI
 
 struct Row<Icon: View, Label: View, Detail: View>: View, Equatable {
     static func == (lhs: Row<Icon, Label, Detail>, rhs: Row<Icon, Label, Detail>) -> Bool {
-        lhs.isOn == rhs.isOn
+        lhs.id == rhs.id
     }
-
+    var id: Int
     @Binding
     var isOn: Bool
     var hideIcon: Bool
@@ -87,6 +87,7 @@ private extension View {
 
 #Preview {
     Row(
+        id: 0,
         isOn: .constant(true),
         hideIcon: false,
         icon: Image(systemName: "circle"),
@@ -98,6 +99,7 @@ private extension View {
 
 #Preview {
     Row(
+        id: 0,
         isOn: .constant(true),
         hideIcon: true,
         icon: Image(systemName: "circle"),

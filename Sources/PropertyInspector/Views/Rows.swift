@@ -35,6 +35,7 @@ struct Rows: View {
         Rows._printChanges()
         return ForEach(context.properties) { property in
             Row(
+                id: property.hashValue,
                 isOn: property.$isHighlighted,
                 hideIcon: context.iconRegistry.isEmpty,
                 icon:  icon(for: property),
