@@ -20,24 +20,40 @@
 
 import Foundation
 
-struct TypeReference: Hashable, CustomStringConvertible {
-    let objectIdentifier: ObjectIdentifier
+struct TypeReference: Identifiable {
+    let id: ObjectIdentifier
     let rawValue: Any.Type
 
     init<D>(_ data: D.Type = D.self) {
-        self.objectIdentifier = ObjectIdentifier(data)
+        self.id = ObjectIdentifier(data)
         self.rawValue = data
     }
+}
 
-    var description: String {
-        "<TypeReference: \(String(describing: rawValue))>"
+extension TypeReference: Comparable {
+    static func < (lhs: TypeReference, rhs: TypeReference) -> Bool {
+        lhs.description.localizedStandardCompare(rhs.description) == .orderedAscending
     }
+}
 
+extension TypeReference: CustomDebugStringConvertible {
+    var debugDescription: String {
+        "<TypeReference: \(description)>"
+    }
+}
+
+extension TypeReference: CustomStringConvertible {
+    var description: String {
+        String(describing: rawValue)
+    }
+}
+
+extension TypeReference: Hashable {
     static func == (lhs: RowViewBuilder.ID, rhs: RowViewBuilder.ID) -> Bool {
-        lhs.objectIdentifier == rhs.objectIdentifier
+        lhs.id == rhs.id
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(objectIdentifier)
+        hasher.combine(id)
     }
 }
