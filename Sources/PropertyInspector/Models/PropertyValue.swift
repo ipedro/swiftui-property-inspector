@@ -32,11 +32,11 @@ struct PropertyValue: Identifiable {
 
     let id: ID
     let rawValue: Any
-    let typeID: ObjectIdentifier
+    let type: TypeReference
 
     init<T>(_ value: T) {
         self.id = ID(value)
         self.rawValue = value
-        self.typeID = ObjectIdentifier(T.self)
+        self.type = TypeReference(T.self)
     }
 }
