@@ -22,7 +22,7 @@ import Foundation
 import SwiftUI
 
 struct RowViewBuilderRegistry: Hashable {
-    private var data: [TypeReference: RowViewBuilder]
+    private var data: [PropertyType: RowViewBuilder]
 
     private let cache = HashableDictionary<PropertyValue.ID, HashableBox<AnyView>>()
 
@@ -34,11 +34,11 @@ struct RowViewBuilderRegistry: Hashable {
 
     var isEmpty: Bool { data.isEmpty }
 
-    var identifiers: [TypeReference] {
+    var identifiers: [PropertyType] {
         Array(data.keys)
     }
 
-    subscript(id: TypeReference) -> RowViewBuilder? {
+    subscript(id: PropertyType) -> RowViewBuilder? {
         get {
             data[id]
         }
@@ -82,7 +82,7 @@ struct RowViewBuilderRegistry: Hashable {
 
     #if DEBUG
     private func createBody(property: Property) -> AnyView? {
-        var matches = [TypeReference: AnyView]()
+        var matches = [PropertyType: AnyView]()
 
         for id in identifiers {
             if let view = data[id]?.body(property) {

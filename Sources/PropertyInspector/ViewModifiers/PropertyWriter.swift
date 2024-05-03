@@ -22,10 +22,10 @@ import Foundation
 import SwiftUI
 
 struct PropertyWriter: ViewModifier  {
-    var data: [Any]
+    var data: [PropertyValue]
     var location: PropertyLocation
 
-    init(data: [Any], location: PropertyLocation) {
+    init(data: [PropertyValue], location: PropertyLocation) {
         self.data = data
         self.location = location
         self._ids = State(initialValue: (0..<data.count).map { offset in
@@ -78,7 +78,7 @@ struct PropertyWriter: ViewModifier  {
             Property(
                 id: id,
                 changes: changes, 
-                value: PropertyValue(value),
+                value: value,
                 isHighlighted: Binding(
                     get: {
                         isOn.wrappedValue

@@ -20,7 +20,7 @@
 
 import Foundation
 
-struct TypeReference: Identifiable {
+struct PropertyType: Identifiable {
     let id: ObjectIdentifier
     let rawValue: Any.Type
 
@@ -30,25 +30,25 @@ struct TypeReference: Identifiable {
     }
 }
 
-extension TypeReference: Comparable {
-    static func < (lhs: TypeReference, rhs: TypeReference) -> Bool {
+extension PropertyType: Comparable {
+    static func < (lhs: PropertyType, rhs: PropertyType) -> Bool {
         lhs.description.localizedStandardCompare(rhs.description) == .orderedAscending
     }
 }
 
-extension TypeReference: CustomDebugStringConvertible {
+extension PropertyType: CustomDebugStringConvertible {
     var debugDescription: String {
-        "<TypeReference: \(description)>"
+        "<PropertyType: \(description)>"
     }
 }
 
-extension TypeReference: CustomStringConvertible {
+extension PropertyType: CustomStringConvertible {
     var description: String {
         String(describing: rawValue)
     }
 }
 
-extension TypeReference: Hashable {
+extension PropertyType: Hashable {
     static func == (lhs: RowViewBuilder.ID, rhs: RowViewBuilder.ID) -> Bool {
         lhs.id == rhs.id
     }

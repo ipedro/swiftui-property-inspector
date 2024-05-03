@@ -18,7 +18,6 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 
-import Foundation
 import SwiftUI
 
 public extension View {
@@ -54,15 +53,15 @@ public extension View {
 
      - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(function:line:file:)``
      */
-    func inspectProperty(
-        _ values: Any...,
+    func inspectProperty<T>(
+        _ values: T...,
         function: String = #function,
         line: Int = #line,
         file: String = #file
     ) -> some View {
         modifier(
             PropertyWriter(
-                data: values,
+                data: values.map(PropertyValue.init),
                 location: .init(
                     function: function,
                     file: file,
