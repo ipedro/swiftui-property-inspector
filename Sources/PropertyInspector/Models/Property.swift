@@ -25,7 +25,7 @@ import SwiftUI
 /// This struct is intended for internal use within the ``PropertyInspector`` framework to track and manage property information dynamically.
 final class Property: Identifiable, Comparable, Hashable {
     /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
-    let id: ID
+    let id: PropertyID
 
     /// The value of the property stored as `Any`, allowing it to accept any property type.
     let value: PropertyValue

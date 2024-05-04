@@ -29,7 +29,7 @@ struct PropertyWriter: ViewModifier  {
         self.data = data
         self.location = location
         self._ids = State(initialValue: (0..<data.count).map { offset in
-            Property.ID(
+            PropertyID(
                 offset: offset,
                 createdAt: Date(),
                 location: location
@@ -38,7 +38,7 @@ struct PropertyWriter: ViewModifier  {
     }
 
     @State
-    private var ids: [Property.ID]
+    private var ids: [PropertyID]
 
     @State
     private var changes = 0 {

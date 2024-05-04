@@ -20,37 +20,35 @@
 
 import Foundation
 
-extension Property {
-    final class ID {
-        private let _uuid = UUID()
+final class PropertyID {
+    private let _uuid = UUID()
 
-        /// The location of the property within the source code, provided for better traceability and debugging.
-        let location: PropertyLocation
+    /// The location of the property within the source code, provided for better traceability and debugging.
+    let location: PropertyLocation
 
-        let createdAt: Date
+    let createdAt: Date
 
-        /// A computed string that provides a sortable representation of the property based on its location and offset.
-        private let sortString: String
+    /// A computed string that provides a sortable representation of the property based on its location and offset.
+    private let sortString: String
 
-        init(
-            offset: Int,
-            createdAt: Date,
-            location: PropertyLocation
-        ) {
-            self.location = location
-            self.createdAt = createdAt
-            self.sortString = [
-                location.id,
-                String(createdAt.timeIntervalSince1970),
-                String(offset)
-            ].joined(separator: "_")
-        }
+    init(
+        offset: Int,
+        createdAt: Date,
+        location: PropertyLocation
+    ) {
+        self.location = location
+        self.createdAt = createdAt
+        self.sortString = [
+            location.id,
+            String(createdAt.timeIntervalSince1970),
+            String(offset)
+        ].joined(separator: "_")
     }
 }
 
-extension Property.ID: Hashable {
+extension PropertyID: Hashable {
     /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
-    static func == (lhs: Property.ID, rhs: Property.ID) -> Bool {
+    static func == (lhs: PropertyID, rhs: PropertyID) -> Bool {
         lhs._uuid == rhs._uuid
     }
 
@@ -60,9 +58,9 @@ extension Property.ID: Hashable {
     }
 }
 
-extension Property.ID: Comparable {
+extension PropertyID: Comparable {
     /// Determines if one `ID` should precede another in a sorted list, based on a composite string that includes their location and value.
-    static func < (lhs: Property.ID, rhs: Property.ID) -> Bool {
+    static func < (lhs: PropertyID, rhs: PropertyID) -> Bool {
         lhs.sortString.localizedStandardCompare(rhs.sortString) == .orderedAscending
     }
 }
