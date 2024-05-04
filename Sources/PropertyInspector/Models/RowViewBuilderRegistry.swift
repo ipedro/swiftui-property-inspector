@@ -24,7 +24,7 @@ import SwiftUI
 struct RowViewBuilderRegistry: Hashable {
     private var data: [PropertyType: RowViewBuilder]
 
-    private let cache = HashableDictionary<PropertyValue.ID, HashableBox<AnyView>>()
+    private let cache = HashableDictionary<PropertyValueID, HashableBox<AnyView>>()
 
     init(_ values: RowViewBuilder...) {
         self.data = values.reduce(into: [:], { partialResult, builder in
