@@ -53,6 +53,48 @@ public extension View {
 
      - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(function:line:file:)``
      */
+    @_disfavoredOverload
+    func inspectProperty(
+        _ values: Any...,
+        function: String = #function,
+        line: Int = #line,
+        file: String = #file
+    ) -> some View {
+        modifier(
+            PropertyWriter(
+                data: values.map(PropertyValue.init),
+                location: .init(
+                    function: function,
+                    file: file,
+                    line: line
+                )
+            )
+        )
+    }
+
+    /**
+     Adds a modifier for inspecting properties with dynamic debugging capabilities.
+
+     This method allows developers to dynamically inspect values of properties within a SwiftUI view, useful for debugging and during development to ensure that view states are correctly managed.
+
+     - Parameters:
+     - values: A variadic list of properties whose values you want to inspect.
+     - function: The function from which the inspector is called, generally used for debugging purposes. Defaults to the name of the calling function.
+     - line: The line number in the source file from which the inspector is called, aiding in pinpointing where inspections are set. Defaults to the line number in the source file.
+     - file: The name of the source file from which the inspector is called, useful for tracing the call in larger projects. Defaults to the filename.
+
+     - Returns: A view modified to include property inspection capabilities, reflecting the current state of the provided properties.
+
+     ## Usage Example
+
+     ```swift
+     Text("Current Count: \(count)").inspectProperty(count)
+     ```
+
+     This can be particularly useful when paired with logging or during step-by-step debugging to monitor how and when your view's state changes.
+
+     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(function:line:file:)``
+     */
     func inspectProperty<T>(
         _ values: T...,
         function: String = #function,
@@ -61,7 +103,9 @@ public extension View {
     ) -> some View {
         modifier(
             PropertyWriter(
-                data: values.map(PropertyValue.init),
+                data: values.map {
+                    PropertyValue($0)
+                },
                 location: .init(
                     function: function,
                     file: file,

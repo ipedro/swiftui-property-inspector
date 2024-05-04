@@ -22,28 +22,26 @@ import Foundation
 
 struct PropertyValue: Identifiable {
     struct ID: Hashable {
-        let hash: Int
+        let hashValue: Int
         let type: PropertyType
 
         init<T>(_ value: T) {
-            hash = String(describing: value).hashValue
-            type = PropertyType(T.self)
+            hashValue = String(describing: value).hashValue
+            type = PropertyType(value)
         }
 
         func hash(into hasher: inout Hasher) {
-            hasher.combine(hash)
+            hasher.combine(hashValue)
             hasher.combine(type)
         }
     }
 
     let id: ID
     let rawValue: Any
-    let type: PropertyType
 
     init<T>(_ value: T) {
         self.id = ID(value)
         self.rawValue = value
-        self.type = PropertyType(T.self)
     }
 
     init(_ other: PropertyValue) {

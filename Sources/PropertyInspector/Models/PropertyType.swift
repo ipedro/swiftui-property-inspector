@@ -24,9 +24,19 @@ struct PropertyType: Identifiable {
     let id: ObjectIdentifier
     let rawValue: Any.Type
 
-    init<D>(_ data: D.Type = D.self) {
-        self.id = ObjectIdentifier(data)
-        self.rawValue = data
+    init<T>(_ data: T) {
+        let start = Date()
+        let type: Any.Type
+        if T.self == Any.self {
+            // only use mirror as last resort
+            type = Mirror(reflecting: data).subjectType
+            debugPrint(#function, "🐢", "Determined type \(type) in \((start.timeIntervalSinceNow * 1000).formatted()) ms")
+        } else {
+            type = T.self
+            debugPrint(#function, "🐰", "Determined type \(type) in \((start.timeIntervalSinceNow * 1000).formatted()) ms")
+        }
+        self.id = ObjectIdentifier(type)
+        self.rawValue = type
     }
 }
 
