@@ -21,16 +21,42 @@
 import Combine
 import SwiftUI
 
+extension Context.Filter: Comparable where F: Comparable {
+    static func < (lhs: Context.Filter<F>, rhs: Context.Filter<F>) -> Bool {
+        lhs.wrappedValue < rhs.wrappedValue
+    }
+}
+
 extension Context {
+    final class Filter<F: Hashable>: Hashable {
+        static func == (lhs: Context.Filter<F>, rhs: Context.Filter<F>) -> Bool {
+            lhs.wrappedValue == rhs.wrappedValue
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(wrappedValue)
+        }
+
+        var wrappedValue: F
+        var isOn: Bool
+
+        init(_ wrappedValue: F, isOn: Bool) {
+            self.wrappedValue = wrappedValue
+            self.isOn = isOn
+        }
+    }
+
     final class Data: ObservableObject {
         private var cancellables = Set<AnyCancellable>()
 
-        private var _allObjects = Set<Property>()
+        private var _allObjects = [PropertyType: Set<Property>]()
 
         private var _searchQuery = ""
 
         @Published
         var properties = [Property]()
+
+        var filters = Set<Filter<PropertyType>>()
 
         @Published
         var iconRegistry = RowViewBuilderRegistry()
@@ -41,7 +67,7 @@ extension Context {
         @Published
         var detailRegistry = RowViewBuilderRegistry()
 
-        var allObjects: Set<Property> {
+        var allObjects: [PropertyType: Set<Property>] {
             get { _allObjects }
             set {
                 guard _allObjects != newValue else { return }
@@ -65,6 +91,21 @@ extension Context {
             setupDebouncing()
         }
 
+        func isOn(filter: Filter<PropertyType>) -> Binding<Bool> {
+            Binding { [unowned self] in
+                if let index = self.filters.firstIndex(of: filter) {
+                    return self.filters[index].isOn
+                }
+                return false
+            } set: { newValue in
+                if let index = self.filters.firstIndex(of: filter) {
+                    self.objectWillChange.send()
+                    self.filters[index].isOn = newValue
+                    let offFilters = self.filters.filter { $0.isOn == false }
+                }
+            }
+        }
+
         private func setupDebouncing() {
             Just(_searchQuery)
                 .removeDuplicates()
@@ -78,27 +119,51 @@ extension Context {
                 .store(in: &cancellables)
         }
 
-        private func updateFilteredProperties(searchQuery: String, allObjects: Set<Property>) {
-            properties = filterProperties(searchQuery: searchQuery, allObjects: allObjects)
+        private func isFilterEnabled(_ type: PropertyType) -> Bool? {
+            for filter in filters where filter.wrappedValue == type {
+                return filter.isOn
+            }
+            return nil
         }
 
-        private func filterProperties(searchQuery: String, allObjects: Set<Property>) -> [Property] {
+        private func updateFilteredProperties(searchQuery: String, allObjects: [PropertyType: Set<Property>]) {
+            var properties = Set<Property>()
+            var filters = Set<Filter<PropertyType>>()
+
+            for (type, set) in allObjects {
+                let result = search(searchQuery, in: set)
+                print(result, result.count)
+                if !result.isEmpty {
+                    filters.insert(
+                        Filter(
+                            type,
+                            isOn: isFilterEnabled(type) ?? true
+                        )
+                    )
+                }
+                properties.formUnion(result)
+            }
+
+            self.properties = properties.sorted()
+            self.filters = filters
+        }
+
+        private func search(_ searchQuery: String, in properties: Set<Property>) -> Set<Property> {
             guard !searchQuery.isEmpty else {
-                return allObjects.sorted()
+                return properties
             }
 
             let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
 
             guard query.count > 1 else {
-                return allObjects.sorted()
+                return properties
             }
 
-            return allObjects.filter {
+            return properties.filter {
                 if $0.stringValue.localizedCaseInsensitiveContains(query) { return true }
                 if $0.stringValueType.localizedStandardContains(query) { return true }
                 return $0.id.location.description.localizedStandardContains(query)
             }
-            .sorted()
         }
     }
 }

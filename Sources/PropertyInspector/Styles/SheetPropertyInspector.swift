@@ -137,7 +137,7 @@ public struct SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
         default: return
         }
 
-        context.allObjects.forEach { property in
+        context.properties.forEach { property in
             property.isHighlighted = newValue
         }
     }

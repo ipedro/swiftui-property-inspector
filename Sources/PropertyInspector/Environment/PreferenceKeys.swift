@@ -22,9 +22,11 @@ import Foundation
 import SwiftUI
 
 struct PropertyPreferenceKey: PreferenceKey {
-    static var defaultValue: Set<Property> { [] }
-    static func reduce(value: inout Set<Property>, nextValue: () -> Set<Property>) {
-        value.formUnion(nextValue())
+    static var defaultValue = [PropertyType: Set<Property>]()
+    static func reduce(value: inout [PropertyType: Set<Property>], nextValue: () -> [PropertyType: Set<Property>]) {
+        value.merge(nextValue()) { lhs, rhs in
+            lhs.union(rhs)
+        }
     }
 }
 

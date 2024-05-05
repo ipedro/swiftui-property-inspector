@@ -33,30 +33,32 @@ struct Rows: View {
     var body: some View {
         Rows._printChanges()
         return ForEach(context.properties) { property in
-            Row(
-                id: property.hashValue,
-                isOn: property.$isHighlighted,
-                hideIcon: context.iconRegistry.isEmpty,
-                icon:  icon(for: property),
-                label: label(for: property),
-                detail: detail(for: property)
-            )
-            .equatable()
-        }
-        .safeAreaInset(edge: .bottom, spacing: .zero) {
-            if context.properties.isEmpty {
-                Text(emptyMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .multilineTextAlignment(.center)
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: 200
-                    )
+                Row(
+                    id: property.hashValue,
+                    isOn: property.$isHighlighted,
+                    hideIcon: context.iconRegistry.isEmpty,
+                    icon:  icon(for: property),
+                    label: label(for: property),
+                    detail: detail(for: property)
+                )
+                .equatable()
             }
-        }
+            .safeAreaInset(edge: .bottom, spacing: .zero) {
+                if context.properties.isEmpty {
+                    Text(emptyMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .multilineTextAlignment(.center)
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: 200
+                        )
+                }
+            }
+
+//        }
     }
 
     @ViewBuilder

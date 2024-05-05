@@ -64,32 +64,41 @@ struct PropertyWriter: ViewModifier  {
     func body(content: Content) -> some View {
         PropertyWriter._printChanges()
         return content.setPreference(
-            PropertyPreferenceKey.self, value: Set(properties)
+            PropertyPreferenceKey.self, value: properties
         )
         .modifier(
             PropertyHiglighter(isOn: isOn)
         )
     }
 
-    private var properties: [Property] {
-        if !isInspectable { return [] }
-
-        return zip(ids, data).map { (id, value) in
-            Property(
-                id: id,
-                changes: changes, 
-                value: value,
-                isHighlighted: Binding(
-                    get: {
-                        isOn.wrappedValue
-                    },
-                    set: { newValue in
-                        isOn.wrappedValue = newValue
-                        changes += 1
-                    }
+    private var properties: [PropertyType: Set<Property>] {
+        if !isInspectable {
+            return [:]
+        }
+        let result: [PropertyType: Set<Property>] = zip(ids, data).reduce(into: [PropertyType: Set<Property>]()) { dict, element in
+            let (id, value) = element
+            let key = value.type
+            var set = dict[key] ?? Set()
+            set.insert(
+                Property(
+                    id: id,
+                    changes: changes,
+                    value: value,
+                    isHighlighted: Binding(
+                        get: {
+                            isOn.wrappedValue
+                        },
+                        set: { newValue in
+                            isOn.wrappedValue = newValue
+                            changes += 1
+                        }
+                    )
                 )
             )
+            dict[key] = set
         }
+
+        return result
     }
 
 }
