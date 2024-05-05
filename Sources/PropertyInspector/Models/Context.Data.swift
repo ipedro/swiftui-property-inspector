@@ -79,19 +79,21 @@ extension Context {
         }
 
         private func updateFilteredProperties(searchQuery: String, allObjects: Set<Property>) {
+            properties = filterProperties(searchQuery: searchQuery, allObjects: allObjects)
+        }
+
+        private func filterProperties(searchQuery: String, allObjects: Set<Property>) -> [Property] {
             guard !searchQuery.isEmpty else {
-                properties = allObjects.sorted()
-                return
+                return allObjects.sorted()
             }
 
             let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
 
             guard query.count > 1 else {
-                properties = allObjects.sorted()
-                return
+                return allObjects.sorted()
             }
 
-            properties = allObjects.filter {
+            return allObjects.filter {
                 if $0.stringValue.localizedCaseInsensitiveContains(query) { return true }
                 if $0.stringValueType.localizedStandardContains(query) { return true }
                 return $0.id.location.description.localizedStandardContains(query)

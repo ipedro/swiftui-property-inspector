@@ -58,11 +58,13 @@ extension PropertyType: CustomStringConvertible {
     }
 }
 
-extension PropertyType: Hashable {
+extension PropertyType: Equatable {
     static func == (lhs: RowViewBuilder.ID, rhs: RowViewBuilder.ID) -> Bool {
         lhs.id == rhs.id
     }
+}
 
+extension PropertyType: Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
