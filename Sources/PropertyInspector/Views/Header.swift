@@ -31,19 +31,19 @@ struct Header: View {
     @EnvironmentObject
     private var context: Context.Data
 
-    private var title: some View {
-        Text(data).bold().font(.title3).frame(
-            maxWidth: .infinity,
-            alignment: .leading
-        )
-        .lineLimit(1)
+    private var title: Text {
+        Text(data) + Text(" (\(context.properties.count))")
     }
 
     var body: some View {
         Group {
             if #available(iOS 16.0, *) {
                 Toggle(sources: context.properties, isOn: \.$isHighlighted) {
-                    title
+                    title.bold().font(.title3).frame(
+                        maxWidth: .infinity,
+                        alignment: .leading
+                    )
+                    .lineLimit(1)
                 }
                 .toggleStyle(
                     PropertyToggleStyle(alignment: .firstTextBaseline)
