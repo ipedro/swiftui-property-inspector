@@ -35,54 +35,16 @@ struct Header: View {
         Text(data) + Text(" (\(context.properties.count))")
     }
 
-    private func title() -> Group<_ConditionalContent<AnyView, Text>> {
-        return Group {
-            if #available(iOS 16.0, *) {
-                Toggle(sources: context.properties, isOn: \.$isHighlighted) {
-                    text.bold().font(.title3).frame(
-                        maxWidth: .infinity,
-                        alignment: .leading
-                    )
-                    .lineLimit(1)
-                }
-                .toggleStyle(
-                    PropertyToggleStyle(alignment: .firstTextBaseline)
-                )
-            } else {
-                text
-            }
-        }
-    }
-    
     var body: some View {
-        VStack(spacing: 10) {
+        VStack {
             title()
             ScrollView(.horizontal) {
                 HStack(content: {
-                    ForEach(context.filters.sorted(), id: \.self) { filter in
-                        Toggle(isOn: context.isOn(filter: filter)) {
-                            Text(verbatim: filter.wrappedValue.description)
-                                .font(.caption2)
-                                .padding(
-                                    EdgeInsets(
-                                        top: 2,
-                                        leading: 5,
-                                        bottom: 2,
-                                        trailing: 5
-                                    )
-                                )
-                                .foregroundStyle(filter.isOn ? Color(uiColor: .systemBackground) : .secondary)
-                        }
-                        .toggleStyle(_FilterToggleStyle())
-                        .background {
-                            if filter.isOn {
-                                Capsule().fill(.secondary)
-                            } else {
-                                Capsule().strokeBorder()
-                            }
-                        }
+                    ForEach(context.filters.sorted(), id: \.self) {
+                        filterView($0)
                     }
                 })
+                .padding(.vertical, 5)
             }
         }
         .ios16_hideScrollIndicators()
@@ -90,7 +52,6 @@ struct Header: View {
         .multilineTextAlignment(.leading)
         .environment(\.textCase, nil)
         .foregroundStyle(.primary)
-        .tint(.primary)
         .padding(
             EdgeInsets(
                 top: 10,
@@ -101,6 +62,52 @@ struct Header: View {
         )
     }
 
+    @ViewBuilder
+    private func title() -> some View {
+        let formattedText = text.bold()
+            .font(.title3)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+        if #available(iOS 16.0, *), !context.properties.isEmpty {
+            Toggle(sources: context.properties, isOn: \.$isHighlighted) {
+                formattedText
+            }
+            .toggleStyle(
+                PropertyToggleStyle(alignment: .firstTextBaseline)
+            )
+        } else {
+            formattedText
+        }
+    }
+
+    // TODO: convert to view?
+    fileprivate func filterView(_ filter: Context.Filter<PropertyType>) -> some View {
+        return Toggle(isOn: context.isOn(filter: filter)) {
+            Text(verbatim: filter.wrappedValue.description)
+                .font(.caption2)
+                .padding(
+                    EdgeInsets(
+                        top: 2,
+                        leading: 5,
+                        bottom: 2,
+                        trailing: 5
+                    )
+                )
+                .foregroundColor(
+                    filter.isOn ? Color(uiColor: .systemBackground) : .primary
+                )
+        }
+        .toggleStyle(_FilterToggleStyle())
+        .background {
+            if filter.isOn {
+                Capsule()
+            } else {
+                Capsule().strokeBorder()
+            }
+        }
+    }
+    
     private struct _FilterToggleStyle: ToggleStyle {
         func makeBody(configuration: Configuration) -> some View {
             Button(action: {

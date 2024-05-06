@@ -21,31 +21,7 @@
 import Combine
 import SwiftUI
 
-extension Context.Filter: Comparable where F: Comparable {
-    static func < (lhs: Context.Filter<F>, rhs: Context.Filter<F>) -> Bool {
-        lhs.wrappedValue < rhs.wrappedValue
-    }
-}
-
 extension Context {
-    final class Filter<F: Hashable>: Hashable {
-        static func == (lhs: Context.Filter<F>, rhs: Context.Filter<F>) -> Bool {
-            lhs.wrappedValue == rhs.wrappedValue
-        }
-
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(wrappedValue)
-        }
-
-        var wrappedValue: F
-        var isOn: Bool
-
-        init(_ wrappedValue: F, isOn: Bool) {
-            self.wrappedValue = wrappedValue
-            self.isOn = isOn
-        }
-    }
-
     final class Data: ObservableObject {
         private var cancellables = Set<AnyCancellable>()
 
@@ -55,6 +31,8 @@ extension Context {
 
         @Published
         var properties = [Property]()
+
+        var allProperties = [Property]()
 
         var filters = Set<Filter<PropertyType>>()
 
@@ -73,7 +51,7 @@ extension Context {
                 guard _allObjects != newValue else { return }
                 objectWillChange.send()
                 _allObjects = newValue
-                updateFilteredProperties(searchQuery: _searchQuery, allObjects: newValue)
+                makeProperties()
             }
         }
 
@@ -83,12 +61,19 @@ extension Context {
                 guard _searchQuery != newValue else { return }
                 objectWillChange.send()
                 _searchQuery = newValue
-                updateFilteredProperties(searchQuery: newValue, allObjects: _allObjects)
+                makeProperties()
             }
         }
 
         init() {
             setupDebouncing()
+        }
+
+        private func isOn(filter: Filter<PropertyType>) -> Bool {
+            if let index = filters.firstIndex(of: filter) {
+                return filters[index].isOn
+            }
+            return false
         }
 
         func isOn(filter: Filter<PropertyType>) -> Binding<Bool> {
@@ -97,11 +82,16 @@ extension Context {
                     return self.filters[index].isOn
                 }
                 return false
-            } set: { newValue in
+            } set: { [unowned self] newValue in
                 if let index = self.filters.firstIndex(of: filter) {
                     self.objectWillChange.send()
                     self.filters[index].isOn = newValue
-                    let offFilters = self.filters.filter { $0.isOn == false }
+                    self._allObjects[filter.wrappedValue]?.forEach { prop in
+                        if prop.isHighlighted {
+                            prop.isHighlighted = false
+                        }
+                    }
+                    self.makeProperties()
                 }
             }
         }
@@ -111,10 +101,7 @@ extension Context {
                 .removeDuplicates()
                 .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
                 .sink(receiveValue: { [unowned self] newValue in
-                    self.updateFilteredProperties(
-                        searchQuery: newValue,
-                        allObjects: self._allObjects
-                    )
+                    self.makeProperties()
                 })
                 .store(in: &cancellables)
         }
@@ -126,14 +113,14 @@ extension Context {
             return nil
         }
 
-        private func updateFilteredProperties(searchQuery: String, allObjects: [PropertyType: Set<Property>]) {
+        private func makeProperties() {
+            var all = Set<Property>()
             var properties = Set<Property>()
             var filters = Set<Filter<PropertyType>>()
 
-            for (type, set) in allObjects {
-                let result = search(searchQuery, in: set)
-                print(result, result.count)
-                if !result.isEmpty {
+            for (type, set) in _allObjects {
+                let searchResult = search(in: set)
+                if !searchResult.isEmpty {
                     filters.insert(
                         Filter(
                             type,
@@ -141,19 +128,21 @@ extension Context {
                         )
                     )
                 }
-                properties.formUnion(result)
+                all.formUnion(set)
+                properties.formUnion(searchResult)
             }
 
-            self.properties = properties.sorted()
             self.filters = filters
+            self.allProperties = Array(all)
+            self.properties = filter(in: Array(properties)).sorted()
         }
 
-        private func search(_ searchQuery: String, in properties: Set<Property>) -> Set<Property> {
-            guard !searchQuery.isEmpty else {
+        private func search(in properties: Set<Property>) -> Set<Property> {
+            guard !_searchQuery.isEmpty else {
                 return properties
             }
 
-            let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            let query = _searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
 
             guard query.count > 1 else {
                 return properties
@@ -164,6 +153,19 @@ extension Context {
                 if $0.stringValueType.localizedStandardContains(query) { return true }
                 return $0.id.location.description.localizedStandardContains(query)
             }
+        }
+
+        private func filter(in properties: [Property]) -> [Property] {
+            let activeTypes = Set(filters.filter({ $0.isOn }).map(\.wrappedValue))
+            
+            guard activeTypes.count != filters.count else {
+                return properties
+            }
+
+            let result = properties.filter {
+                activeTypes.contains($0.value.type)
+            }
+            return result
         }
     }
 }

@@ -41,7 +41,7 @@ struct PropertyToggleStyle: ToggleStyle {
                 
                 Image(systemName: imageName(configuration._state))
                     .font(.headline)
-                    .symbolRenderingMode(.multicolor)
+                    .tint(.accentColor)
                     .ios17_interpolateSymbolEffect(value: configuration._state)
             }
             .animation(animation, value: configuration._state)

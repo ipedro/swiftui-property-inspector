@@ -44,6 +44,15 @@ public struct ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pro
     var listRowBackground: RowBackground?
     var contentPadding: Bool
 
+    @EnvironmentObject
+    private var context: Context.Data
+
+    private var emptyMessage: String {
+        context.searchQuery.isEmpty ?
+        "Empty" :
+        "No results for '\(context.searchQuery)'"
+    }
+
     public func body(content: Content) -> some View {
         List {
             Section {
@@ -60,7 +69,23 @@ public struct ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pro
                 }
                 .frame(maxWidth: .infinity)
             }
+
+            if context.properties.isEmpty {
+                Text(emptyMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowSeparatorTint(.clear)
+                    .multilineTextAlignment(.center)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: 150
+                    )
+            }
+
         }
         .listStyle(listStyle)
+        .blendMode(context.properties.isEmpty ? .multiply : .normal)
     }
 }
