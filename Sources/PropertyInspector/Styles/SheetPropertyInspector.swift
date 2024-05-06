@@ -103,10 +103,6 @@ public struct SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
                     highlight: $highlight
                 )
             }
-            .animation(
-                .interpolatingSpring,
-                value: isPresented
-            )
             .modifier(
                 SheetPresentationModifier(
                     isPresented: $isPresented,
@@ -173,9 +169,10 @@ private struct SheetPresentationModifier<Label: View>: ViewModifier {
                     .presentationCornerRadius(20)
                     .presentationBackground(Material.thinMaterial)
                     .presentationDetents(Set(SheetPresentationModifier.detents), selection: $selection)
-                    .background(GeometryReader { proxy in
-                        Color.clear.onChange(of: proxy.size.height) { newValue in
-                            let newInset = ceil(newValue)
+                    .background(GeometryReader { geometry in
+                        Color.clear.onChange(of: geometry.frame(in: .global).minY) { minY in
+                            let screenHeight = UIScreen.main.bounds.height
+                            let newInset = max(0, round(screenHeight - minY))
                             if height != newInset {
                                 height = newInset
                             }
@@ -196,7 +193,9 @@ private struct SheetToolbarContent: View {
     var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-            isPresented.toggle()
+            withAnimation(.snappy(duration: 0.35)) {
+                isPresented.toggle()
+            }
         } label: {
             Image(systemName: "\(isPresented ? "xmark" : "magnifyingglass").circle.fill")
                 .rotationEffect(.radians(isPresented ? -.pi : .zero))
