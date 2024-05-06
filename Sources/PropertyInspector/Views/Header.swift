@@ -40,8 +40,11 @@ struct Header: View {
             title()
             ScrollView(.horizontal) {
                 HStack(content: {
-                    ForEach(context.filters.sorted(), id: \.self) {
-                        filterView($0)
+                    ForEach(context.filters.sorted(), id: \.self) { filter in
+                        FilterView(
+                            data: filter,
+                            isOn: context.isOn(filter: filter)
+                        )
                     }
                 })
                 .padding(.vertical, 5)
@@ -81,33 +84,37 @@ struct Header: View {
         }
     }
 
-    // TODO: convert to view?
-    fileprivate func filterView(_ filter: Context.Filter<PropertyType>) -> some View {
-        return Toggle(isOn: context.isOn(filter: filter)) {
-            Text(verbatim: filter.wrappedValue.description)
-                .font(.caption2)
-                .padding(
-                    EdgeInsets(
-                        top: 2,
-                        leading: 5,
-                        bottom: 2,
-                        trailing: 5
+    private struct FilterView: View {
+        var data: Context.Filter<PropertyType>
+        @Binding var isOn: Bool
+
+        var body: some View {
+            return Toggle(isOn: $isOn) {
+                Text(verbatim: data.wrappedValue.description)
+                    .font(.caption2)
+                    .padding(
+                        EdgeInsets(
+                            top: 4,
+                            leading: 8,
+                            bottom: 4,
+                            trailing: 8
+                        )
                     )
-                )
-                .foregroundColor(
-                    filter.isOn ? Color(uiColor: .systemBackground) : .primary
-                )
-        }
-        .toggleStyle(_FilterToggleStyle())
-        .background {
-            if filter.isOn {
-                Capsule()
-            } else {
-                Capsule().strokeBorder()
+                    .foregroundColor(
+                        data.isOn ? Color(uiColor: .systemBackground) : .primary
+                    )
+            }
+            .toggleStyle(_FilterToggleStyle())
+            .background {
+                if data.isOn {
+                    Capsule()
+                } else {
+                    Capsule().strokeBorder()
+                }
             }
         }
     }
-    
+
     private struct _FilterToggleStyle: ToggleStyle {
         func makeBody(configuration: Configuration) -> some View {
             Button(action: {
