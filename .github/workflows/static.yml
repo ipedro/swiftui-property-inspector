@@ -34,7 +34,7 @@ jobs:
         uses: actions/configure-pages@main
       - name: Build DocC
         run: |
-          xcodebuild docbuild -scheme swiftui-property-inspector \
+          xcodebuild docbuild -scheme PropertyInspector \
             -derivedDataPath /tmp/docbuild \
             -destination 'generic/platform=iOS';
           $(xcrun --find docc) process-archive \

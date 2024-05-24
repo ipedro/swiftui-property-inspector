@@ -262,21 +262,3 @@ public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: Vi
  Customizes the appearance and behavior of ``PropertyInspector`` components. This protocol adheres to `ViewModifier`, enabling it to modify the view of a ``PropertyInspector`` to match specific design requirements.
  */
 public protocol _PropertyInspectorStyle: ViewModifier {}
-
-#Preview(body: {
-    PropertyInspector(listStyle: .plain) {
-        VStack(content: {
-            Text("Placeholder").inspectSelf()
-            Button("Tap Me", action: {}).inspectSelf()
-        })
-        .propertyInspectorRowIcon(for: Any.self) { _ in
-            Image(systemName: "list.bullet")
-        }
-        .propertyInspectorRowIcon(for: Text.self) { _ in
-            Image(systemName: "text.quote")
-        }
-        .propertyInspectorRowIcon(for: Button<Text>.self) { _ in
-            Image(systemName: "button.vertical.right.press.fill")
-        }
-    }
-})
