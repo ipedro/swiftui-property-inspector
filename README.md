@@ -17,9 +17,9 @@ PropertyInspector is a SwiftUI component that provides a powerful and flexible w
 
 ## Requirements
 
-- iOS 16.4+
-- Swift 5.5+
-- Xcode 14.0+
+- iOS 15.0+
+- Swift 5.7+
+- Xcode 15.0+
 
 ## Installation
 
@@ -37,29 +37,54 @@ Then, import `swiftui-property-inspector` in your SwiftUI views to start using i
 
 ## Usage
 
-Here's how to use `PropertyInspector` in your SwiftUI views:
+Here's an example of using `PropertyInspector` in your SwiftUI views:
+
+![WwiftUI PropertyInspector plain list style example](Docs/swiftui-property-inspector-plain-list-example.png)
+
 
 ```swift
-import SwiftUI
 import PropertyInspector
+import SwiftUI
 
-@State private var isInspectorPresented = false
-
-var body: some View {
-    PropertyInspector("Properties", MyValueType.self, isPresented: $isInspectorPresented) {
-        // Main content view goes here
-    } icon: { value in
-        Image(systemName: "gear")
-    } label: { value in
-        Text("Property \(value)")
-    } detail: { value in
-        Text("Detail for \(value)")
+#Preview(body: {
+    PropertyInspector(listStyle: .plain) {
+        VStack(content: {
+            MyText(content: "Placeholder Text")
+            MyButton(style: .bordered)
+        })
+        .propertyInspectorRowIcon(for: Any.self) { _ in
+            Image(systemName: "list.bullet")
+        }
+        .propertyInspectorRowIcon(for: String.self) { _ in
+            Image(systemName: "text.quote")
+        }
+        .propertyInspectorRowIcon(for: (any PrimitiveButtonStyle).self) { _ in
+            Image(systemName: "button.vertical.right.press.fill")
+        }
     }
-    .sort { lhs, rhs in
-        // Sorting logic goes here
-        return lhs.propertyName < rhs.propertyName
+})
+
+struct MyText<S: StringProtocol>: View {
+    var content: S
+
+    var body: some View {
+        Text(content).inspectProperty(content)
     }
 }
+
+struct MyButton<S: PrimitiveButtonStyle>: View {
+    var style: S
+    @State private var tapCount = 0
+
+    var body: some View {
+        Button("Tap Me") {
+            tapCount += 1
+        }
+        .inspectProperty(style, "Tap Count: \(tapCount)")
+        .buttonStyle(style)
+    }
+}
+
 ```
 
 ### Disabling Inspection
