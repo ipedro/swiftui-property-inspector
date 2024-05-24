@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![SPM Compatible](https://img.shields.io/badge/Swift_Package_Manager-compatible-brightgreen.svg)
 
-![PropertyInspector](https://ipedro.github.io/swiftui-property-inspector/documentation/propertyinspector/propertyinspector) is a SwiftUI component that provides a powerful and flexible way to inspect and interact with properties dynamically. It's designed for developers who want to create sophisticated debugging tools, enhance the interactivity of their apps, or simply need a detailed view into their data structures. All that with minimal code and a ![straightforward API](https://ipedro.github.io/swiftui-property-inspector/documentation/propertyinspector/swiftui/view).
+[PropertyInspector](https://ipedro.github.io/swiftui-property-inspector/documentation/propertyinspector/propertyinspector) is a SwiftUI component that provides a powerful and flexible way to inspect and interact with properties dynamically. It's designed for developers who want to create sophisticated debugging tools, enhance the interactivity of their apps, or simply need a detailed view into their data structures. All that with minimal code and a [straightforward API](https://ipedro.github.io/swiftui-property-inspector/documentation/propertyinspector/swiftui/view).
 
 ## Features
 
