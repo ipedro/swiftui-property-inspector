@@ -49,14 +49,11 @@ Here's an example of using `PropertyInspector` in your SwiftUI views:
 import PropertyInspector
 import SwiftUI
 
-#Preview(body: {
+var body: some View {
     PropertyInspector(listStyle: .plain) {
-        VStack(content: {
+        VStack {
             MyText(content: "Placeholder Text")
             MyButton(style: .bordered)
-        })
-        .propertyInspectorRowIcon(for: Any.self) { _ in
-            Image(systemName: "list.bullet")
         }
         .propertyInspectorRowIcon(for: String.self) { _ in
             Image(systemName: "text.quote")
@@ -65,7 +62,7 @@ import SwiftUI
             Image(systemName: "button.vertical.right.press.fill")
         }
     }
-})
+}
 
 struct MyText<S: StringProtocol>: View {
     var content: S
