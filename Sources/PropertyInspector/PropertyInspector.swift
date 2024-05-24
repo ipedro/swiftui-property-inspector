@@ -53,9 +53,9 @@ public extension PropertyInspector {
         _ title: LocalizedStringKey? = nil,
         isPresented: Binding<Bool>,
         @ViewBuilder label: () -> Label
-    ) where Style == SheetPropertyInspector<PlainListStyle, Color> {
+    ) where Style == _SheetPropertyInspector<PlainListStyle, Color> {
         self.label = label()
-        self.style = SheetPropertyInspector(
+        self.style = _SheetPropertyInspector(
             title: title,
             isPresented: isPresented,
             listStyle: .plain,
@@ -99,9 +99,9 @@ public extension PropertyInspector {
         listStyle: L,
         listRowBackground: Color? = nil,
         @ViewBuilder label: () -> Label
-    ) where Style == SheetPropertyInspector<L, Color> {
+    ) where Style == _SheetPropertyInspector<L, Color> {
         self.label = label()
-        self.style = SheetPropertyInspector(
+        self.style = _SheetPropertyInspector(
             title: title,
             isPresented: isPresented,
             listStyle: listStyle,
@@ -137,9 +137,9 @@ public extension PropertyInspector {
         listStyle: L,
         listRowBackground: Color? = nil,
         @ViewBuilder label: () -> Label
-    ) where Style == ListPropertyInspector<L, Color> {
+    ) where Style == _ListPropertyInspector<L, Color> {
         self.label = label()
-        self.style = ListPropertyInspector(
+        self.style = _ListPropertyInspector(
             title: title,
             listStyle: listStyle,
             listRowBackground: listRowBackground,
@@ -175,9 +175,9 @@ public extension PropertyInspector {
         listStyle: L,
         listRowBackground: B,
         @ViewBuilder label: () -> Label
-    ) where Style == ListPropertyInspector<L, B> {
+    ) where Style == _ListPropertyInspector<L, B> {
         self.label = label()
-        self.style = ListPropertyInspector(
+        self.style = _ListPropertyInspector(
             title: title,
             listStyle: listStyle,
             listRowBackground: listRowBackground,
@@ -210,9 +210,9 @@ public extension PropertyInspector {
 
      - seeAlso: ``init(_:isPresented:listStyle:listRowBackground:label:)`` for modal presentation styles, or  ``init(_:listStyle:listRowBackground:label:)-87xpv`` for list-based styles with more extensive customization options.
      */
-    init(@ViewBuilder label: () -> Label) where Style == InlinePropertyInspector {
+    init(@ViewBuilder label: () -> Label) where Style == _InlinePropertyInspector {
         self.label = label()
-        self.style = InlinePropertyInspector()
+        self.style = _InlinePropertyInspector()
     }
 
 }

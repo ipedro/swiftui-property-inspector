@@ -25,7 +25,7 @@ import SwiftUI
 // MARK: - Inline Style
 
 /**
- `InlinePropertyInspector` provides a SwiftUI view modifier that applies an inline-style presentation to property inspectors.
+ `_InlinePropertyInspector` provides a SwiftUI view modifier that applies an inline-style presentation to property inspectors.
 
  This style integrates property listings directly within the surrounding content, using a minimalistic approach suitable for inline detail presentation.
 
@@ -38,7 +38,7 @@ import SwiftUI
 
  ## Usage
 
- `InlinePropertyInspector` should be used when you want to integrate property details directly within your UI without a distinct separation. Here's how to configure it:
+ `_InlinePropertyInspector` should be used when you want to integrate property details directly within your UI without a distinct separation. Here's how to configure it:
 
  ```swift
  var body: some View {
@@ -55,11 +55,11 @@ import SwiftUI
 
  ## Performance Considerations
 
- Since ``InlinePropertyInspector`` is designed for minimalistic integration, it generally has low impact on performance.
+ Since ``_InlinePropertyInspector`` is designed for minimalistic integration, it generally has low impact on performance.
 
- - seeAlso: ``SheetPropertyInspector`` and ``ListPropertyInspector``.
+ - seeAlso: ``_SheetPropertyInspector`` and ``_ListPropertyInspector``.
  */
-public struct InlinePropertyInspector: _PropertyInspectorStyle {
+public struct _InlinePropertyInspector: _PropertyInspectorStyle {
     public func body(content: Content) -> some View {
         content.safeAreaInset(edge: .bottom) {
             LazyVStack(alignment: .leading, spacing: 15) {

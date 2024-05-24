@@ -23,16 +23,8 @@ import SwiftUI
 
 // MARK: - Sheet Style
 
-public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
-    case manual = "Manual"
-    case automatic = "Show / Hide Automatically"
-    case hideOnDismiss = "Hide Automatically"
-}
-
-// MARK: - Sheet Style
-
 /**
- `SheetPropertyInspector` provides a SwiftUI view modifier that applies a sheet-style presentation to property inspectors.
+ `_SheetPropertyInspector` provides a SwiftUI view modifier that applies a sheet-style presentation to property inspectors.
 
  This style organizes properties within a customizable list, using specified list styles and row backgrounds, making it ideal for detailed inspections in a modal sheet format.
 
@@ -46,7 +38,7 @@ public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
 
  ## Usage
 
- You don't instantiate `SheetPropertyInspector` directly, instead use one of the convenience initializers in ``PropertyInspector``. 
+ You don't instantiate `_SheetPropertyInspector` directly, instead use one of the convenience initializers in ``PropertyInspector``. 
  Here’s how you might configure and present a property inspector with a sheet style:
 
  ```swift
@@ -70,10 +62,10 @@ public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
 
  - Note: Requires iOS 16.4 or newer due to specific SwiftUI features utilized.
 
- - seeAlso: ``ListPropertyInspector`` and ``InlinePropertyInspector``.
+ - seeAlso: ``_ListPropertyInspector`` and ``_InlinePropertyInspector``.
  */
 @available(iOS 16.4, *)
-public struct SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
+public struct _SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
     var title: LocalizedStringKey?
 
     @Binding
@@ -87,7 +79,7 @@ public struct SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
     private var context: Context.Data
     
     @AppStorage("HighlightBehavior")
-    private var highlight = PropertyInspectorHighlightBehavior.manual
+    private var highlight = PropertyInspectorHighlightBehavior.hideOnDismiss
 
     @State
     private var contentHeight: Double = .zero
@@ -108,7 +100,7 @@ public struct SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
                     isPresented: $isPresented,
                     height: $contentHeight,
                     label: EmptyView().modifier(
-                        ListPropertyInspector(
+                        _ListPropertyInspector(
                             title: title,
                             listStyle: listStyle,
                             listRowBackground: listRowBackground,
@@ -213,7 +205,7 @@ private struct SheetToolbarContent: View {
         Divider()
         Picker(title, selection: $highlight) {
             ForEach(PropertyInspectorHighlightBehavior.allCases, id: \.hashValue) { behavior in
-                Button(behavior.rawValue) {
+                Button(behavior.label) {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     highlight = behavior
                 }
