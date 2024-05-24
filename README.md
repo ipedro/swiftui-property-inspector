@@ -35,12 +35,15 @@ dependencies: [
 
 Then, import `swiftui-property-inspector` in your SwiftUI views to start using it.
 
+## Documentation
+
+The full documentation for `swiftui-property-inspector` can be found [here](https://ipedro.github.io/swiftui-property-inspector/documentation/propertyinspector/).
+
 ## Usage
 
 Here's an example of using `PropertyInspector` in your SwiftUI views:
 
-![WwiftUI PropertyInspector plain list style example](Docs/swiftui-property-inspector-plain-list-example.png)
-
+![SwiftUI PropertyInspector plain list style example](Docs/swiftui-property-inspector-plain-list-example.png)
 
 ```swift
 import PropertyInspector
@@ -104,4 +107,4 @@ We welcome contributions! If you'd like to contribute, please fork the repositor
 
 ## License
 
-The `swiftui-property-picker` package is released under the MIT License. See [LICENSE](LICENSE) for details.
+The `swiftui-property-inspector` package is released under the MIT License. See [LICENSE](LICENSE) for details.
