@@ -41,7 +41,7 @@ jobs:
             transform-for-static-hosting /tmp/docbuild/Build/Products/Debug-iphoneos/PropertyInspector.doccarchive \
             --hosting-base-path PropertyInspector \
             --output-path docs;
-          echo "<script>window.location.href += \"/documentation/inspector\"</script>" > docs/index.html;
+          echo "<script>window.location.href += \"/documentation/propertyinspector\"</script>" > docs/index.html;
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
