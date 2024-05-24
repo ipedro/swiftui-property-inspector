@@ -41,9 +41,9 @@ The full documentation for `swiftui-property-inspector` can be found [here](http
 
 ## Usage
 
-Here's an example of using `PropertyInspector` in your SwiftUI views:
+Here's a simple example of using `PropertyInspector` in your SwiftUI views:
 
-![SwiftUI PropertyInspector plain list style example](Docs/swiftui-property-inspector-plain-list-example.png)
+![SwiftUI PropertyInspector plain list style example](Docs/swiftui-property-inspector-plain-list-example@2x.gif)
 
 ```swift
 import PropertyInspector
@@ -51,28 +51,38 @@ import SwiftUI
 
 var body: some View {
     PropertyInspector(listStyle: .plain) {
-        VStack {
-            MyText(content: "Placeholder Text")
-            MyButton(style: .bordered)
-        }
-        .propertyInspectorRowIcon(for: String.self) { _ in
+        VStack(content: {
+            InspectableText(content: "Placeholder Text")
+            InspectableButton(style: .bordered)
+        })
+        .propertyInspectorRowLabel(for: Int.self, label: { data in
+            Text("Tap count: \(data)")
+        })
+        .propertyInspectorRowIcon(for: Int.self, icon: { data in
+            Image(systemName: "\(data).circle.fill")
+        })
+        .propertyInspectorRowIcon(for: String.self, icon: { _ in
             Image(systemName: "text.quote")
-        }
-        .propertyInspectorRowIcon(for: (any PrimitiveButtonStyle).self) { _ in
+        })
+        .propertyInspectorRowIcon(for: (any PrimitiveButtonStyle).self, icon: { _ in
             Image(systemName: "button.vertical.right.press.fill")
-        }
+        })
     }
 }
+```
 
-struct MyText<S: StringProtocol>: View {
+```swift
+struct InspectableText<S: StringProtocol>: View {
     var content: S
 
     var body: some View {
         Text(content).inspectProperty(content)
     }
 }
+```
 
-struct MyButton<S: PrimitiveButtonStyle>: View {
+```swift
+struct InspectableButton<S: PrimitiveButtonStyle>: View {
     var style: S
     @State private var tapCount = 0
 
@@ -80,11 +90,11 @@ struct MyButton<S: PrimitiveButtonStyle>: View {
         Button("Tap Me") {
             tapCount += 1
         }
-        .inspectProperty(style, "Tap Count: \(tapCount)")
+        // inspecting multiple values with a single function call links their highlight behavior.
+        .inspectProperty(style, tapCount)
         .buttonStyle(style)
     }
 }
-
 ```
 
 ### Disabling Inspection

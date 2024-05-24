@@ -27,15 +27,18 @@ import SwiftUI
             InspectableText(content: "Placeholder Text")
             InspectableButton(style: .bordered)
         })
-        .propertyInspectorRowIcon(for: Any.self) { _ in
-            Image(systemName: "list.bullet")
-        }
-        .propertyInspectorRowIcon(for: String.self) { _ in
+        .propertyInspectorRowLabel(for: Int.self, label: { data in
+            Text("Tap count: \(data)")
+        })
+        .propertyInspectorRowIcon(for: Int.self, icon: { data in
+            Image(systemName: "\(data).circle.fill")
+        })
+        .propertyInspectorRowIcon(for: String.self, icon: { _ in
             Image(systemName: "text.quote")
-        }
-        .propertyInspectorRowIcon(for: (any PrimitiveButtonStyle).self) { _ in
+        })
+        .propertyInspectorRowIcon(for: (any PrimitiveButtonStyle).self, icon: { _ in
             Image(systemName: "button.vertical.right.press.fill")
-        }
+        })
     }
 })
 
@@ -55,7 +58,8 @@ struct InspectableButton<S: PrimitiveButtonStyle>: View {
         Button("Tap Me") {
             tapCount += 1
         }
-        .inspectProperty(style, "Tap Count: \(tapCount)")
+        // inspecting multiple values with a single function call links their highlight behavior.
+        .inspectProperty(style, tapCount)
         .buttonStyle(style)
     }
 }

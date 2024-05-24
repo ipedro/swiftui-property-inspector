@@ -20,6 +20,86 @@
 
 import SwiftUI
 
+/**
+ A `PropertyInspector` struct provides a customizable interface for inspecting properties within a SwiftUI view.
+
+ The `PropertyInspector` is designed to display detailed information about properties, ideal for debugging purposes, configuration settings, or presenting detailed data about objects in a clear and organized manner. It leverages generics to support various content and styling options, making it a versatile tool for building dynamic and informative user interfaces.
+
+ ## Usage
+
+ The `PropertyInspector` is typically initialized with a label and a style. The label defines the content that will be displayed, while the style dictates how this content is presented. Below is an example of how to instantiate and use a `PropertyInspector` with a custom style and label:
+
+![SwiftUI PropertyInspector plain list style example](https://github.com/ipedro/swiftui-property-inspector/raw/main/Docs/swiftui-property-inspector-plain-list-example@2x.gif)
+
+```swift
+import PropertyInspector
+import SwiftUI
+
+var body: some View {
+    PropertyInspector(listStyle: .plain) {
+        VStack(content: {
+            InspectableText(content: "Placeholder Text")
+            InspectableButton(style: .bordered)
+        })
+        .propertyInspectorRowLabel(for: Int.self, label: { data in
+            Text("Tap count: \(data)")
+        })
+        .propertyInspectorRowIcon(for: Int.self, icon: { data in
+            Image(systemName: "\(data).circle.fill")
+        })
+        .propertyInspectorRowIcon(for: String.self, icon: { _ in
+            Image(systemName: "text.quote")
+        })
+        .propertyInspectorRowIcon(for: (any PrimitiveButtonStyle).self, icon: { _ in
+            Image(systemName: "button.vertical.right.press.fill")
+        })
+    }
+}
+```
+
+```swift
+struct InspectableText<S: StringProtocol>: View {
+    var content: S
+
+    var body: some View {
+        Text(content).inspectProperty(content)
+    }
+}
+```
+
+```swift
+struct InspectableButton<S: PrimitiveButtonStyle>: View {
+    var style: S
+    @State private var tapCount = 0
+
+    var body: some View {
+        Button("Tap Me") {
+            tapCount += 1
+        }
+        // inspecting multiple values with a single function call links their highlight behavior.
+        .inspectProperty(style, tapCount)
+        .buttonStyle(style)
+    }
+}
+```
+
+ - seeAlso: ``inspectProperty(_:function:line:file:)``, ``propertyInspectorHidden()``, and ``inspectSelf(function:line:file:)``
+ */
+public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: View {
+    var label: Label
+    var style: Style
+    var context = Context()
+
+    public var body: some View {
+        // Do not change the following order:
+        label
+            // 1. content
+            .modifier(style)
+            // 2. data context
+            .modifier(context)
+    }
+}
+
 public extension PropertyInspector {
     /**
      Initializes property inspector presented as a sheet with minimal styling.
@@ -216,49 +296,3 @@ public extension PropertyInspector {
     }
 
 }
-
-/**
- A `PropertyInspector` struct provides a customizable interface for inspecting properties within a SwiftUI view.
-
- The `PropertyInspector` is designed to display detailed information about properties, ideal for debugging purposes, configuration settings, or presenting detailed data about objects in a clear and organized manner. It leverages generics to support various content and styling options, making it a versatile tool for building dynamic and informative user interfaces.
-
- ## Usage
-
- The `PropertyInspector` is typically initialized with a label and a style. The label defines the content that will be displayed, while the style dictates how this content is presented. Below is an example of how to instantiate and use a `PropertyInspector` with a custom style and label:
-
- ```swift
- struct ContentView: View {
-     var body: some View {
-         PropertyInspector("User Details", label: {
-             VStack(alignment: .leading) {
-                 Text("Username: user123")
-                 Text("Status: Active")
-             }
-         })
-     }
- }
- ```
-
- - Note: The `PropertyInspector` is a generic struct that requires specifying a view type for its label and a style type. It does not manage state internally but relies on the surrounding environment to provide and manage the data it displays.
-
- - seeAlso: ``inspectProperty(_:function:line:file:)``, ``propertyInspectorHidden()``, and ``inspectSelf(function:line:file:)``
- */
-public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: View {
-    var label: Label
-    var style: Style
-    var context = Context()
-
-    public var body: some View {
-        // Do not change the following order:
-        label
-            // 1. content
-            .modifier(style)
-            // 2. data context
-            .modifier(context)
-    }
-}
-
-/**
- Customizes the appearance and behavior of ``PropertyInspector`` components. This protocol adheres to `ViewModifier`, enabling it to modify the view of a ``PropertyInspector`` to match specific design requirements.
- */
-public protocol _PropertyInspectorStyle: ViewModifier {}
