@@ -34,14 +34,14 @@ jobs:
         uses: actions/configure-pages@main
       - name: Build DocC
         run: |
-          xcodebuild docbuild -scheme PropertyInspector \
+          xcodebuild docbuild -scheme swiftui-property-inspector \
             -derivedDataPath /tmp/docbuild \
             -destination 'generic/platform=iOS';
           $(xcrun --find docc) process-archive \
-            transform-for-static-hosting /tmp/docbuild/Build/Products/Debug-iphoneos/PropertyInspector.doccarchive \
-            --hosting-base-path PropertyInspector \
+            transform-for-static-hosting /tmp/docbuild/Build/Products/Debug-iphoneos/swiftui-property-inspector.doccarchive \
+            --hosting-base-path swiftui-property-inspector \
             --output-path docs;
-          echo "<script>window.location.href += \"/documentation/propertyinspector\"</script>" > docs/index.html;
+          echo "<script>window.location.href += \"/documentation/swiftui-property-inspector\"</script>" > docs/index.html;
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
