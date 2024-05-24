@@ -96,8 +96,7 @@ To disable the property inspection:
 
 ```swift
 var body: some View {
-    MyView()
-        .propertyInspectorDisabled()
+    MyView().propertyInspectorHidden()
 }
 ```
 
