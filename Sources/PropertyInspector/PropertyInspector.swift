@@ -29,7 +29,7 @@ import SwiftUI
 
  The `PropertyInspector` is typically initialized with a label and a style. The label defines the content that will be displayed, while the style dictates how this content is presented. Below is an example of how to instantiate and use a `PropertyInspector` with a custom style and label:
 
-![SwiftUI PropertyInspector plain list style example](https://github.com/ipedro/swiftui-property-inspector/raw/main/Docs/swiftui-property-inspector-plain-list-example@2x.gif)
+![SwiftUI PropertyInspector plain list style example](https://github.com/ipedro/swiftui-property-inspector/raw/main/Docs/swiftui-property-inspector-plain-list-example.gif)
 
 ```swift
 import PropertyInspector
@@ -288,7 +288,7 @@ public extension PropertyInspector {
      }
      ```
 
-     - seeAlso: ``init(_:isPresented:listStyle:listRowBackground:label:)`` for modal presentation styles, or  ``init(_:listStyle:listRowBackground:label:)-87xpv`` for list-based styles with more extensive customization options.
+     - seeAlso: ``init(_:isPresented:listStyle:listRowBackground:label:)`` for modal presentation styles, or  ``init(_:listStyle:listRowBackground:label:)-1gshp`` for list-based styles with more extensive customization options.
      */
     init(@ViewBuilder label: () -> Label) where Style == _InlinePropertyInspector {
         self.label = label()

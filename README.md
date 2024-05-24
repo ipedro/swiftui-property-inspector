@@ -43,7 +43,7 @@ The full documentation for `swiftui-property-inspector` can be found [here](http
 
 Here's a simple example of using `PropertyInspector` in your SwiftUI views:
 
-![SwiftUI PropertyInspector plain list style example](Docs/swiftui-property-inspector-plain-list-example@2x.gif)
+![SwiftUI PropertyInspector plain list style example](Docs/swiftui-property-inspector-plain-list-example.gif)
 
 ```swift
 import PropertyInspector

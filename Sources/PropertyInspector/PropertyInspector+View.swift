@@ -130,7 +130,7 @@ public extension View {
 
      This method can be used to safeguard sensitive information or simply to clean up the debugging output for views that no longer need inspection.
 
-     - seeAlso: ``inspectProperty(_:function:line:file:)``
+     - seeAlso: <doc:/documentation/PropertyInspector/SwiftUI/View/inspectProperty(_:function:line:file:)-6jnxn>
      */
     func propertyInspectorHidden() -> some View {
         environment(\.isInspectable, false)
