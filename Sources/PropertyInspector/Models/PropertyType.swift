@@ -30,10 +30,10 @@ struct PropertyType: Identifiable {
         if T.self == Any.self {
             // only use mirror as last resort
             type = Mirror(reflecting: subject).subjectType
-            debugPrint(#function, "🐢", "Determined type \(type) in \((Date().timeIntervalSince(start) * 1000).formatted()) ms")
+            //debugPrint(#function, "🐢", "Determined type \(type) in \((Date().timeIntervalSince(start) * 1000).formatted()) ms")
         } else {
             type = T.self
-            debugPrint(#function, "🐰", "Determined type \(type) in \((Date().timeIntervalSince(start) * 1000).formatted()) ms")
+            //debugPrint(#function, "🐰", "Determined type \(type) in \((Date().timeIntervalSince(start) * 1000).formatted()) ms")
         }
         self.id = ObjectIdentifier(type)
         self.rawValue = type

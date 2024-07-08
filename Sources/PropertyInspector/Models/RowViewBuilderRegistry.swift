@@ -63,11 +63,11 @@ struct RowViewBuilderRegistry: Hashable {
 
     func makeBody(property: Property) -> AnyView? {
         if let cached = resolveFromCache(property: property) {
-            debugPrint("[PropertyInspector]", "♻️", property.stringValue, "resolved from cache")
+            //debugPrint("[PropertyInspector]", "♻️", property.stringValue, "resolved from cache")
             return cached
         }
         else if let body = createBody(property: property) {
-            debugPrint("[PropertyInspector]", "🆕", property.stringValue, "created new view")
+            //debugPrint("[PropertyInspector]", "🆕", property.stringValue, "created new view")
             return body
         }
         return nil

@@ -41,11 +41,12 @@ struct PropertyWriter: ViewModifier  {
     private var ids: [PropertyID]
 
     @State
-    private var changes = 0 {
-        didSet {
-            debugPrint("[PropertyInspector]", "🆕", String(describing: data), "updated count")
-        }
-    }
+    private var changes = 0
+//    {
+//        didSet {
+//            debugPrint("[PropertyInspector]", "🆕", String(describing: data), "updated count")
+//        }
+//    }
 
     @State
     private var _isOn = false
