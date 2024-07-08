@@ -14,15 +14,16 @@ let package = Package(
             targets: ["PropertyInspector"]),
         .library(
             name: "PropertyInspectorExamples",
-            targets: ["Examples"]),
+            targets: ["PropertyInspectorExamples"]),
     ],
     targets: [
         .target(
             name: "PropertyInspector"
         ),
         .target(
-            name: "Examples",
-            dependencies: ["PropertyInspector"]
+            name: "PropertyInspectorExamples",
+            dependencies: ["PropertyInspector"],
+            path: "Sources/Examples"
         ),
     ]
 )
