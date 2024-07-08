@@ -63,7 +63,7 @@ struct PropertyWriter: ViewModifier  {
     private var isInspectable
 
     func body(content: Content) -> some View {
-        PropertyWriter._printChanges()
+        //PropertyWriter._printChanges()
         return content.setPreference(
             PropertyPreferenceKey.self, value: properties
         )

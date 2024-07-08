@@ -25,7 +25,7 @@ struct Rows: View {
     private var context: Context.Data
 
     var body: some View {
-        Rows._printChanges()
+        //Rows._printChanges()
         return ForEach(context.properties) { property in
             Row(
                 id: property.hashValue,

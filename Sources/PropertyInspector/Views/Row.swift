@@ -40,7 +40,7 @@ struct Row<Icon: View, Label: View, Detail: View>: View, Equatable {
     private var detailFont
 
     var body: some View {
-        Row._printChanges()
+        //Row._printChanges()
         return Toggle(isOn: $isOn, label: content).toggleStyle(
             PropertyToggleStyle(impactIntensity: 0.6)
         )
