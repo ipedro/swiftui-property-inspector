@@ -13,7 +13,7 @@ let package = Package(
             name: "PropertyInspector",
             targets: ["PropertyInspector"]),
         .library(
-            name: "Examples",
+            name: "PropertyInspectorExamples",
             targets: ["Examples"]),
     ],
     targets: [
