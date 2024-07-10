@@ -41,21 +41,13 @@ struct PropertyWriter: ViewModifier  {
     private var ids: [PropertyID]
 
     @State
-    private var changes = 0
-//    {
-//        didSet {
-//            debugPrint("[PropertyInspector]", "🆕", String(describing: data), "updated count")
-//        }
-//    }
+    private var isActive = false
 
-    @State
-    private var _isOn = false
-
-    private var isOn: Binding<Bool> {
+    private var isHighlighted: Binding<Bool> {
         Binding {
-            isInspectable && _isOn
+            isInspectable && isActive
         } set: { newValue in
-            _isOn = newValue
+            isActive = newValue
         }
     }
 
@@ -63,12 +55,14 @@ struct PropertyWriter: ViewModifier  {
     private var isInspectable
 
     func body(content: Content) -> some View {
-        //PropertyWriter._printChanges()
+        #if VERBOSE
+        Self._printChanges()
+        #endif
         return content.setPreference(
             PropertyPreferenceKey.self, value: properties
         )
         .modifier(
-            PropertyHiglighter(isOn: isOn)
+            PropertyHiglighter(isOn: isHighlighted)
         )
     }
 
@@ -83,17 +77,9 @@ struct PropertyWriter: ViewModifier  {
             set.insert(
                 Property(
                     id: id,
-                    changes: changes,
+                    token: String(describing: value.rawValue).hashValue,
                     value: value,
-                    isHighlighted: Binding(
-                        get: {
-                            isOn.wrappedValue
-                        },
-                        set: { newValue in
-                            isOn.wrappedValue = newValue
-                            changes += 1
-                        }
-                    )
+                    isHighlighted: isHighlighted
                 )
             )
             dict[key] = set
@@ -101,5 +87,4 @@ struct PropertyWriter: ViewModifier  {
 
         return result
     }
-
 }

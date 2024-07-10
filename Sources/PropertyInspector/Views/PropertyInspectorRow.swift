@@ -21,8 +21,8 @@
 import Foundation
 import SwiftUI
 
-struct Row<Icon: View, Label: View, Detail: View>: View, Equatable {
-    static func == (lhs: Row<Icon, Label, Detail>, rhs: Row<Icon, Label, Detail>) -> Bool {
+struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equatable {
+    static func == (lhs: PropertyInspectorRow<Icon, Label, Detail>, rhs: PropertyInspectorRow<Icon, Label, Detail>) -> Bool {
         lhs.id == rhs.id
     }
     var id: Int
@@ -40,7 +40,9 @@ struct Row<Icon: View, Label: View, Detail: View>: View, Equatable {
     private var detailFont
 
     var body: some View {
-        //Row._printChanges()
+        #if VERBOSE
+        PropertyInspectorRow._printChanges()
+        #endif
         return Toggle(isOn: $isOn, label: content).toggleStyle(
             PropertyToggleStyle(impactIntensity: 0.6)
         )
@@ -86,7 +88,7 @@ private extension View {
 }
 
 #Preview {
-    Row(
+    PropertyInspectorRow(
         id: 0,
         isOn: .constant(true),
         hideIcon: false,
@@ -98,7 +100,7 @@ private extension View {
 
 
 #Preview {
-    Row(
+    PropertyInspectorRow(
         id: 0,
         isOn: .constant(true),
         hideIcon: true,

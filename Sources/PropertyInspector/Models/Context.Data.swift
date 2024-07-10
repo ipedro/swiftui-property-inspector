@@ -29,21 +29,45 @@ extension Context {
 
         private var _searchQuery = ""
 
-        @Published
-        var properties = [Property]()
-
         var allProperties = [Property]()
 
         var filters = Set<Filter<PropertyType>>()
 
         @Published
-        var iconRegistry = RowViewBuilderRegistry()
+        var properties = [Property]() {
+            didSet {
+#if VERBOSE
+                print("\(Self.self): Updated Properties \(properties.map(\.stringValue))")
+#endif
+            }
+        }
 
         @Published
-        var labelRegistry = RowViewBuilderRegistry()
+        var iconRegistry = RowViewBuilderRegistry() {
+            didSet {
+#if VERBOSE
+                print("\(Self.self): Updated Icons \(iconRegistry)")
+#endif
+            }
+        }
 
         @Published
-        var detailRegistry = RowViewBuilderRegistry()
+        var labelRegistry = RowViewBuilderRegistry() {
+            didSet {
+#if VERBOSE
+                print("\(Self.self): Updated Labels \(labelRegistry)")
+#endif
+            }
+        }
+
+        @Published
+        var detailRegistry = RowViewBuilderRegistry() {
+            didSet {
+#if VERBOSE
+                print("\(Self.self): Updated Details \(iconRegistry)")
+#endif
+            }
+        }
 
         var allObjects: [PropertyType: Set<Property>] {
             get { _allObjects }

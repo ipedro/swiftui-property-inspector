@@ -63,7 +63,7 @@ public struct _InlinePropertyInspector: _PropertyInspectorStyle {
     public func body(content: Content) -> some View {
         content.safeAreaInset(edge: .bottom) {
             LazyVStack(alignment: .leading, spacing: 15) {
-                Rows()
+                PropertyInspectorRows()
             }
             .padding()
         }

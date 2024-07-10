@@ -2,6 +2,8 @@
 
 import PackageDescription
 
+let isRemoteCheckout = Context.packageDirectory.contains("Library/Developer/Xcode/DerivedData/")
+
 let package = Package(
     name: "swiftui-property-inspector",
     platforms: [
@@ -18,7 +20,14 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "PropertyInspector"
+            name: "PropertyInspector",
+            swiftSettings: {
+                if isRemoteCheckout {
+                    []
+                } else {
+                    [.define("VERBOSE")]
+                }
+            }()
         ),
         .target(
             name: "PropertyInspectorExamples",

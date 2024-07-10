@@ -56,7 +56,7 @@ public struct _ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
     public func body(content: Content) -> some View {
         List {
             Section {
-                Rows().listRowBackground(listRowBackground)
+                PropertyInspectorRows().listRowBackground(listRowBackground)
             } header: {
                 VStack(spacing: .zero) {
                     content

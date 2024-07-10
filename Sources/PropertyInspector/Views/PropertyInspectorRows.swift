@@ -20,14 +20,16 @@
 
 import SwiftUI
 
-struct Rows: View {
+struct PropertyInspectorRows: View {
     @EnvironmentObject
     private var context: Context.Data
 
     var body: some View {
-        //Rows._printChanges()
+        #if VERBOSE
+        Self._printChanges()
+        #endif
         return ForEach(context.properties) { property in
-            Row(
+            PropertyInspectorRow(
                 id: property.hashValue,
                 isOn: property.$isHighlighted,
                 hideIcon: context.iconRegistry.isEmpty,

@@ -35,7 +35,7 @@ final class Property: Identifiable, Comparable, Hashable {
     var isHighlighted: Bool
 
     /// Signal view updates
-    let changeToken: Int
+    let token: AnyHashable
 
     /// Returns the type of the value as a string, useful for dynamic type checks or displays.
     var stringValueType: String {
@@ -55,11 +55,11 @@ final class Property: Identifiable, Comparable, Hashable {
     ///   - offset: An offset used to uniquely sort the property when multiple properties share the same location.
     init(
         id: ID,
-        changes: Int,
+        token: AnyHashable,
         value: PropertyValue,
         isHighlighted: Binding<Bool>
     ) {
-        self.changeToken = changes
+        self.token = token
         self.id = id
         self.value = value
         self._isHighlighted = isHighlighted
@@ -69,7 +69,7 @@ final class Property: Identifiable, Comparable, Hashable {
     static func == (lhs: Property, rhs: Property) -> Bool {
         lhs.id == rhs.id && 
         lhs.stringValue == rhs.stringValue &&
-        lhs.changeToken == rhs.changeToken
+        lhs.token == rhs.token
     }
 
     /// Determines if one `Property` should precede another in a sorted list, based on a composite string that includes their location and value.
@@ -81,6 +81,6 @@ final class Property: Identifiable, Comparable, Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
         hasher.combine(stringValue)
-        hasher.combine(changeToken)
+        hasher.combine(token)
     }
 }
