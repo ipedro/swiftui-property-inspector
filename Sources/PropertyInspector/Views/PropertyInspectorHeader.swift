@@ -20,7 +20,7 @@
 
 import SwiftUI
 
-struct Header: View {
+struct PropertyInspectorHeader: View {
     var data: LocalizedStringKey
 
     init?(data: LocalizedStringKey?) {
@@ -30,24 +30,13 @@ struct Header: View {
 
     @EnvironmentObject
     private var context: Context.Data
-
-    private var text: Text {
-        Text(data) + Text(" (\(context.properties.count))")
-    }
-
+    
     var body: some View {
         VStack {
             title()
-            ScrollView(.horizontal) {
-                HStack(content: {
-                    ForEach(context.filters.sorted(), id: \.self) { filter in
-                        FilterView(
-                            data: filter,
-                            isOn: context.isOn(filter: filter)
-                        )
-                    }
-                })
-                .padding(.vertical, 5)
+            let filters = context.filters.sorted()
+            if !filters.isEmpty {
+                filterList(data: filters)
             }
         }
         .ios16_hideScrollIndicators()
@@ -56,17 +45,65 @@ struct Header: View {
         .environment(\.textCase, nil)
         .foregroundStyle(.primary)
         .padding(
-            EdgeInsets(
-                top: 10,
-                leading: 0,
-                bottom: 8,
-                trailing: 0
-            )
+            EdgeInsets(top: 10, leading: 0, bottom: 8, trailing: 0)
+        )
+    }
+
+    private func filterList(data: [Context.Filter<PropertyType>]) -> ScrollView<some View> {
+        ScrollView(.horizontal) {
+            LazyHStack(pinnedViews: .sectionHeaders) {
+                let allSelected = !data.map(\.isOn).contains(false)
+                Section {
+                    HStack {
+                        ForEach(data, id: \.self) { filter in
+                            Toggle(
+                                filter.wrappedValue.description,
+                                isOn: context.isOn(filter: filter)
+                            )
+                        }
+                    }
+                } header: {
+                    header(data, isOn: allSelected).buttonStyle(.plain)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .font(.caption.bold())
+            .toggleStyle(.button)
+            .controlSize(.mini)
+            .tint(.secondary)
+            .padding(.vertical, 5)
+        }
+    }
+
+    @ViewBuilder
+    private func header(_ filters: [Context.Filter<PropertyType>], isOn: Bool) -> some View {
+        Toggle(
+            isOn: Binding {
+                isOn
+            } set: { newValue in
+                filters.forEach {
+                    context.isOn(filter: $0).wrappedValue = newValue
+                }
+            },
+            label: {
+                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                    .font(.subheadline)
+                    .accessibilityLabel(Text(isOn ? "Deselect All Filters" : "Select All Filters"))
+                    .background {
+                        Circle().fill(Color(uiColor: .systemBackground))
+                    }
+            }
         )
     }
 
     @ViewBuilder
     private func title() -> some View {
+        let text = if context.properties.isEmpty {
+            Text(data)
+        } else {
+            Text(data) + Text(" (\(context.properties.count))")
+        }
+
         let formattedText = text.bold()
             .font(.title3)
             .lineLimit(1)
@@ -81,47 +118,6 @@ struct Header: View {
             )
         } else {
             formattedText
-        }
-    }
-
-    private struct FilterView: View {
-        var data: Context.Filter<PropertyType>
-        @Binding var isOn: Bool
-
-        var body: some View {
-            return Toggle(isOn: $isOn) {
-                Text(verbatim: data.wrappedValue.description)
-                    .font(.caption2)
-                    .padding(
-                        EdgeInsets(
-                            top: 4,
-                            leading: 8,
-                            bottom: 4,
-                            trailing: 8
-                        )
-                    )
-                    .foregroundColor(
-                        data.isOn ? Color(uiColor: .systemBackground) : .primary
-                    )
-            }
-            .toggleStyle(_FilterToggleStyle())
-            .background {
-                if data.isOn {
-                    Capsule()
-                } else {
-                    Capsule().strokeBorder()
-                }
-            }
-        }
-    }
-
-    private struct _FilterToggleStyle: ToggleStyle {
-        func makeBody(configuration: Configuration) -> some View {
-            Button(action: {
-                configuration.isOn.toggle()
-            }, label: {
-                configuration.label
-            })
         }
     }
 }

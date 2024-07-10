@@ -21,7 +21,7 @@
 import Foundation
 import SwiftUI
 
-struct RowViewBuilderRegistry: Hashable {
+struct RowViewBuilderRegistry: Hashable, CustomStringConvertible {
     private var data: [PropertyType: RowViewBuilder]
 
     private let cache = HashableDictionary<PropertyValueID, HashableBox<AnyView>>()
@@ -30,6 +30,10 @@ struct RowViewBuilderRegistry: Hashable {
         self.data = values.reduce(into: [:], { partialResult, builder in
             partialResult[builder.id] = builder
         })
+    }
+
+    var description: String {
+        "\(Self.self)\(data.keys.map { "\n\t-\($0.rawValue)" }.joined())"
     }
 
     var isEmpty: Bool { data.isEmpty }

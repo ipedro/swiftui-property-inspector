@@ -24,12 +24,11 @@ import SwiftUI
 struct PropertyToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
     var animation: Animation? = .snappy(duration: 0.3)
-    var impact: UIImpactFeedbackGenerator = .init(style: .light)
-    var impactIntensity: CGFloat = 1.0
+    var impact = UISelectionFeedbackGenerator()
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
-            impact.impactOccurred(intensity: impactIntensity)
+            impact.selectionChanged()
             withAnimation(animation) {
                 configuration.isOn.toggle()
             }
@@ -41,10 +40,8 @@ struct PropertyToggleStyle: ToggleStyle {
                 
                 Image(systemName: imageName(configuration._state))
                     .font(.headline)
-                    .tint(.accentColor)
                     .ios17_interpolateSymbolEffect(value: configuration._state)
             }
-            .animation(animation, value: configuration._state)
         }
     }
 
@@ -61,14 +58,13 @@ private extension View {
     @ViewBuilder
     func ios17_interpolateSymbolEffect<V: Equatable>(value: V) -> some View {
         if #available(iOS 17.0, *) {
-            self.contentTransition(.interpolate).symbolEffect(
+            contentTransition(.interpolate).symbolEffect(
                 .bounce.byLayer.down,
-                options: .speed(1.5),
+                options: .speed(2),
                 value: value
             )
         } else if #available(iOS 16.0, *) {
-            // Fallback on earlier versions
-            self.contentTransition(.interpolate)
+            contentTransition(.interpolate)
         } else {
             self
         }

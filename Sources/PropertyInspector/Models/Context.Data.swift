@@ -36,36 +36,39 @@ extension Context {
         @Published
         var properties = [Property]() {
             didSet {
-#if VERBOSE
-                print("\(Self.self): Updated Properties \(properties.map(\.stringValue))")
-#endif
+                #if VERBOSE
+                print("\(Self.self): Updated Properties")
+                properties.forEach {
+                    print("\t- \($0)")
+                }
+                #endif
             }
         }
 
         @Published
         var iconRegistry = RowViewBuilderRegistry() {
             didSet {
-#if VERBOSE
+                #if VERBOSE
                 print("\(Self.self): Updated Icons \(iconRegistry)")
-#endif
+                #endif
             }
         }
 
         @Published
         var labelRegistry = RowViewBuilderRegistry() {
             didSet {
-#if VERBOSE
+                #if VERBOSE
                 print("\(Self.self): Updated Labels \(labelRegistry)")
-#endif
+                #endif
             }
         }
 
         @Published
         var detailRegistry = RowViewBuilderRegistry() {
             didSet {
-#if VERBOSE
+                #if VERBOSE
                 print("\(Self.self): Updated Details \(iconRegistry)")
-#endif
+                #endif
             }
         }
 
@@ -102,20 +105,21 @@ extension Context {
 
         func isOn(filter: Filter<PropertyType>) -> Binding<Bool> {
             Binding { [unowned self] in
-                if let index = self.filters.firstIndex(of: filter) {
-                    return self.filters[index].isOn
+                if let index = filters.firstIndex(of: filter) {
+                    return filters[index].isOn
                 }
                 return false
             } set: { [unowned self] newValue in
                 if let index = self.filters.firstIndex(of: filter) {
-                    self.objectWillChange.send()
-                    self.filters[index].isOn = newValue
-                    self._allObjects[filter.wrappedValue]?.forEach { prop in
+                    objectWillChange.send()
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    filters[index].isOn = newValue
+                    _allObjects[filter.wrappedValue]?.forEach { prop in
                         if prop.isHighlighted {
                             prop.isHighlighted = false
                         }
                     }
-                    self.makeProperties()
+                    makeProperties()
                 }
             }
         }
@@ -125,7 +129,7 @@ extension Context {
                 .removeDuplicates()
                 .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
                 .sink(receiveValue: { [unowned self] newValue in
-                    self.makeProperties()
+                    makeProperties()
                 })
                 .store(in: &cancellables)
         }

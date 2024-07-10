@@ -44,15 +44,6 @@ public struct _ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
     var listRowBackground: RowBackground?
     var contentPadding: Bool
 
-    @EnvironmentObject
-    private var context: Context.Data
-
-    private var emptyMessage: String {
-        context.searchQuery.isEmpty ?
-        "Empty" :
-        "No results for '\(context.searchQuery)'"
-    }
-
     public func body(content: Content) -> some View {
         List {
             Section {
@@ -65,27 +56,25 @@ public struct _ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
                         .padding(contentPadding ? .vertical : [])
                         .padding(contentPadding ? .vertical : [])
 
-                    Header(data: title)
+                    PropertyInspectorHeader(data: title)
                 }
                 .frame(maxWidth: .infinity)
             }
 
-            if context.properties.isEmpty {
-                Text(emptyMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowSeparatorTint(.clear)
-                    .multilineTextAlignment(.center)
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: 150
-                    )
-            }
-
         }
         .listStyle(listStyle)
-        .blendMode(context.properties.isEmpty ? .multiply : .normal)
+        .ios16_scrollBounceBehaviorBasedOnSize()
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func ios16_scrollBounceBehaviorBasedOnSize() -> some View {
+        if #available(iOS 16.4, *) {
+            scrollBounceBehavior(.basedOnSize)
+        } else {
+            // Fallback on earlier versions
+            self
+        }
     }
 }

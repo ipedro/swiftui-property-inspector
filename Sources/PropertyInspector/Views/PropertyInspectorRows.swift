@@ -26,9 +26,26 @@ struct PropertyInspectorRows: View {
 
     var body: some View {
         #if VERBOSE
-        Self._printChanges()
+        {
+            Self._printChanges()
+            return EmptyView()
+        }()
         #endif
-        return ForEach(context.properties) { property in
+        if context.properties.isEmpty {
+            Text(emptyMessage)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .multilineTextAlignment(.center)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: 50,
+                    alignment: .bottom
+                )
+                .padding()
+        }
+        ForEach(context.properties) { property in
             PropertyInspectorRow(
                 id: property.hashValue,
                 isOn: property.$isHighlighted,
@@ -39,6 +56,12 @@ struct PropertyInspectorRows: View {
             )
             .equatable()
         }
+    }
+    
+    private var emptyMessage: String {
+        context.searchQuery.isEmpty ?
+        "Empty" :
+        "No results for '\(context.searchQuery)'"
     }
 
     @ViewBuilder

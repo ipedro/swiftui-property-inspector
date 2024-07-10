@@ -44,10 +44,9 @@ struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equata
         PropertyInspectorRow._printChanges()
         #endif
         return Toggle(isOn: $isOn, label: content).toggleStyle(
-            PropertyToggleStyle(impactIntensity: 0.6)
+            PropertyToggleStyle()
         )
-        .foregroundStyle(isOn ? .primary : .secondary)
-        .symbolRenderingMode(.hierarchical)
+        .foregroundStyle(.secondary)
         .padding(.vertical, 1)
         .listRowBackground(
             Rectangle().fill(.background.opacity(isOn ? 0.5 : 0))
@@ -59,7 +58,6 @@ struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equata
             label.foregroundStyle(.primary)
             detail.font(detailFont)
         }
-        .ios16_opacityContentTransition()
         .allowsTightening(true)
         .multilineTextAlignment(.leading)
         .contentShape(Rectangle())
@@ -69,21 +67,6 @@ struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equata
             }
         }
         .font(labelFont)
-    }
-}
-
-
-private extension View {
-    @ViewBuilder
-    func ios16_opacityContentTransition() -> some View {
-        if #available(iOS 16.0, *) {
-            contentTransition(.opacity)
-        } else {
-            // Fallback on earlier versions
-            transaction { transaction in
-                transaction.animation = nil
-            }
-        }
     }
 }
 
@@ -97,7 +80,6 @@ private extension View {
         detail: Text(verbatim: "Some detail")
     )
 }
-
 
 #Preview {
     PropertyInspectorRow(

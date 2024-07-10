@@ -41,15 +41,7 @@ struct PropertyWriter: ViewModifier  {
     private var ids: [PropertyID]
 
     @State
-    private var isActive = false
-
-    private var isHighlighted: Binding<Bool> {
-        Binding {
-            isInspectable && isActive
-        } set: { newValue in
-            isActive = newValue
-        }
-    }
+    private var isHighlighted = false
 
     @Environment(\.isInspectable)
     private var isInspectable
@@ -62,7 +54,7 @@ struct PropertyWriter: ViewModifier  {
             PropertyPreferenceKey.self, value: properties
         )
         .modifier(
-            PropertyHiglighter(isOn: isHighlighted)
+            PropertyHiglighter(isOn: $isHighlighted)
         )
     }
 
@@ -79,7 +71,7 @@ struct PropertyWriter: ViewModifier  {
                     id: id,
                     token: String(describing: value.rawValue).hashValue,
                     value: value,
-                    isHighlighted: isHighlighted
+                    isHighlighted: $isHighlighted
                 )
             )
             dict[key] = set
