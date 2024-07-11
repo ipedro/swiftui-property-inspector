@@ -20,36 +20,37 @@
 
 import SwiftUI
 
-extension Context {
-    final class Filter<F> {
-        var wrappedValue: F
-        var isOn: Bool
-
-        init(_ wrappedValue: F, isOn: Bool) {
-            self.wrappedValue = wrappedValue
-            self.isOn = isOn
+extension View {
+    @ViewBuilder
+    func ios16_scrollBounceBehaviorBasedOnSize() -> some View {
+        if #available(iOS 16.4, *) {
+            scrollBounceBehavior(.basedOnSize)
+        } else {
+            self
         }
     }
-}
 
-extension Context.Filter: Hashable where F: Hashable {
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(wrappedValue)
-    }
-}
-
-extension Context.Filter: Equatable where F: Equatable {
-    static func == (a: Context.Filter<F>, b: Context.Filter<F>) -> Bool {
-        a.wrappedValue == b.wrappedValue
-    }
-}
-
-extension Context.Filter: Comparable where F: Comparable {
-    static func < (a: Context.Filter<F>, b: Context.Filter<F>) -> Bool {
-        if a.isOn == b.isOn {
-            a.wrappedValue < b.wrappedValue
+    @ViewBuilder
+    func ios16_hideScrollIndicators(_ hide: Bool = true) -> some View {
+        if #available(iOS 16.0, *) {
+            scrollIndicators(hide ? .hidden : .automatic)
         } else {
-            a.isOn && !b.isOn
+            self
+        }
+    }
+
+    @ViewBuilder
+    func ios17_interpolateSymbolEffect<V: Equatable>(value: V) -> some View {
+        if #available(iOS 17.0, *) {
+            contentTransition(.interpolate).symbolEffect(
+                .bounce.byLayer.down,
+                options: .speed(2),
+                value: value
+            )
+        } else if #available(iOS 16.0, *) {
+            contentTransition(.interpolate)
+        } else {
+            self
         }
     }
 }

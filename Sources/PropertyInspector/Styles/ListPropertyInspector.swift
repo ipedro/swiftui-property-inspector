@@ -66,15 +66,3 @@ public struct _ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
         .ios16_scrollBounceBehaviorBasedOnSize()
     }
 }
-
-private extension View {
-    @ViewBuilder
-    func ios16_scrollBounceBehaviorBasedOnSize() -> some View {
-        if #available(iOS 16.4, *) {
-            scrollBounceBehavior(.basedOnSize)
-        } else {
-            // Fallback on earlier versions
-            self
-        }
-    }
-}

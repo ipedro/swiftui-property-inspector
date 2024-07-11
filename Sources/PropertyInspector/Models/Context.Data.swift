@@ -98,27 +98,51 @@ extension Context {
 
         private func isOn(filter: Filter<PropertyType>) -> Bool {
             if let index = filters.firstIndex(of: filter) {
-                return filters[index].isOn
+                filters[index].isOn
+            } else {
+                false
             }
-            return false
         }
 
-        func isOn(filter: Filter<PropertyType>) -> Binding<Bool> {
+        func toggleFilter(_ filter: Filter<PropertyType>) -> Binding<Bool> {
             Binding { [unowned self] in
                 if let index = filters.firstIndex(of: filter) {
-                    return filters[index].isOn
+                    filters[index].isOn
+                } else {
+                    false
                 }
-                return false
             } set: { [unowned self] newValue in
                 if let index = self.filters.firstIndex(of: filter) {
                     objectWillChange.send()
-                    UISelectionFeedbackGenerator().selectionChanged()
                     filters[index].isOn = newValue
                     _allObjects[filter.wrappedValue]?.forEach { prop in
                         if prop.isHighlighted {
                             prop.isHighlighted = false
                         }
                     }
+                    withAnimation(.inspectorDefault) {
+                        makeProperties()
+                    }
+                }
+            }
+        }
+
+        var toggleAllFilters: Binding<Bool> {
+            let allSelected = !filters.map(\.isOn).contains(false)
+            return Binding {
+                allSelected
+            } set: { [unowned self] newValue in
+                filters.forEach { filter in
+                    filter.isOn = newValue
+                }
+                _allObjects.values.forEach { set in
+                    set.forEach { prop in
+                        if prop.isHighlighted {
+                            prop.isHighlighted = false
+                        }
+                    }
+                }
+                withAnimation(.inspectorDefault) {
                     makeProperties()
                 }
             }

@@ -49,7 +49,7 @@ struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equata
         .foregroundStyle(.secondary)
         .padding(.vertical, 1)
         .listRowBackground(
-            Rectangle().fill(.background.opacity(isOn ? 0.5 : 0))
+            isOn ? Color(uiColor: .tertiarySystemBackground) : .clear
         )
     }
 

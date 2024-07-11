@@ -33,8 +33,7 @@ struct PropertyInspectorRows: View {
         #endif
         if context.properties.isEmpty {
             Text(emptyMessage)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.tertiary)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .multilineTextAlignment(.center)
@@ -60,7 +59,7 @@ struct PropertyInspectorRows: View {
     
     private var emptyMessage: String {
         context.searchQuery.isEmpty ?
-        "Empty" :
+        "Nothing to inspect" :
         "No results for '\(context.searchQuery)'"
     }
 

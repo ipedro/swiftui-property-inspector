@@ -32,114 +32,64 @@ struct PropertyInspectorHeader: View {
     private var context: Context.Data
     
     var body: some View {
-        VStack {
+        VStack(spacing: 4) {
             title()
             let filters = context.filters.sorted()
+            
             if !filters.isEmpty {
-                filterList(data: filters)
+                PropertyInspectorFilters(
+                    data: filters,
+                    toggleAll: context.toggleAllFilters,
+                    title: \.wrappedValue.description,
+                    isOn: context.toggleFilter(_:)
+                )
             }
         }
-        .ios16_hideScrollIndicators()
-        .ios17_scrollClipDisabled()
         .multilineTextAlignment(.leading)
         .environment(\.textCase, nil)
         .foregroundStyle(.primary)
-        .padding(
-            EdgeInsets(top: 10, leading: 0, bottom: 8, trailing: 0)
-        )
     }
 
-    private func filterList(data: [Context.Filter<PropertyType>]) -> ScrollView<some View> {
-        ScrollView(.horizontal) {
-            LazyHStack(pinnedViews: .sectionHeaders) {
-                let allSelected = !data.map(\.isOn).contains(false)
-                Section {
-                    HStack {
-                        ForEach(data, id: \.self) { filter in
-                            Toggle(
-                                filter.wrappedValue.description,
-                                isOn: context.isOn(filter: filter)
-                            )
-                        }
-                    }
-                } header: {
-                    header(data, isOn: allSelected).buttonStyle(.plain)
-                }
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .font(.caption.bold())
-            .toggleStyle(.button)
-            .controlSize(.mini)
-            .tint(.secondary)
-            .padding(.vertical, 5)
+    private var accessoryTitle: String {
+        if context.properties.isEmpty {
+            return ""
         }
-    }
-
-    @ViewBuilder
-    private func header(_ filters: [Context.Filter<PropertyType>], isOn: Bool) -> some View {
-        Toggle(
-            isOn: Binding {
-                isOn
-            } set: { newValue in
-                filters.forEach {
-                    context.isOn(filter: $0).wrappedValue = newValue
-                }
-            },
-            label: {
-                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                    .font(.subheadline)
-                    .accessibilityLabel(Text(isOn ? "Deselect All Filters" : "Select All Filters"))
-                    .background {
-                        Circle().fill(Color(uiColor: .systemBackground))
-                    }
-            }
-        )
+        let count = context.properties.count
+        let allCount = context.allProperties.count
+        if count != allCount {
+            return "\(count) of \(allCount) items"
+        }
+        return "\(count) items"
     }
 
     @ViewBuilder
     private func title() -> some View {
-        let text = if context.properties.isEmpty {
-            Text(data)
-        } else {
-            Text(data) + Text(" (\(context.properties.count))")
-        }
-
-        let formattedText = text.bold()
-            .font(.title3)
+        let formattedText = Text(data)
+            .font(.title.weight(.medium))
             .lineLimit(1)
-            .frame(maxWidth: .infinity, alignment: .leading)
 
         if #available(iOS 16.0, *), !context.properties.isEmpty {
             Toggle(sources: context.properties, isOn: \.$isHighlighted) {
-                formattedText
+                HStack(alignment: .firstTextBaseline) {
+                    formattedText
+
+                    Text(accessoryTitle)
+                        .contentTransition(.numericText())
+                        .font(.caption.bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5)
+                                .fill(Color(uiColor: .systemBackground).opacity(0.5))
+                        )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .toggleStyle(
                 PropertyToggleStyle(alignment: .firstTextBaseline)
             )
         } else {
-            formattedText
-        }
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func ios17_scrollClipDisabled() -> some View {
-        if #available(iOS 17.0, *) {
-            scrollClipDisabled()
-        } else {
-            // Fallback on earlier versions
-            self
-        }
-    }
-
-    @ViewBuilder
-    func ios16_hideScrollIndicators(_ hide: Bool = true) -> some View {
-        if #available(iOS 16.0, *) {
-            scrollIndicators(hide ? .hidden : .automatic)
-        } else {
-            // Fallback on earlier versions
-            self
+            formattedText.frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

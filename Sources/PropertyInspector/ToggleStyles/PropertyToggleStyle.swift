@@ -23,13 +23,12 @@ import SwiftUI
 
 struct PropertyToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
-    var animation: Animation? = .snappy(duration: 0.3)
-    var impact = UISelectionFeedbackGenerator()
+    var feedback = UISelectionFeedbackGenerator()
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
-            impact.selectionChanged()
-            withAnimation(animation) {
+            feedback.selectionChanged()
+            withAnimation(.inspectorDefault) {
                 configuration.isOn.toggle()
             }
         } label: {
@@ -50,23 +49,6 @@ struct PropertyToggleStyle: ToggleStyle {
         case .mixed: "checkmark.circle"
         case .on:    "checkmark.circle.fill"
         case .off:   "circle"
-        }
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func ios17_interpolateSymbolEffect<V: Equatable>(value: V) -> some View {
-        if #available(iOS 17.0, *) {
-            contentTransition(.interpolate).symbolEffect(
-                .bounce.byLayer.down,
-                options: .speed(2),
-                value: value
-            )
-        } else if #available(iOS 16.0, *) {
-            contentTransition(.interpolate)
-        } else {
-            self
         }
     }
 }
