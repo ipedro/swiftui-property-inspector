@@ -40,13 +40,9 @@ extension View {
     }
 
     @ViewBuilder
-    func ios17_interpolateSymbolEffect<V: Equatable>(value: V) -> some View {
+    func ios17_interpolateSymbolEffect() -> some View {
         if #available(iOS 17.0, *) {
-            contentTransition(.interpolate).symbolEffect(
-                .bounce.byLayer.down,
-                options: .speed(2),
-                value: value
-            )
+            contentTransition(.symbolEffect(.automatic, options: .speed(2)))
         } else if #available(iOS 16.0, *) {
             contentTransition(.interpolate)
         } else {

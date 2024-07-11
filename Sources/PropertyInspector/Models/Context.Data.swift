@@ -76,7 +76,6 @@ extension Context {
             get { _allObjects }
             set {
                 guard _allObjects != newValue else { return }
-                objectWillChange.send()
                 _allObjects = newValue
                 makeProperties()
             }
@@ -86,7 +85,6 @@ extension Context {
             get { _searchQuery }
             set {
                 guard _searchQuery != newValue else { return }
-                objectWillChange.send()
                 _searchQuery = newValue
                 makeProperties()
             }
@@ -113,16 +111,13 @@ extension Context {
                 }
             } set: { [unowned self] newValue in
                 if let index = self.filters.firstIndex(of: filter) {
-                    objectWillChange.send()
                     filters[index].isOn = newValue
                     _allObjects[filter.wrappedValue]?.forEach { prop in
                         if prop.isHighlighted {
                             prop.isHighlighted = false
                         }
                     }
-                    withAnimation(.inspectorDefault) {
-                        makeProperties()
-                    }
+                    makeProperties()
                 }
             }
         }
@@ -142,9 +137,7 @@ extension Context {
                         }
                     }
                 }
-                withAnimation(.inspectorDefault) {
-                    makeProperties()
-                }
+                makeProperties()
             }
         }
 
@@ -184,9 +177,11 @@ extension Context {
                 properties.formUnion(searchResult)
             }
 
-            self.filters = filters
-            self.allProperties = Array(all)
-            self.properties = filter(in: Array(properties)).sorted()
+            withAnimation(.inspectorDefault) {
+                self.filters = filters
+                self.allProperties = Array(all)
+                self.properties = filter(in: Array(properties)).sorted()
+            }
         }
 
         private func search(in properties: Set<Property>) -> Set<Property> {

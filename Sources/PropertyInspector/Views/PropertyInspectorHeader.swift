@@ -75,18 +75,23 @@ struct PropertyInspectorHeader: View {
 
                     Text(accessoryTitle)
                         .contentTransition(.numericText())
-                        .font(.caption.bold())
+                        .font(.footnote.bold())
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
+                        .foregroundStyle(.secondary)
                         .background(
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill(Color(uiColor: .systemBackground).opacity(0.5))
+                            RoundedRectangle(cornerRadius: 8).fill(.ultraThickMaterial)
                         )
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .toggleStyle(
-                PropertyToggleStyle(alignment: .firstTextBaseline)
+                PropertyToggleStyle(
+                    alignment: .firstTextBaseline,
+                    symbolName: { _ in
+                        "arrow.triangle.2.circlepath.circle.fill"
+                    }
+                )
             )
         } else {
             formattedText.frame(maxWidth: .infinity, alignment: .leading)

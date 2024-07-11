@@ -23,7 +23,15 @@ import SwiftUI
 
 struct PropertyToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
-    var feedback = UISelectionFeedbackGenerator()
+    
+    var symbolFont: Font = .title
+    
+    var symbolName: (_ isOn: Bool) -> String = {
+        if $0 { "eye.circle.fill" }
+        else  { "eye.slash.circle.fill" }
+    }
+
+    private let feedback = UISelectionFeedbackGenerator()
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
@@ -34,33 +42,13 @@ struct PropertyToggleStyle: ToggleStyle {
         } label: {
             HStack(alignment: alignment) {
                 configuration.label
-
                 Spacer()
-                
-                Image(systemName: imageName(configuration._state))
-                    .font(.headline)
-                    .ios17_interpolateSymbolEffect(value: configuration._state)
+                Image(systemName: symbolName(configuration.isOn))
+                    .font(symbolFont)
+                    .ios17_interpolateSymbolEffect()
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(configuration.isOn ? Color.accentColor : .secondary)
             }
         }
-    }
-
-    private func imageName(_ state: Configuration._State) -> String {
-        switch state {
-        case .mixed: "checkmark.circle"
-        case .on:    "checkmark.circle.fill"
-        case .off:   "circle"
-        }
-    }
-}
-
-extension ToggleStyleConfiguration {
-    enum _State {
-        case off, mixed, on
-    }
-
-    var _state: _State {
-        if #available(iOS 16.0, *), isMixed { return .mixed }
-        if isOn { return .on }
-        return .off
     }
 }
