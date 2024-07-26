@@ -6,8 +6,8 @@ struct PropertyValue: Identifiable {
     var type: PropertyType { id.type }
 
     init<T>(_ value: T) {
-        self.id = ID(value)
-        self.rawValue = value
+        id = ID(value)
+        rawValue = value
     }
 
     init(_ other: PropertyValue) {

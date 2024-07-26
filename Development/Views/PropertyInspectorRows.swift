@@ -6,10 +6,7 @@ struct PropertyInspectorRows: View {
 
     var body: some View {
         #if VERBOSE
-        {
-            Self._printChanges()
-            return EmptyView()
-        }()
+        printChanges()
         #endif
         if context.properties.isEmpty {
             Text(emptyMessage)
@@ -29,18 +26,25 @@ struct PropertyInspectorRows: View {
                 id: property.hashValue,
                 isOn: property.$isHighlighted,
                 hideIcon: context.iconRegistry.isEmpty,
-                icon:  icon(for: property),
+                icon: icon(for: property),
                 label: label(for: property),
                 detail: detail(for: property)
             )
             .equatable()
         }
     }
-    
+
+    #if VERBOSE
+    private func printChanges() -> EmptyView {
+        Self._printChanges()
+        return EmptyView()
+    }
+    #endif
+
     private var emptyMessage: String {
         context.searchQuery.isEmpty ?
-        "Nothing to inspect" :
-        "No results for '\(context.searchQuery)'"
+            "Nothing to inspect" :
+            "No results for '\(context.searchQuery)'"
     }
 
     @ViewBuilder
@@ -65,7 +69,7 @@ struct PropertyInspectorRows: View {
     private func detail(for property: Property) -> some View {
         VStack(alignment: .leading) {
             context.detailRegistry.makeBody(property: property)
-            Text(verbatim: property.id.location.description).opacity(2/3)
+            Text(verbatim: property.id.location.description).opacity(2 / 3)
         }
     }
 }

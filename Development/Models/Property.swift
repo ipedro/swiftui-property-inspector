@@ -44,14 +44,14 @@ final class Property: Identifiable, Comparable, Hashable, CustomStringConvertibl
         self.token = token
         self.id = id
         self.value = value
-        self._isHighlighted = isHighlighted
+        _isHighlighted = isHighlighted
     }
 
     /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
     static func == (lhs: Property, rhs: Property) -> Bool {
-        lhs.id == rhs.id && 
-        lhs.stringValue == rhs.stringValue &&
-        lhs.token == rhs.token
+        lhs.id == rhs.id &&
+            lhs.stringValue == rhs.stringValue &&
+            lhs.token == rhs.token
     }
 
     /// Determines if one `Property` should precede another in a sorted list, based on a composite string that includes their location and value.

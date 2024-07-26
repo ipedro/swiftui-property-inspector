@@ -10,12 +10,12 @@ struct PropertyInspectorHeader: View {
 
     @EnvironmentObject
     private var context: Context.Data
-    
+
     var body: some View {
         VStack(spacing: 4) {
             title()
             let filters = context.filters.sorted()
-            
+
             if !filters.isEmpty {
                 PropertyInspectorFilters(
                     data: filters,

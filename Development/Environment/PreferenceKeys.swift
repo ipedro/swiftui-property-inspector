@@ -12,7 +12,7 @@ struct PropertyPreferenceKey: PreferenceKey {
 
 struct TitlePreferenceKey: PreferenceKey {
     static let defaultValue = LocalizedStringKey("Properties")
-    static func reduce(value: inout LocalizedStringKey, nextValue: () -> LocalizedStringKey) {}
+    static func reduce(value _: inout LocalizedStringKey, nextValue _: () -> LocalizedStringKey) {}
 }
 
 struct RowDetailPreferenceKey: PreferenceKey {

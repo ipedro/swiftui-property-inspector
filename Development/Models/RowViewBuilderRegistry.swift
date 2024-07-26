@@ -7,9 +7,9 @@ struct RowViewBuilderRegistry: Hashable, CustomStringConvertible {
     private let cache = HashableDictionary<PropertyValueID, HashableBox<AnyView>>()
 
     init(_ values: RowViewBuilder...) {
-        self.data = values.reduce(into: [:], { partialResult, builder in
+        data = values.reduce(into: [:]) { partialResult, builder in
             partialResult[builder.id] = builder
-        })
+        }
     }
 
     var description: String {
@@ -48,13 +48,12 @@ struct RowViewBuilderRegistry: Hashable, CustomStringConvertible {
     func makeBody(property: Property) -> AnyView? {
         if let cached = resolveFromCache(property: property) {
             #if VERBOSE
-            print("[PropertyInspector]", "♻️", property.stringValue, "resolved from cache")
+                print("[PropertyInspector]", "♻️", property.stringValue, "resolved from cache")
             #endif
             return cached
-        }
-        else if let body = createBody(property: property) {
+        } else if let body = createBody(property: property) {
             #if VERBOSE
-            print("[PropertyInspector]", "🆕", property.stringValue, "created new view")
+                print("[PropertyInspector]", "🆕", property.stringValue, "created new view")
             #endif
             return body
         }
@@ -69,43 +68,43 @@ struct RowViewBuilderRegistry: Hashable, CustomStringConvertible {
     }
 
     #if DEBUG
-    private func createBody(property: Property) -> AnyView? {
-        var matches = [PropertyType: AnyView]()
+        private func createBody(property: Property) -> AnyView? {
+            var matches = [PropertyType: AnyView]()
 
-        for id in identifiers {
-            if let view = data[id]?.body(property) {
-                matches[id] = view
+            for id in identifiers {
+                if let view = data[id]?.body(property) {
+                    matches[id] = view
+                }
             }
-        }
 
-        if matches.keys.count > 1 {
-            let matchingTypes = matches.keys.map({ String(describing: $0.rawValue) })
-            print(
-                "[PropertyInspector]",
-                "⚠️ Warning:",
-                "Undefined behavior.",
-                "Multiple row builders",
-                "match '\(property.stringValueType)' declared in '\(property.id.location)':",
-                matchingTypes.sorted().joined(separator: ", ")
-            )
-        }
+            if matches.keys.count > 1 {
+                let matchingTypes = matches.keys.map { String(describing: $0.rawValue) }
+                print(
+                    "[PropertyInspector]",
+                    "⚠️ Warning:",
+                    "Undefined behavior.",
+                    "Multiple row builders",
+                    "match '\(property.stringValueType)' declared in '\(property.id.location)':",
+                    matchingTypes.sorted().joined(separator: ", ")
+                )
+            }
 
-        if let match = matches.first {
-            cache[property.value.id] = HashableBox(match.value)
-            return match.value
-        }
+            if let match = matches.first {
+                cache[property.value.id] = HashableBox(match.value)
+                return match.value
+            }
 
-        return nil
-    }
+            return nil
+        }
     #else
-    private func createBody(property: Property) -> AnyView? {
-        for id in identifiers {
-            if let view = data[id]?.body(property) {
-                cache[property.value.id] = HashableBox(view)
-                return view
+        private func createBody(property: Property) -> AnyView? {
+            for id in identifiers {
+                if let view = data[id]?.body(property) {
+                    cache[property.value.id] = HashableBox(view)
+                    return view
+                }
             }
+            return nil
         }
-        return nil
-    }
     #endif
 }

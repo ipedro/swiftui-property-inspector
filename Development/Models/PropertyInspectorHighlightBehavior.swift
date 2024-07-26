@@ -5,7 +5,6 @@ import SwiftUI
 /// `PropertyInspectorHighlightBehavior` controls how properties are highlighted when the
 /// PropertyInspector is presented and dismissed.
 public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
-
     /// Highlights must be manually managed by the user.
     ///
     /// When using `manual`, any active highlights will remain active even after the inspector is dismissed.

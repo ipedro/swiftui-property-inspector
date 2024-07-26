@@ -17,10 +17,10 @@ extension Context {
         var properties = [Property]() {
             didSet {
                 #if VERBOSE
-                print("\(Self.self): Updated Properties")
-                properties.forEach {
-                    print("\t- \($0)")
-                }
+                    print("\(Self.self): Updated Properties")
+                    for property in properties {
+                        print("\t- \(property)")
+                    }
                 #endif
             }
         }
@@ -29,7 +29,7 @@ extension Context {
         var iconRegistry = RowViewBuilderRegistry() {
             didSet {
                 #if VERBOSE
-                print("\(Self.self): Updated Icons \(iconRegistry)")
+                    print("\(Self.self): Updated Icons \(iconRegistry)")
                 #endif
             }
         }
@@ -38,7 +38,7 @@ extension Context {
         var labelRegistry = RowViewBuilderRegistry() {
             didSet {
                 #if VERBOSE
-                print("\(Self.self): Updated Labels \(labelRegistry)")
+                    print("\(Self.self): Updated Labels \(labelRegistry)")
                 #endif
             }
         }
@@ -47,7 +47,7 @@ extension Context {
         var detailRegistry = RowViewBuilderRegistry() {
             didSet {
                 #if VERBOSE
-                print("\(Self.self): Updated Details \(iconRegistry)")
+                    print("\(Self.self): Updated Details \(iconRegistry)")
                 #endif
             }
         }
@@ -107,14 +107,12 @@ extension Context {
             return Binding {
                 allSelected
             } set: { [unowned self] newValue in
-                filters.forEach { filter in
+                for filter in filters {
                     filter.isOn = newValue
                 }
-                _allObjects.values.forEach { set in
-                    set.forEach { prop in
-                        if prop.isHighlighted {
-                            prop.isHighlighted = false
-                        }
+                for set in _allObjects.values {
+                    for prop in set where prop.isHighlighted {
+                        prop.isHighlighted = false
                     }
                 }
                 makeProperties()
@@ -125,7 +123,7 @@ extension Context {
             Just(_searchQuery)
                 .removeDuplicates()
                 .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
-                .sink(receiveValue: { [unowned self] newValue in
+                .sink(receiveValue: { [unowned self] _ in
                     makeProperties()
                 })
                 .store(in: &cancellables)
@@ -183,8 +181,8 @@ extension Context {
         }
 
         private func filter(in properties: [Property]) -> [Property] {
-            let activeTypes = Set(filters.filter({ $0.isOn }).map(\.wrappedValue))
-            
+            let activeTypes = Set(filters.filter { $0.isOn }.map(\.wrappedValue))
+
             guard activeTypes.count != filters.count else {
                 return properties
             }

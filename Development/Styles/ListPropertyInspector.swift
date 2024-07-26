@@ -37,7 +37,7 @@ import SwiftUI
  Utilizing complex views as `listRowBackground` may impact performance, especially with very long lists.
 
  - seeAlso: ``_SheetPropertyInspector`` and ``_InlinePropertyInspector``
-*/
+ */
 public struct _ListPropertyInspector<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
     var title: LocalizedStringKey?
     var listStyle: Style
@@ -60,7 +60,6 @@ public struct _ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
                 }
                 .frame(maxWidth: .infinity)
             }
-
         }
         .listStyle(listStyle)
         .ios16_scrollBounceBehaviorBasedOnSize()

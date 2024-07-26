@@ -1,6 +1,6 @@
 import Foundation
 
-final class HashableDictionary<Key: Hashable, Value: Hashable>: Hashable  {
+final class HashableDictionary<Key, Value>: Hashable where Key: Hashable, Value: Hashable {
     static func == (lhs: HashableDictionary<Key, Value>, rhs: HashableDictionary<Key, Value>) -> Bool {
         lhs.data == rhs.data
     }

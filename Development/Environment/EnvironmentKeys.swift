@@ -18,7 +18,7 @@ extension EnvironmentValues {
         get { self[RowDetailFontKey.self] }
         set { self[RowDetailFontKey.self] = newValue }
     }
-    
+
     var rowLabelFont: Font {
         get { self[RowLabelFontKey.self] }
         set { self[RowLabelFontKey.self] = newValue }

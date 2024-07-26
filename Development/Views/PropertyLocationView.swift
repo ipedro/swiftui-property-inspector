@@ -12,8 +12,8 @@ struct PropertyLocationView: View {
 
     var text: some View {
         Text(verbatim: data.function) +
-        Text(verbatim: " — ").bold().ios17_quinaryForegroundStyle() +
-        Text(verbatim: data.description)
+            Text(verbatim: " — ").bold().ios17_quinaryForegroundStyle() +
+            Text(verbatim: data.description)
     }
 }
 

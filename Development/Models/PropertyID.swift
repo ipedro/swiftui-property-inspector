@@ -18,7 +18,7 @@ final class PropertyID {
     ) {
         self.location = location
         self.createdAt = createdAt
-        self.sortString = [
+        sortString = [
             location.id,
             String(createdAt.timeIntervalSince1970),
             String(offset)

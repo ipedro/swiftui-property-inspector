@@ -26,8 +26,8 @@ final class PropertyLocation: Identifiable, Comparable, CustomStringConvertible 
     init(function: String, file: String, line: Int) {
         let fileName = URL(string: file)?.lastPathComponent ?? file
 
-        self.id = "\(file):\(line):\(function)"
-        self.description = "\(fileName):\(line)"
+        id = "\(file):\(line):\(function)"
+        description = "\(fileName):\(line)"
         self.function = function
         self.file = file
         self.line = line

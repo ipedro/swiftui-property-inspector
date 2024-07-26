@@ -11,16 +11,18 @@ struct PropertyType: Identifiable {
             // only use mirror as last resort
             type = Mirror(reflecting: subject).subjectType
             #if VERBOSE
-            print(#function, "🐢", "Determined type \(type) in \((Date().timeIntervalSince(start) * 1000).formatted()) ms")
+                let elapsedTime = (Date().timeIntervalSince(start) * 1000).formatted()
+                print(#function, "🐢", "Determined type \(type) in \(elapsedTime) ms")
             #endif
         } else {
             type = T.self
             #if VERBOSE
-            print(#function, "🐰", "Determined type \(type) in \((Date().timeIntervalSince(start) * 1000).formatted()) ms")
+                let elapsedTime = (Date().timeIntervalSince(start) * 1000).formatted()
+                print(#function, "🐰", "Determined type \(type) in \(elapsedTime) ms")
             #endif
         }
-        self.id = ObjectIdentifier(type)
-        self.rawValue = type
+        id = ObjectIdentifier(type)
+        rawValue = type
     }
 }
 

@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
 
-
 // MARK: - Inline Style
 
 /**

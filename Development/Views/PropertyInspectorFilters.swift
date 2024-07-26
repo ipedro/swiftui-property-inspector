@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PropertyInspectorFilters<Filter>: View where Filter: Hashable {
     var data: [Filter]
-    
+
     @Binding
 
     var toggleAll: Bool
@@ -13,7 +13,7 @@ struct PropertyInspectorFilters<Filter>: View where Filter: Hashable {
 
     @EnvironmentObject
     private var context: Context.Data
-    
+
     var body: some View {
         HStack(spacing: .zero) {
             toggleAllButton
@@ -75,13 +75,13 @@ struct PropertyInspectorFilters<Filter>: View where Filter: Hashable {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.trailing, 20)
         }
-        .mask({
+        .mask {
             LinearGradient(
                 colors: [.clear, .black],
                 startPoint: .leading,
                 endPoint: .init(x: 0.04, y: 0.5)
             )
-        })
+        }
         .padding(.trailing, -20)
         .animation(.inspectorDefault, value: data)
         .ios16_hideScrollIndicators()

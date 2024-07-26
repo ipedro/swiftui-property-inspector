@@ -3,12 +3,15 @@ import SwiftUI
 
 struct PropertyToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
-    
+
     var symbolFont: Font = .title
-    
-    var symbolName: (_ isOn: Bool) -> String = {
-        if $0 { "eye.circle.fill" }
-        else  { "eye.slash.circle.fill" }
+
+    var symbolName: (_ isOn: Bool) -> String = { isOn in
+        if isOn {
+            "eye.circle.fill"
+        } else {
+            "eye.slash.circle.fill"
+        }
     }
 
     private let feedback = UISelectionFeedbackGenerator()

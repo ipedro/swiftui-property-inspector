@@ -10,7 +10,7 @@ public extension View {
         inspectProperty(self, function: function, line: line, file: file)
     }
 
-     /**
+    /**
      Adds a modifier for inspecting properties with dynamic debugging capabilities.
 
      This method allows developers to dynamically inspect values of properties within a SwiftUI view, useful for debugging and during development to ensure that view states are correctly managed.
@@ -138,7 +138,7 @@ public extension View {
      - seeAlso: ``propertyInspectorRowLabel(for:label:)``, ``propertyInspectorRowDetail(for:detail:)``
      */
     func propertyInspectorRowIcon<D, Icon: View>(
-        for data: D.Type = Any.self,
+        for _: D.Type = Any.self,
         @ViewBuilder icon: @escaping (_ data: D) -> Icon
     ) -> some View {
         setPreference(RowIconPreferenceKey.self, body: icon)
@@ -166,7 +166,7 @@ public extension View {
      - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowDetail(for:detail:)``
      */
     func propertyInspectorRowLabel<D, Label: View>(
-        for data: D.Type = Any.self,
+        for _: D.Type = Any.self,
         @ViewBuilder label: @escaping (_ data: D) -> Label
     ) -> some View {
         setPreference(RowLabelPreferenceKey.self, body: label)
@@ -194,7 +194,7 @@ public extension View {
      - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowLabel(for:label:)``
      */
     func propertyInspectorRowDetail<D, Detail: View>(
-        for data: D.Type = Any.self,
+        for _: D.Type = Any.self,
         @ViewBuilder detail: @escaping (_ data: D) -> Detail
     ) -> some View {
         setPreference(RowDetailPreferenceKey.self, body: detail)

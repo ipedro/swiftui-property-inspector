@@ -5,6 +5,7 @@ struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equata
     static func == (lhs: PropertyInspectorRow<Icon, Label, Detail>, rhs: PropertyInspectorRow<Icon, Label, Detail>) -> Bool {
         lhs.id == rhs.id
     }
+
     var id: Int
     @Binding
     var isOn: Bool
@@ -12,7 +13,7 @@ struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equata
     var icon: Icon
     var label: Label
     var detail: Detail
-    
+
     @Environment(\.rowLabelFont)
     private var labelFont
 
@@ -21,7 +22,7 @@ struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equata
 
     var body: some View {
         #if VERBOSE
-        PropertyInspectorRow._printChanges()
+            PropertyInspectorRow._printChanges()
         #endif
         return Toggle(isOn: $isOn, label: content).toggleStyle(
             PropertyToggleStyle()

@@ -18,7 +18,7 @@ import SwiftUI
 
  ## Usage
 
- You don't instantiate `_SheetPropertyInspector` directly, instead use one of the convenience initializers in ``PropertyInspector``. 
+ You don't instantiate `_SheetPropertyInspector` directly, instead use one of the convenience initializers in ``PropertyInspector``.
  Here’s how you might configure and present a property inspector with a sheet style:
 
  ```swift
@@ -57,7 +57,7 @@ public struct _SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _P
 
     @EnvironmentObject
     private var context: Context.Data
-    
+
     @AppStorage("HighlightBehavior")
     private var highlight = PropertyInspectorHighlightBehavior.hideOnDismiss
 
@@ -105,7 +105,7 @@ public struct _SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _P
         default: return
         }
 
-        context.properties.forEach { property in
+        for property in context.properties {
             property.isHighlighted = newValue
         }
     }
