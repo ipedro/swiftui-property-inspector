@@ -1,0 +1,7 @@
+type_name:
+  allowed_symbols: "_"
+
+line_length:
+  ignores_comments: true
+  ignores_function_declarations: true
+  ignores_urls: true

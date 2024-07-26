@@ -19,17 +19,17 @@ extension Context.Filter: Hashable where F: Hashable {
 }
 
 extension Context.Filter: Equatable where F: Equatable {
-    static func == (a: Context.Filter<F>, b: Context.Filter<F>) -> Bool {
-        a.wrappedValue == b.wrappedValue
+    static func == (lhs: Context.Filter<F>, rhs: Context.Filter<F>) -> Bool {
+        lhs.wrappedValue == rhs.wrappedValue
     }
 }
 
 extension Context.Filter: Comparable where F: Comparable {
-    static func < (a: Context.Filter<F>, b: Context.Filter<F>) -> Bool {
-        if a.isOn == b.isOn {
-            a.wrappedValue < b.wrappedValue
+    static func < (rhs: Context.Filter<F>, lhs: Context.Filter<F>) -> Bool {
+        if rhs.isOn == lhs.isOn {
+            rhs.wrappedValue < lhs.wrappedValue
         } else {
-            a.isOn && !b.isOn
+            rhs.isOn && !lhs.isOn
         }
     }
 }
