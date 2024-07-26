@@ -1,0 +1,75 @@
+name: Concatenate Files on Merge
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  merge-sources:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+
+    - name: Clean and create output directory
+      run: |
+        rm -rf output
+        mkdir -p output
+      shell: bash
+
+    - name: Concatenate files
+      run: |
+        find Development -type f -name '*.swift' -exec cat {} + > PropertyPicker.swift
+      shell: bash
+
+    - name: Remove SwiftLint commands
+      run: |
+        sed '/\/\/ swiftlint:/d' PropertyPicker.swift > temp && mv temp PropertyPicker.swift
+      shell: bash
+
+    - name: Prepare LICENSE content
+      run: |
+        # Prepend "// " to each line in LICENSE and save it to a temp file
+        sed 's/^/\/\/ /' LICENSE > license_commented.txt
+      shell: bash
+    
+    - name: Add newlines between LICENSE and imports
+      run: |
+        # Create a file with newline
+        echo -e "\n// auto-generated file, do not edit directly\n" > newlines.txt
+      shell: bash
+
+    - name: Reorder, sort, and remove duplicate imports
+      run: |
+        # Extract, sort, and remove duplicates from import statements
+        awk '/^import / {print}' PropertyPicker.swift | sort | uniq > sorted_unique_imports.txt
+
+        # Remove import statements from the original file
+        awk '!/^import /' PropertyPicker.swift > code_without_imports.txt
+
+        # Concatenate sorted and unique imports with the rest of the file
+        cat sorted_unique_imports.txt code_without_imports.txt > code_with_sorted_imports.txt
+      shell: bash
+
+    - name: Combine LICENSE, newlines, imports, and remaining content
+      run: |
+        # Concatenate LICENSE content with two newlines, imports, and the rest of the file
+        cat license_commented.txt newlines.txt code_with_sorted_imports.txt > PropertyPicker.swift
+      shell: bash
+      
+    - name: Commit changes
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add PropertyPicker.swift
+        git commit -m "Generated PropertyPicker.swift"
+        git push origin HEAD:main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,7 +2,53 @@
 
 import PackageDescription
 
-let isRemoteCheckout = Context.packageDirectory.contains("Library/Developer/Xcode/DerivedData/")
+let isDevelopment = !Context.packageDirectory.contains(".build/checkouts/") && !Context.packageDirectory.contains("SourcePackages/checkouts/")
+
+var targets: [Target] = [.target(
+    name: "PropertyInspector-Examples",
+    dependencies: ["PropertyInspector"],
+    path: "Examples"
+)]
+
+if isDevelopment {
+    targets.append(
+        .target(
+            name: "PropertyInspector",
+            path: "Development",
+            swiftSettings: [.define("VERBOSE")],
+            plugins: [
+                .plugin(
+                    name: "SwiftLintBuildToolPlugin",
+                    package: "SwiftLintPlugins"
+                )
+            ]
+        )
+    )
+} else {
+    targets.append(
+        .target(
+            name: "PropertyInspector",
+            path: ".",
+            sources: ["PropertyInspector.swift"]
+        )
+    )
+}
+
+var dependencies = [Package.Dependency]()
+if isDevelopment {
+    dependencies.append(
+        .package(
+            url: "https://github.com/SimplyDanny/SwiftLintPlugins",
+            from: "0.55.1"
+        )
+    )
+    dependencies.append(
+        .package(
+            url: "https://github.com/nicklockwood/SwiftFormat",
+            from: "0.54.0"
+        )
+    )
+}
 
 let package = Package(
     name: "swiftui-property-inspector",
@@ -13,26 +59,13 @@ let package = Package(
     products: [
         .library(
             name: "PropertyInspector",
-            targets: ["PropertyInspector"]),
+            targets: ["PropertyInspector"]
+        ),
         .library(
-            name: "PropertyInspectorExamples",
-            targets: ["PropertyInspectorExamples"]),
+            name: "PropertyInspector-Examples",
+            targets: ["PropertyInspector-Examples"]
+        )
     ],
-    targets: [
-        .target(
-            name: "PropertyInspector",
-            swiftSettings: {
-                if isRemoteCheckout {
-                    []
-                } else {
-                    [.define("VERBOSE")]
-                }
-            }()
-        ),
-        .target(
-            name: "PropertyInspectorExamples",
-            dependencies: ["PropertyInspector"],
-            path: "Sources/Examples"
-        ),
-    ]
+    dependencies: dependencies,
+    targets: targets
 )
