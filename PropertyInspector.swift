@@ -1400,10 +1400,10 @@ public struct _InlinePropertyInspector: _PropertyInspectorStyle {
  This style organizes properties into a list, using specified list styles and row backgrounds, suitable for inspections within a non-modal, integrated list environment.
 
  - Parameters:
-   - `listStyle`: The style of the list, conforming to `ListStyle`. Typical styles include `.plain`, `.grouped`, and `.insetGrouped`, depending on the desired visual effect.
-   - `listRowBackground`: The view used as the background for each row in the list, conforming to `View`. This could be a simple `Color` or more complex custom views.
-   - `title`: An optional title for the list; if not provided, defaults to `nil`.
-   - `contentPadding`: A Boolean value that indicates whether the content should have padding. Defaults to `false`.
+   - listStyle: The style of the list, conforming to `ListStyle`. Typical styles include `.plain`, `.grouped`, and `.insetGrouped`, depending on the desired visual effect.
+   - listRowBackground: The view used as the background for each row in the list, conforming to `View`. This could be a simple `Color` or more complex custom views.
+   - title: An optional title for the list; if not provided, defaults to `nil`.
+   - contentPadding: A Boolean value that indicates whether the content should have padding. Defaults to `false`.
 
  - Returns: A view modifier that configures the appearance and behavior of a property inspector using the specified list style.
 
@@ -1465,10 +1465,10 @@ public struct _ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
  This style organizes properties within a customizable list, using specified list styles and row backgrounds, making it ideal for detailed inspections in a modal sheet format.
 
  - Parameters:
-   - `isPresented`: A binding to a Boolean value that indicates whether the property inspector sheet is presented.
-   - `listStyle`: The style of the list used within the sheet, conforming to `ListStyle`.
-   - `listRowBackground`: The view used as the background for each row in the list, conforming to `View`.
-   - `title`: An optional title for the sheet; if not provided, defaults to `nil`.
+   - isPresented: A binding to a Boolean value that indicates whether the property inspector sheet is presented.
+   - listStyle: The style of the list used within the sheet, conforming to `ListStyle`.
+   - listRowBackground: The view used as the background for each row in the list, conforming to `View`.
+   - title: An optional title for the sheet; if not provided, defaults to `nil`.
 
  - Returns: A view modifier that configures the appearance and behavior of a property inspector using the specified sheet style.
 
