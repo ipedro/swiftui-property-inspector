@@ -26,407 +26,802 @@ import Combine
 import Foundation
 import SwiftUI
 
-struct PropertyToggleStyle: ToggleStyle {
-    var alignment: VerticalAlignment = .center
-
-    var symbolFont: Font = .title
-
-    var symbolName: (_ isOn: Bool) -> String = { isOn in
-        if isOn {
-            "eye.circle.fill"
-        } else {
-            "eye.slash.circle.fill"
-        }
+final class HashableDictionary<Key, Value>: Hashable where Key: Hashable, Value: Hashable {
+    static func == (lhs: HashableDictionary<Key, Value>, rhs: HashableDictionary<Key, Value>) -> Bool {
+        lhs.data == rhs.data
     }
 
-    private let feedback = UISelectionFeedbackGenerator()
+    private var data = [Key: Value]()
 
-    func makeBody(configuration: Configuration) -> some View {
-        Button {
-            feedback.selectionChanged()
-            withAnimation(.inspectorDefault) {
-                configuration.isOn.toggle()
-            }
-        } label: {
-            HStack(alignment: alignment) {
-                configuration.label
-                Spacer()
-                Image(systemName: symbolName(configuration.isOn))
-                    .font(symbolFont)
-                    .ios17_interpolateSymbolEffect()
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(configuration.isOn ? Color.accentColor : .secondary)
-            }
+    subscript(id: Key) -> Value? {
+        get { data[id] }
+        set { data[id] = newValue }
+    }
+
+    func hash(into hasher: inout Hasher) {
+        data.hash(into: &hasher)
+    }
+
+    func removeAll() {
+        data.removeAll(keepingCapacity: true)
+    }
+}
+
+/// `PropertyLocation` provides detailed information about the source location of a property within the code.
+/// This includes the function, file, and line number where the property is used or modified, which is particularly useful for debugging and logging purposes.
+final class PropertyLocation: Identifiable, Comparable, CustomStringConvertible {
+    /// A unique identifier for the location, composed of the file path, line number, and function name.
+    let id: String
+
+    /// The name of the function where the location is recorded.
+    let function: String
+
+    /// The full path of the file where the location is recorded.
+    let file: String
+
+    /// The line number in the file where the location is recorded.
+    let line: Int
+
+    /// A human-readable description of the location, typically formatted as "filename:line".
+    let description: String
+
+    /// Initializes a new `PropertyLocation` with the specified source code location details.
+    /// - Parameters:
+    ///   - function: The name of the function encapsulating the location.
+    ///   - file: The full path of the source file.
+    ///   - line: The line number in the source file.
+    init(function: String, file: String, line: Int) {
+        let fileName = URL(string: file)?.lastPathComponent ?? file
+
+        id = "\(file):\(line):\(function)"
+        description = "\(fileName):\(line)"
+        self.function = function
+        self.file = file
+        self.line = line
+    }
+
+    /// Compares two `PropertyLocation` instances for ascending order based on their `id`.
+    /// - Returns: `true` if the identifier of the first location is less than the second, otherwise `false`.
+    static func < (lhs: PropertyLocation, rhs: PropertyLocation) -> Bool {
+        lhs.id.localizedStandardCompare(rhs.id) == .orderedAscending
+    }
+
+    /// Determines if two `PropertyLocation` instances are equal based on their identifiers.
+    /// - Returns: `true` if both locations have the same identifier, otherwise `false`.
+    static func == (lhs: PropertyLocation, rhs: PropertyLocation) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+extension Context {
+    final class Filter<F> {
+        var wrappedValue: F
+        var isOn: Bool
+
+        init(_ wrappedValue: F, isOn: Bool) {
+            self.wrappedValue = wrappedValue
+            self.isOn = isOn
         }
     }
 }
 
-struct PropertyInspectorHeader: View {
-    var data: LocalizedStringKey
+extension Context.Filter: Hashable where F: Hashable {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(wrappedValue)
+    }
+}
 
-    init?(data: LocalizedStringKey?) {
-        guard let data else { return nil }
-        self.data = data
+extension Context.Filter: Equatable where F: Equatable {
+    static func == (lhs: Context.Filter<F>, rhs: Context.Filter<F>) -> Bool {
+        lhs.wrappedValue == rhs.wrappedValue
+    }
+}
+
+extension Context.Filter: Comparable where F: Comparable {
+    static func < (rhs: Context.Filter<F>, lhs: Context.Filter<F>) -> Bool {
+        if rhs.isOn == lhs.isOn {
+            rhs.wrappedValue < lhs.wrappedValue
+        } else {
+            rhs.isOn && !lhs.isOn
+        }
+    }
+}
+
+struct RowViewBuilderRegistry: Hashable, CustomStringConvertible {
+    private var data: [PropertyType: RowViewBuilder]
+
+    private let cache = HashableDictionary<PropertyValueID, HashableBox<AnyView>>()
+
+    init(_ values: RowViewBuilder...) {
+        data = values.reduce(into: [:]) { partialResult, builder in
+            partialResult[builder.id] = builder
+        }
     }
 
-    @EnvironmentObject
-    private var context: Context.Data
+    var description: String {
+        "\(Self.self)\(data.keys.map { "\n\t-\($0.rawValue)" }.joined())"
+    }
 
-    var body: some View {
-        VStack(spacing: 4) {
-            title()
-            let filters = context.filters.sorted()
+    var isEmpty: Bool { data.isEmpty }
 
-            if !filters.isEmpty {
-                PropertyInspectorFilters(
-                    data: filters,
-                    toggleAll: context.toggleAllFilters,
-                    title: \.wrappedValue.description,
-                    isOn: context.toggleFilter(_:)
-                )
+    var identifiers: [PropertyType] {
+        Array(data.keys)
+    }
+
+    subscript(id: PropertyType) -> RowViewBuilder? {
+        get {
+            data[id]
+        }
+        set {
+            if data[id] != newValue {
+                data[id] = newValue
             }
         }
-        .multilineTextAlignment(.leading)
-        .environment(\.textCase, nil)
-        .foregroundStyle(.primary)
     }
 
-    private var accessoryTitle: String {
-        if context.properties.isEmpty {
-            return ""
+    mutating func merge(_ other: RowViewBuilderRegistry) {
+        data.merge(other.data) { content, _ in
+            content
         }
-        let count = context.properties.count
-        let allCount = context.allProperties.count
-        if count != allCount {
-            return "\(count) of \(allCount) items"
-        }
-        return "\(count) items"
     }
 
-    @ViewBuilder
-    private func title() -> some View {
-        let formattedText = Text(data)
-            .font(.title.weight(.medium))
-            .lineLimit(1)
+    func merged(_ other: RowViewBuilderRegistry) -> Self {
+        var copy = self
+        copy.merge(other)
+        return copy
+    }
 
-        if #available(iOS 16.0, *), !context.properties.isEmpty {
-            Toggle(sources: context.properties, isOn: \.$isHighlighted) {
-                HStack(alignment: .firstTextBaseline) {
-                    formattedText
+    func makeBody(property: Property) -> AnyView? {
+        if let cached = resolveFromCache(property: property) {
+            #if VERBOSE
+                print("[PropertyInspector]", "♻️", property.stringValue, "resolved from cache")
+            #endif
+            return cached
+        } else if let body = createBody(property: property) {
+            #if VERBOSE
+                print("[PropertyInspector]", "🆕", property.stringValue, "created new view")
+            #endif
+            return body
+        }
+        return nil
+    }
 
-                    Text(accessoryTitle)
-                        .contentTransition(.numericText())
-                        .font(.footnote.bold())
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .foregroundStyle(.secondary)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8).fill(.ultraThickMaterial)
-                        )
+    private func resolveFromCache(property: Property) -> AnyView? {
+        if let cached = cache[property.value.id] {
+            return cached.value
+        }
+        return nil
+    }
+
+    #if DEBUG
+        private func createBody(property: Property) -> AnyView? {
+            var matches = [PropertyType: AnyView]()
+
+            for id in identifiers {
+                if let view = data[id]?.body(property) {
+                    matches[id] = view
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .toggleStyle(
-                PropertyToggleStyle(
-                    alignment: .firstTextBaseline,
-                    symbolName: { _ in
-                        "arrow.triangle.2.circlepath.circle.fill"
-                    }
+
+            if matches.keys.count > 1 {
+                let matchingTypes = matches.keys.map { String(describing: $0.rawValue) }
+                print(
+                    "[PropertyInspector]",
+                    "⚠️ Warning:",
+                    "Undefined behavior.",
+                    "Multiple row builders",
+                    "match '\(property.stringValueType)' declared in '\(property.id.location)':",
+                    matchingTypes.sorted().joined(separator: ", ")
                 )
-            )
-        } else {
-            formattedText.frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let match = matches.first {
+                cache[property.value.id] = HashableBox(match.value)
+                return match.value
+            }
+
+            return nil
+        }
+    #else
+        private func createBody(property: Property) -> AnyView? {
+            for id in identifiers {
+                if let view = data[id]?.body(property) {
+                    cache[property.value.id] = HashableBox(view)
+                    return view
+                }
+            }
+            return nil
+        }
+    #endif
+}
+
+struct PropertyValue: Identifiable {
+    let id: PropertyValueID
+    let rawValue: Any
+    var type: PropertyType { id.type }
+
+    init<T>(_ value: T) {
+        id = ID(value)
+        rawValue = value
+    }
+
+    init(_ other: PropertyValue) {
+        self = other
+    }
+}
+
+struct PropertyValueID: Hashable {
+    let hashValue: Int
+    let type: PropertyType
+
+    init<T>(_ value: T) {
+        hashValue = String(describing: value).hashValue
+        type = PropertyType(value)
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(hashValue)
+        hasher.combine(type)
+    }
+}
+
+/// An enumeration that defines the behavior of property highlights in the PropertyInspector.
+///
+/// `PropertyInspectorHighlightBehavior` controls how properties are highlighted when the
+/// PropertyInspector is presented and dismissed.
+public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
+    /// Highlights must be manually managed by the user.
+    ///
+    /// When using `manual`, any active highlights will remain active even after the inspector is dismissed.
+    /// This option gives you full control over the highlighting behavior.
+    case manual
+
+    /// Highlights are shown automatically when the inspector is presented and hidden when it is dismissed.
+    ///
+    /// When using `automatic`, all visible views that contain inspectable properties are highlighted
+    /// automatically when the inspector is presented. Any active highlights are hidden automatically
+    /// upon dismissal of the inspector.
+    case automatic
+
+    /// Highlights are hidden automatically upon dismissal of the inspector.
+    ///
+    /// When using `hideOnDismiss`, any active highlights are hidden when the inspector is dismissed.
+    /// This option ensures that highlights are automatically cleaned up when the inspector is no longer in view.
+    case hideOnDismiss
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .manual:
+            "Manual"
+        case .automatic:
+            "Show / Hide Automatically"
+        case .hideOnDismiss:
+            "Hide Automatically"
         }
     }
 }
 
-struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equatable {
-    static func == (lhs: PropertyInspectorRow<Icon, Label, Detail>, rhs: PropertyInspectorRow<Icon, Label, Detail>) -> Bool {
+struct PropertyType: Identifiable {
+    let id: ObjectIdentifier
+    let rawValue: Any.Type
+
+    init<T>(_ subject: T) {
+        let start = Date()
+        let type: Any.Type
+        if T.self == Any.self {
+            // only use mirror as last resort
+            type = Mirror(reflecting: subject).subjectType
+            #if VERBOSE
+                let elapsedTime = (Date().timeIntervalSince(start) * 1000).formatted()
+                print(#function, "🐢", "Determined type \(type) in \(elapsedTime) ms")
+            #endif
+        } else {
+            type = T.self
+            #if VERBOSE
+                let elapsedTime = (Date().timeIntervalSince(start) * 1000).formatted()
+                print(#function, "🐰", "Determined type \(type) in \(elapsedTime) ms")
+            #endif
+        }
+        id = ObjectIdentifier(type)
+        rawValue = type
+    }
+}
+
+extension PropertyType: Comparable {
+    static func < (lhs: PropertyType, rhs: PropertyType) -> Bool {
+        lhs.description.localizedStandardCompare(rhs.description) == .orderedAscending
+    }
+}
+
+extension PropertyType: CustomDebugStringConvertible {
+    var debugDescription: String {
+        "<PropertyType: \(description)>"
+    }
+}
+
+extension PropertyType: CustomStringConvertible {
+    var description: String {
+        String(describing: rawValue)
+    }
+}
+
+extension PropertyType: Equatable {
+    static func == (lhs: RowViewBuilder.ID, rhs: RowViewBuilder.ID) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+extension PropertyType: Hashable {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
+struct HashableBox<Value>: Hashable {
+    let id = UUID()
+    let value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    static func == (lhs: HashableBox<Value>, rhs: HashableBox<Value>) -> Bool {
         lhs.id == rhs.id
     }
 
-    var id: Int
-    @Binding
-    var isOn: Bool
-    var hideIcon: Bool
-    var icon: Icon
-    var label: Label
-    var detail: Detail
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
 
-    @Environment(\.rowLabelFont)
-    private var labelFont
+final class PropertyID {
+    private let _uuid = UUID()
 
-    @Environment(\.rowDetailFont)
-    private var detailFont
+    /// The location of the property within the source code, provided for better traceability and debugging.
+    let location: PropertyLocation
 
-    var body: some View {
-        #if VERBOSE
-            PropertyInspectorRow._printChanges()
-        #endif
-        return Toggle(isOn: $isOn, label: content).toggleStyle(
-            PropertyToggleStyle()
-        )
-        .foregroundStyle(.secondary)
-        .padding(.vertical, 1)
-        .listRowBackground(
-            isOn ? Color(uiColor: .tertiarySystemBackground) : .clear
-        )
+    let createdAt: Date
+
+    /// A computed string that provides a sortable representation of the property based on its location and offset.
+    private let sortString: String
+
+    init(
+        offset: Int,
+        createdAt: Date,
+        location: PropertyLocation
+    ) {
+        self.location = location
+        self.createdAt = createdAt
+        sortString = [
+            location.id,
+            String(createdAt.timeIntervalSince1970),
+            String(offset)
+        ].joined(separator: "_")
+    }
+}
+
+extension PropertyID: Hashable {
+    /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
+    static func == (lhs: PropertyID, rhs: PropertyID) -> Bool {
+        lhs._uuid == rhs._uuid
     }
 
-    private func content() -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            label.foregroundStyle(.primary)
-            detail.font(detailFont)
-        }
-        .allowsTightening(true)
-        .multilineTextAlignment(.leading)
-        .contentShape(Rectangle())
-        .safeAreaInset(edge: .leading, alignment: .firstTextBaseline) {
-            if !hideIcon {
-                icon.scaledToFit().frame(width: 25)
+    /// Contributes to the hashability of the property, incorporating its unique identifier into the hash.
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(_uuid)
+    }
+}
+
+extension PropertyID: Comparable {
+    /// Determines if one `ID` should precede another in a sorted list, based on a composite string that includes their location and value.
+    static func < (lhs: PropertyID, rhs: PropertyID) -> Bool {
+        lhs.sortString.localizedStandardCompare(rhs.sortString) == .orderedAscending
+    }
+}
+
+extension Context {
+    final class Data: ObservableObject {
+        private var cancellables = Set<AnyCancellable>()
+
+        private var _allObjects = [PropertyType: Set<Property>]()
+
+        private var _searchQuery = ""
+
+        var allProperties = [Property]()
+
+        var filters = Set<Filter<PropertyType>>()
+
+        @Published
+        var properties = [Property]() {
+            didSet {
+                #if VERBOSE
+                    print("\(Self.self): Updated Properties")
+                    for property in properties {
+                        print("\t- \(property)")
+                    }
+                #endif
             }
         }
-        .font(labelFont)
-    }
-}
 
-#Preview {
-    PropertyInspectorRow(
-        id: 0,
-        isOn: .constant(true),
-        hideIcon: false,
-        icon: Image(systemName: "circle"),
-        label: Text(verbatim: "Some text"),
-        detail: Text(verbatim: "Some detail")
-    )
-}
-
-#Preview {
-    PropertyInspectorRow(
-        id: 0,
-        isOn: .constant(true),
-        hideIcon: true,
-        icon: Image(systemName: "circle"),
-        label: Text(verbatim: "Some text"),
-        detail: Text(verbatim: "Some detail")
-    )
-}
-
-struct PropertyInspectorRows: View {
-    @EnvironmentObject
-    private var context: Context.Data
-
-    var body: some View {
-        #if VERBOSE
-        printChanges()
-        #endif
-        if context.properties.isEmpty {
-            Text(emptyMessage)
-                .foregroundStyle(.tertiary)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .multilineTextAlignment(.center)
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: 50,
-                    alignment: .bottom
-                )
-                .padding()
+        @Published
+        var iconRegistry = RowViewBuilderRegistry() {
+            didSet {
+                #if VERBOSE
+                    print("\(Self.self): Updated Icons \(iconRegistry)")
+                #endif
+            }
         }
-        ForEach(context.properties) { property in
-            PropertyInspectorRow(
-                id: property.hashValue,
-                isOn: property.$isHighlighted,
-                hideIcon: context.iconRegistry.isEmpty,
-                icon: icon(for: property),
-                label: label(for: property),
-                detail: detail(for: property)
-            )
-            .equatable()
+
+        @Published
+        var labelRegistry = RowViewBuilderRegistry() {
+            didSet {
+                #if VERBOSE
+                    print("\(Self.self): Updated Labels \(labelRegistry)")
+                #endif
+            }
         }
-    }
 
-    #if VERBOSE
-    private func printChanges() -> EmptyView {
-        Self._printChanges()
-        return EmptyView()
-    }
-    #endif
-
-    private var emptyMessage: String {
-        context.searchQuery.isEmpty ?
-            "Nothing to inspect" :
-            "No results for '\(context.searchQuery)'"
-    }
-
-    @ViewBuilder
-    private func icon(for property: Property) -> some View {
-        if let icon = context.iconRegistry.makeBody(property: property) {
-            icon
-        } else if !context.iconRegistry.isEmpty {
-            Image(systemName: "info.circle.fill")
+        @Published
+        var detailRegistry = RowViewBuilderRegistry() {
+            didSet {
+                #if VERBOSE
+                    print("\(Self.self): Updated Details \(iconRegistry)")
+                #endif
+            }
         }
-    }
 
-    @ViewBuilder
-    private func label(for property: Property) -> some View {
-        if let label = context.labelRegistry.makeBody(property: property) {
-            label
-        } else {
-            Text(verbatim: property.stringValue)
+        var allObjects: [PropertyType: Set<Property>] {
+            get { _allObjects }
+            set {
+                guard _allObjects != newValue else { return }
+                _allObjects = newValue
+                makeProperties()
+            }
         }
-    }
 
-    @ViewBuilder
-    private func detail(for property: Property) -> some View {
-        VStack(alignment: .leading) {
-            context.detailRegistry.makeBody(property: property)
-            Text(verbatim: property.id.location.description).opacity(2 / 3)
+        var searchQuery: String {
+            get { _searchQuery }
+            set {
+                guard _searchQuery != newValue else { return }
+                _searchQuery = newValue
+                makeProperties()
+            }
         }
-    }
-}
 
-struct PropertyLocationView: View {
-    var data: PropertyLocation
-
-    var body: some View {
-        text
-            .lineLimit(1)
-            .truncationMode(.head)
-            .foregroundStyle(.secondary)
-    }
-
-    var text: some View {
-        Text(verbatim: data.function) +
-            Text(verbatim: " — ").bold().ios17_quinaryForegroundStyle() +
-            Text(verbatim: data.description)
-    }
-}
-
-private extension Text {
-    func ios17_quinaryForegroundStyle() -> Text {
-        if #available(iOS 17.0, *) {
-            self.foregroundStyle(.quinary)
-        } else {
-            // Fallback on earlier versions
-            self
+        init() {
+            setupDebouncing()
         }
-    }
-}
 
-struct PropertyInspectorFilters<Filter>: View where Filter: Hashable {
-    var data: [Filter]
-
-    @Binding
-
-    var toggleAll: Bool
-
-    var title: KeyPath<Filter, String>
-
-    var isOn: (_ data: Filter) -> Binding<Bool>
-
-    @EnvironmentObject
-    private var context: Context.Data
-
-    var body: some View {
-        HStack(spacing: .zero) {
-            toggleAllButton
-            filterList
+        private func isOn(filter: Filter<PropertyType>) -> Bool {
+            if let index = filters.firstIndex(of: filter) {
+                filters[index].isOn
+            } else {
+                false
+            }
         }
-        .font(.caption.bold())
-        .toggleStyle(.button)
-        .controlSize(.mini)
-        .tint(.secondary)
-        .padding(.vertical, 5)
-    }
 
-    private var toggleAllicon: String {
-        "line.3.horizontal.decrease\(toggleAll ? ".circle.fill" : "")"
-    }
-
-    private var toggleAllAccessibilityLabel: Text {
-        Text(toggleAll ? "Deselect All Filters" : "Select All Filters")
-    }
-
-    private var toggleAllButton: some View {
-        Toggle(
-            isOn: $toggleAll,
-            label: {
-                ZStack {
-                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                        .font(.title2)
-                        .opacity(toggleAll ? 1 : 0)
-                    Image(systemName: "line.3.horizontal.decrease")
-                        .font(.subheadline)
-                        .padding(.top, 1)
-                        .opacity(toggleAll ? 0 : 1)
+        func toggleFilter(_ filter: Filter<PropertyType>) -> Binding<Bool> {
+            Binding { [unowned self] in
+                if let index = filters.firstIndex(of: filter) {
+                    filters[index].isOn
+                } else {
+                    false
                 }
-                .accessibilityElement()
-                .accessibilityLabel(toggleAllAccessibilityLabel)
-            }
-        )
-        .buttonStyle(.plain)
-        .tint(.primary)
-        .symbolRenderingMode(.hierarchical)
-    }
-
-    private var filterList: some View {
-        ScrollView(.horizontal) {
-            LazyHStack {
-                ForEach(data, id: \.self) { element in
-                    Toggle(element[keyPath: title], isOn: isOn(element))
+            } set: { [unowned self] newValue in
+                if let index = self.filters.firstIndex(of: filter) {
+                    filters[index].isOn = newValue
+                    _allObjects[filter.wrappedValue]?.forEach { prop in
+                        if prop.isHighlighted {
+                            prop.isHighlighted = false
+                        }
+                    }
+                    makeProperties()
                 }
             }
-            .padding(
-                EdgeInsets(
-                    top: 2,
-                    leading: 10,
-                    bottom: 2,
-                    trailing: 0
-                )
-            )
+        }
 
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.trailing, 20)
+        var toggleAllFilters: Binding<Bool> {
+            let allSelected = !filters.map(\.isOn).contains(false)
+            return Binding {
+                allSelected
+            } set: { [unowned self] newValue in
+                for filter in filters {
+                    filter.isOn = newValue
+                }
+                for set in _allObjects.values {
+                    for prop in set where prop.isHighlighted {
+                        prop.isHighlighted = false
+                    }
+                }
+                makeProperties()
+            }
         }
-        .mask {
-            LinearGradient(
-                colors: [.clear, .black],
-                startPoint: .leading,
-                endPoint: .init(x: 0.04, y: 0.5)
-            )
+
+        private func setupDebouncing() {
+            Just(_searchQuery)
+                .removeDuplicates()
+                .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
+                .sink(receiveValue: { [unowned self] _ in
+                    makeProperties()
+                })
+                .store(in: &cancellables)
         }
-        .padding(.trailing, -20)
-        .animation(.inspectorDefault, value: data)
-        .ios16_hideScrollIndicators()
+
+        private func isFilterEnabled(_ type: PropertyType) -> Bool? {
+            for filter in filters where filter.wrappedValue == type {
+                return filter.isOn
+            }
+            return nil
+        }
+
+        private func makeProperties() {
+            var all = Set<Property>()
+            var properties = Set<Property>()
+            var filters = Set<Filter<PropertyType>>()
+
+            for (type, set) in _allObjects {
+                let searchResult = search(in: set)
+                if !searchResult.isEmpty {
+                    filters.insert(
+                        Filter(
+                            type,
+                            isOn: isFilterEnabled(type) ?? true
+                        )
+                    )
+                }
+                all.formUnion(set)
+                properties.formUnion(searchResult)
+            }
+
+            withAnimation(.inspectorDefault) {
+                self.filters = filters
+                self.allProperties = Array(all)
+                self.properties = filter(in: Array(properties)).sorted()
+            }
+        }
+
+        private func search(in properties: Set<Property>) -> Set<Property> {
+            guard !_searchQuery.isEmpty else {
+                return properties
+            }
+
+            let query = _searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard query.count > 1 else {
+                return properties
+            }
+
+            return properties.filter {
+                if $0.stringValue.localizedCaseInsensitiveContains(query) { return true }
+                if $0.stringValueType.localizedStandardContains(query) { return true }
+                return $0.id.location.description.localizedStandardContains(query)
+            }
+        }
+
+        private func filter(in properties: [Property]) -> [Property] {
+            let activeTypes = Set(filters.filter { $0.isOn }.map(\.wrappedValue))
+
+            guard activeTypes.count != filters.count else {
+                return properties
+            }
+
+            let result = properties.filter {
+                activeTypes.contains($0.value.type)
+            }
+            return result
+        }
     }
 }
 
-#Preview {
-    FilterDemo()
+/// `Property` encapsulates details about a specific property within a view or model, including its value, display metadata, and location.
+/// This struct is intended for internal use within the ``PropertyInspector`` framework to track and manage property information dynamically.
+final class Property: Identifiable, Comparable, Hashable, CustomStringConvertible {
+    /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
+    let id: PropertyID
+
+    /// The value of the property stored as `Any`, allowing it to accept any property type.
+    let value: PropertyValue
+
+    /// A binding to a Boolean that indicates whether the property is currently highlighted in the UI.
+    @Binding
+    var isHighlighted: Bool
+
+    /// Signal view updates
+    let token: AnyHashable
+
+    /// Returns the type of the value as a string, useful for dynamic type checks or displays.
+    var stringValueType: String {
+        String(describing: type(of: value.rawValue))
+    }
+
+    /// Returns the string representation of the property's value.
+    var stringValue: String {
+        String(describing: value.rawValue)
+    }
+
+    var description: String { stringValue }
+
+    /// Initializes a new `Property` with detailed information about its value and location.
+    /// - Parameters:
+    ///   - value: The value of the property.
+    ///   - isHighlighted: A binding to the Boolean indicating if the property is highlighted.
+    ///   - location: The location of the property in the source code.
+    ///   - offset: An offset used to uniquely sort the property when multiple properties share the same location.
+    init(
+        id: ID,
+        token: AnyHashable,
+        value: PropertyValue,
+        isHighlighted: Binding<Bool>
+    ) {
+        self.token = token
+        self.id = id
+        self.value = value
+        _isHighlighted = isHighlighted
+    }
+
+    /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
+    static func == (lhs: Property, rhs: Property) -> Bool {
+        lhs.id == rhs.id &&
+            lhs.stringValue == rhs.stringValue &&
+            lhs.token == rhs.token
+    }
+
+    /// Determines if one `Property` should precede another in a sorted list, based on a composite string that includes their location and value.
+    static func < (lhs: Property, rhs: Property) -> Bool {
+        lhs.id < rhs.id
+    }
+
+    /// Contributes to the hashability of the property, incorporating its unique identifier into the hash.
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(stringValue)
+        hasher.combine(token)
+    }
 }
 
-private struct FilterDemo: View {
-    @State var toggleAll = false
-    var body: some View {
-        PropertyInspectorFilters(
-            data: ["test1", "test2", "test3", "test4"],
-            toggleAll: $toggleAll,
-            title: \.self,
-            isOn: { _ in $toggleAll }
+struct RowViewBuilder: Hashable, Identifiable {
+    let id: PropertyType
+    let body: (Property) -> AnyView?
+
+    init<D, C: View>(@ViewBuilder body: @escaping (_ data: D) -> C) {
+        id = ID(D.self)
+        self.body = { property in
+            guard let castedValue = property.value.rawValue as? D else {
+                return nil
+            }
+            return AnyView(body(castedValue))
+        }
+    }
+
+    static func == (lhs: RowViewBuilder, rhs: RowViewBuilder) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
+struct Context: ViewModifier {
+    @StateObject
+    private var data = Data()
+
+    func body(content: Content) -> some View {
+        content.onPreferenceChange(PropertyPreferenceKey.self) { newValue in
+            if data.allObjects != newValue {
+                data.allObjects = newValue
+            }
+        }.onPreferenceChange(RowDetailPreferenceKey.self) { newValue in
+            if data.detailRegistry != newValue {
+                data.detailRegistry = newValue
+            }
+        }.onPreferenceChange(RowIconPreferenceKey.self) { newValue in
+            if data.iconRegistry != newValue {
+                data.iconRegistry = newValue
+            }
+        }.onPreferenceChange(RowLabelPreferenceKey.self) { newValue in
+            if data.labelRegistry != newValue {
+                data.labelRegistry = newValue
+            }
+        }.environmentObject(data)
+    }
+}
+
+extension View {
+    func setPreference<K: PreferenceKey>(_: K.Type, value: K.Value) -> some View {
+        modifier(PreferenceWriter<K>(value: value))
+    }
+
+    func setPreference<K: PreferenceKey, D, C: View>(_: K.Type, @ViewBuilder body: @escaping (D) -> C) -> some View where K.Value == RowViewBuilderRegistry {
+        let builder = RowViewBuilder(body: body)
+        return modifier(
+            PreferenceWriter<K>(value: RowViewBuilderRegistry(builder))
         )
     }
 }
 
-struct PropertyHiglighter: ViewModifier {
+struct PreferenceWriter<K: PreferenceKey>: ViewModifier {
+    let value: K.Value
+
+    func body(content: Content) -> some View {
+        content.background(
+            Spacer().preference(key: K.self, value: value)
+        )
+    }
+}
+
+struct PropertyWriter<S: Shape>: ViewModifier {
+    var data: [PropertyValue]
+    var location: PropertyLocation
+    var shape: S
+
+    init(data: [PropertyValue], shape: S, location: PropertyLocation) {
+        self.data = data
+        self.shape = shape
+        self.location = location
+        _ids = State(initialValue: (0 ..< data.count).map { offset in
+            PropertyID(
+                offset: offset,
+                createdAt: Date(),
+                location: location
+            )
+        })
+    }
+
+    @State
+    private var ids: [PropertyID]
+
+    @State
+    private var isHighlighted = false
+
+    @Environment(\.isInspectable)
+    private var isInspectable
+
+    func body(content: Content) -> some View {
+        #if VERBOSE
+            Self._printChanges()
+        #endif
+        return content.setPreference(
+            PropertyPreferenceKey.self, value: properties
+        )
+        .modifier(
+            PropertyHiglighter(isOn: $isHighlighted, shape: shape)
+        )
+    }
+
+    private var properties: [PropertyType: Set<Property>] {
+        if !isInspectable {
+            return [:]
+        }
+        let result: [PropertyType: Set<Property>] = zip(ids, data).reduce(into: [:]) { dict, element in
+            let (id, value) = element
+            let key = value.type
+            var set = dict[key] ?? Set()
+            set.insert(
+                Property(
+                    id: id,
+                    token: String(describing: value.rawValue).hashValue,
+                    value: value,
+                    isHighlighted: $isHighlighted
+                )
+            )
+            dict[key] = set
+        }
+
+        return result
+    }
+}
+
+struct PropertyHiglighter<S: Shape>: ViewModifier {
     @Binding var isOn: Bool
+    var shape: S
 
     func body(content: Content) -> some View {
         content
             .zIndex(isOn ? 999 : 0)
             .overlay {
                 if isOn {
-                    Rectangle()
+                    shape
                         .stroke(lineWidth: 1.5)
                         .fill(.cyan.opacity(isOn ? 1 : 0))
                         .transition(
@@ -465,111 +860,38 @@ struct PropertyHiglighter: ViewModifier {
     }
 }
 
-extension View {
-    func setPreference<K: PreferenceKey>(_: K.Type, value: K.Value) -> some View {
-        modifier(PreferenceWriter<K>(value: value))
-    }
+struct PropertyToggleStyle: ToggleStyle {
+    var alignment: VerticalAlignment = .center
 
-    func setPreference<K: PreferenceKey, D, C: View>(_: K.Type, @ViewBuilder body: @escaping (D) -> C) -> some View where K.Value == RowViewBuilderRegistry {
-        let builder = RowViewBuilder(body: body)
-        return modifier(
-            PreferenceWriter<K>(value: RowViewBuilderRegistry(builder))
-        )
-    }
-}
+    var symbolFont: Font = .title
 
-struct PreferenceWriter<K: PreferenceKey>: ViewModifier {
-    let value: K.Value
-
-    func body(content: Content) -> some View {
-        content.background(
-            Spacer().preference(key: K.self, value: value)
-        )
-    }
-}
-
-struct PropertyWriter: ViewModifier {
-    var data: [PropertyValue]
-    var location: PropertyLocation
-
-    init(data: [PropertyValue], location: PropertyLocation) {
-        self.data = data
-        self.location = location
-        _ids = State(initialValue: (0 ..< data.count).map { offset in
-            PropertyID(
-                offset: offset,
-                createdAt: Date(),
-                location: location
-            )
-        })
-    }
-
-    @State
-    private var ids: [PropertyID]
-
-    @State
-    private var isHighlighted = false
-
-    @Environment(\.isInspectable)
-    private var isInspectable
-
-    func body(content: Content) -> some View {
-        #if VERBOSE
-            Self._printChanges()
-        #endif
-        return content.setPreference(
-            PropertyPreferenceKey.self, value: properties
-        )
-        .modifier(
-            PropertyHiglighter(isOn: $isHighlighted)
-        )
-    }
-
-    private var properties: [PropertyType: Set<Property>] {
-        if !isInspectable {
-            return [:]
+    var symbolName: (_ isOn: Bool) -> String = { isOn in
+        if isOn {
+            "eye.circle.fill"
+        } else {
+            "eye.slash.circle.fill"
         }
-        let result: [PropertyType: Set<Property>] = zip(ids, data).reduce(into: [:]) { dict, element in
-            let (id, value) = element
-            let key = value.type
-            var set = dict[key] ?? Set()
-            set.insert(
-                Property(
-                    id: id,
-                    token: String(describing: value.rawValue).hashValue,
-                    value: value,
-                    isHighlighted: $isHighlighted
-                )
-            )
-            dict[key] = set
-        }
-
-        return result
     }
-}
 
-struct Context: ViewModifier {
-    @StateObject
-    private var data = Data()
+    private let feedback = UISelectionFeedbackGenerator()
 
-    func body(content: Content) -> some View {
-        content.onPreferenceChange(PropertyPreferenceKey.self) { newValue in
-            if data.allObjects != newValue {
-                data.allObjects = newValue
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            feedback.selectionChanged()
+            withAnimation(.inspectorDefault) {
+                configuration.isOn.toggle()
             }
-        }.onPreferenceChange(RowDetailPreferenceKey.self) { newValue in
-            if data.detailRegistry != newValue {
-                data.detailRegistry = newValue
+        } label: {
+            HStack(alignment: alignment) {
+                configuration.label
+                Spacer()
+                Image(systemName: symbolName(configuration.isOn))
+                    .font(symbolFont)
+                    .ios17_interpolateSymbolEffect()
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(configuration.isOn ? Color.accentColor : .secondary)
             }
-        }.onPreferenceChange(RowIconPreferenceKey.self) { newValue in
-            if data.iconRegistry != newValue {
-                data.iconRegistry = newValue
-            }
-        }.onPreferenceChange(RowLabelPreferenceKey.self) { newValue in
-            if data.labelRegistry != newValue {
-                data.labelRegistry = newValue
-            }
-        }.environmentObject(data)
+        }
     }
 }
 
@@ -636,7 +958,7 @@ struct Context: ViewModifier {
  }
  ```
 
-  - seeAlso: ``inspectProperty(_:function:line:file:)``, ``propertyInspectorHidden()``, and ``inspectSelf(function:line:file:)``
+ - seeAlso: ``inspectProperty(_:shape:function:line:file:)-5quvs``, ``propertyInspectorHidden()``, and ``inspectSelf(shape:function:line:file:)``
   */
 public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: View {
     var label: Label
@@ -663,8 +985,6 @@ public extension PropertyInspector {
         - title: An optional title for the sheet; if not provided, defaults to `nil`.
         - isPresented: A binding to a Boolean value that controls the presentation state of the sheet.
         - label: A closure that returns the content to be displayed within the sheet.
-
-      - Returns: An instance of `PropertyInspector` configured to display as a sheet with plain list style and translucent background material.
 
       ## Usage Example
 
@@ -824,7 +1144,6 @@ public extension PropertyInspector {
      This initializer is designed for cases where property inspection needs to be seamlessly integrated within the flow of existing content, rather than displayed as a separate list or modal. It is particularly useful in contexts where minimal disruption to the user interface is desired.
 
      - Parameters:
-       - title: An optional title for the inline inspector; if not provided, defaults to `nil`. This title can be used to provide a heading or context for the inspected properties.
        - label: A closure that returns the content to be displayed directly in line with other UI elements. This allows for dynamic creation of content based on current state or other conditions.
 
      ## Usage Example
@@ -848,11 +1167,6 @@ public extension PropertyInspector {
         style = _InlinePropertyInspector()
     }
 }
-
-/**
- Customizes the appearance and behavior of ``PropertyInspector`` components. This protocol adheres to `ViewModifier`, enabling it to modify the view of a ``PropertyInspector`` to match specific design requirements.
- */
-public protocol _PropertyInspectorStyle: ViewModifier {}
 
 // MARK: - List Style
 
@@ -1161,970 +1475,6 @@ private struct SheetToolbarContent: View {
     }
 }
 
-struct PropertyPreferenceKey: PreferenceKey {
-    static var defaultValue = [PropertyType: Set<Property>]()
-    static func reduce(value: inout [PropertyType: Set<Property>], nextValue: () -> [PropertyType: Set<Property>]) {
-        value.merge(nextValue()) { lhs, rhs in
-            lhs.union(rhs)
-        }
-    }
-}
-
-struct TitlePreferenceKey: PreferenceKey {
-    static let defaultValue = LocalizedStringKey("Properties")
-    static func reduce(value _: inout LocalizedStringKey, nextValue _: () -> LocalizedStringKey) {}
-}
-
-struct RowDetailPreferenceKey: PreferenceKey {
-    static let defaultValue = RowViewBuilderRegistry()
-    static func reduce(value: inout RowViewBuilderRegistry, nextValue: () -> RowViewBuilderRegistry) {
-        value.merge(nextValue())
-    }
-}
-
-struct RowIconPreferenceKey: PreferenceKey {
-    static let defaultValue = RowViewBuilderRegistry()
-    static func reduce(value: inout RowViewBuilderRegistry, nextValue: () -> RowViewBuilderRegistry) {
-        value.merge(nextValue())
-    }
-}
-
-struct RowLabelPreferenceKey: PreferenceKey {
-    static let defaultValue = RowViewBuilderRegistry()
-    static func reduce(value: inout RowViewBuilderRegistry, nextValue: () -> RowViewBuilderRegistry) {
-        value.merge(nextValue())
-    }
-}
-
-struct ViewInspectabilityKey: EnvironmentKey {
-    static let defaultValue: Bool = true
-}
-
-struct RowDetailFontKey: EnvironmentKey {
-    static let defaultValue: Font = .caption
-}
-
-struct RowLabelFontKey: EnvironmentKey {
-    static let defaultValue: Font = .callout
-}
-
-extension EnvironmentValues {
-    var rowDetailFont: Font {
-        get { self[RowDetailFontKey.self] }
-        set { self[RowDetailFontKey.self] = newValue }
-    }
-
-    var rowLabelFont: Font {
-        get { self[RowLabelFontKey.self] }
-        set { self[RowLabelFontKey.self] = newValue }
-    }
-
-    var isInspectable: Bool {
-        get { self[ViewInspectabilityKey.self] }
-        set { self[ViewInspectabilityKey.self] = newValue }
-    }
-}
-
-struct RowViewBuilder: Hashable, Identifiable {
-    let id: PropertyType
-    let body: (Property) -> AnyView?
-
-    init<D, C: View>(@ViewBuilder body: @escaping (_ data: D) -> C) {
-        id = ID(D.self)
-        self.body = { property in
-            guard let castedValue = property.value.rawValue as? D else {
-                return nil
-            }
-            return AnyView(body(castedValue))
-        }
-    }
-
-    static func == (lhs: RowViewBuilder, rhs: RowViewBuilder) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-}
-
-extension Context {
-    final class Data: ObservableObject {
-        private var cancellables = Set<AnyCancellable>()
-
-        private var _allObjects = [PropertyType: Set<Property>]()
-
-        private var _searchQuery = ""
-
-        var allProperties = [Property]()
-
-        var filters = Set<Filter<PropertyType>>()
-
-        @Published
-        var properties = [Property]() {
-            didSet {
-                #if VERBOSE
-                    print("\(Self.self): Updated Properties")
-                    for property in properties {
-                        print("\t- \(property)")
-                    }
-                #endif
-            }
-        }
-
-        @Published
-        var iconRegistry = RowViewBuilderRegistry() {
-            didSet {
-                #if VERBOSE
-                    print("\(Self.self): Updated Icons \(iconRegistry)")
-                #endif
-            }
-        }
-
-        @Published
-        var labelRegistry = RowViewBuilderRegistry() {
-            didSet {
-                #if VERBOSE
-                    print("\(Self.self): Updated Labels \(labelRegistry)")
-                #endif
-            }
-        }
-
-        @Published
-        var detailRegistry = RowViewBuilderRegistry() {
-            didSet {
-                #if VERBOSE
-                    print("\(Self.self): Updated Details \(iconRegistry)")
-                #endif
-            }
-        }
-
-        var allObjects: [PropertyType: Set<Property>] {
-            get { _allObjects }
-            set {
-                guard _allObjects != newValue else { return }
-                _allObjects = newValue
-                makeProperties()
-            }
-        }
-
-        var searchQuery: String {
-            get { _searchQuery }
-            set {
-                guard _searchQuery != newValue else { return }
-                _searchQuery = newValue
-                makeProperties()
-            }
-        }
-
-        init() {
-            setupDebouncing()
-        }
-
-        private func isOn(filter: Filter<PropertyType>) -> Bool {
-            if let index = filters.firstIndex(of: filter) {
-                filters[index].isOn
-            } else {
-                false
-            }
-        }
-
-        func toggleFilter(_ filter: Filter<PropertyType>) -> Binding<Bool> {
-            Binding { [unowned self] in
-                if let index = filters.firstIndex(of: filter) {
-                    filters[index].isOn
-                } else {
-                    false
-                }
-            } set: { [unowned self] newValue in
-                if let index = self.filters.firstIndex(of: filter) {
-                    filters[index].isOn = newValue
-                    _allObjects[filter.wrappedValue]?.forEach { prop in
-                        if prop.isHighlighted {
-                            prop.isHighlighted = false
-                        }
-                    }
-                    makeProperties()
-                }
-            }
-        }
-
-        var toggleAllFilters: Binding<Bool> {
-            let allSelected = !filters.map(\.isOn).contains(false)
-            return Binding {
-                allSelected
-            } set: { [unowned self] newValue in
-                for filter in filters {
-                    filter.isOn = newValue
-                }
-                for set in _allObjects.values {
-                    for prop in set where prop.isHighlighted {
-                        prop.isHighlighted = false
-                    }
-                }
-                makeProperties()
-            }
-        }
-
-        private func setupDebouncing() {
-            Just(_searchQuery)
-                .removeDuplicates()
-                .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
-                .sink(receiveValue: { [unowned self] _ in
-                    makeProperties()
-                })
-                .store(in: &cancellables)
-        }
-
-        private func isFilterEnabled(_ type: PropertyType) -> Bool? {
-            for filter in filters where filter.wrappedValue == type {
-                return filter.isOn
-            }
-            return nil
-        }
-
-        private func makeProperties() {
-            var all = Set<Property>()
-            var properties = Set<Property>()
-            var filters = Set<Filter<PropertyType>>()
-
-            for (type, set) in _allObjects {
-                let searchResult = search(in: set)
-                if !searchResult.isEmpty {
-                    filters.insert(
-                        Filter(
-                            type,
-                            isOn: isFilterEnabled(type) ?? true
-                        )
-                    )
-                }
-                all.formUnion(set)
-                properties.formUnion(searchResult)
-            }
-
-            withAnimation(.inspectorDefault) {
-                self.filters = filters
-                self.allProperties = Array(all)
-                self.properties = filter(in: Array(properties)).sorted()
-            }
-        }
-
-        private func search(in properties: Set<Property>) -> Set<Property> {
-            guard !_searchQuery.isEmpty else {
-                return properties
-            }
-
-            let query = _searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            guard query.count > 1 else {
-                return properties
-            }
-
-            return properties.filter {
-                if $0.stringValue.localizedCaseInsensitiveContains(query) { return true }
-                if $0.stringValueType.localizedStandardContains(query) { return true }
-                return $0.id.location.description.localizedStandardContains(query)
-            }
-        }
-
-        private func filter(in properties: [Property]) -> [Property] {
-            let activeTypes = Set(filters.filter { $0.isOn }.map(\.wrappedValue))
-
-            guard activeTypes.count != filters.count else {
-                return properties
-            }
-
-            let result = properties.filter {
-                activeTypes.contains($0.value.type)
-            }
-            return result
-        }
-    }
-}
-
-extension Context {
-    final class Filter<F> {
-        var wrappedValue: F
-        var isOn: Bool
-
-        init(_ wrappedValue: F, isOn: Bool) {
-            self.wrappedValue = wrappedValue
-            self.isOn = isOn
-        }
-    }
-}
-
-extension Context.Filter: Hashable where F: Hashable {
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(wrappedValue)
-    }
-}
-
-extension Context.Filter: Equatable where F: Equatable {
-    static func == (lhs: Context.Filter<F>, rhs: Context.Filter<F>) -> Bool {
-        lhs.wrappedValue == rhs.wrappedValue
-    }
-}
-
-extension Context.Filter: Comparable where F: Comparable {
-    static func < (rhs: Context.Filter<F>, lhs: Context.Filter<F>) -> Bool {
-        if rhs.isOn == lhs.isOn {
-            rhs.wrappedValue < lhs.wrappedValue
-        } else {
-            rhs.isOn && !lhs.isOn
-        }
-    }
-}
-
-struct PropertyValue: Identifiable {
-    let id: PropertyValueID
-    let rawValue: Any
-    var type: PropertyType { id.type }
-
-    init<T>(_ value: T) {
-        id = ID(value)
-        rawValue = value
-    }
-
-    init(_ other: PropertyValue) {
-        self = other
-    }
-}
-
-struct PropertyValueID: Hashable {
-    let hashValue: Int
-    let type: PropertyType
-
-    init<T>(_ value: T) {
-        hashValue = String(describing: value).hashValue
-        type = PropertyType(value)
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(hashValue)
-        hasher.combine(type)
-    }
-}
-
-final class PropertyID {
-    private let _uuid = UUID()
-
-    /// The location of the property within the source code, provided for better traceability and debugging.
-    let location: PropertyLocation
-
-    let createdAt: Date
-
-    /// A computed string that provides a sortable representation of the property based on its location and offset.
-    private let sortString: String
-
-    init(
-        offset: Int,
-        createdAt: Date,
-        location: PropertyLocation
-    ) {
-        self.location = location
-        self.createdAt = createdAt
-        sortString = [
-            location.id,
-            String(createdAt.timeIntervalSince1970),
-            String(offset)
-        ].joined(separator: "_")
-    }
-}
-
-extension PropertyID: Hashable {
-    /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
-    static func == (lhs: PropertyID, rhs: PropertyID) -> Bool {
-        lhs._uuid == rhs._uuid
-    }
-
-    /// Contributes to the hashability of the property, incorporating its unique identifier into the hash.
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(_uuid)
-    }
-}
-
-extension PropertyID: Comparable {
-    /// Determines if one `ID` should precede another in a sorted list, based on a composite string that includes their location and value.
-    static func < (lhs: PropertyID, rhs: PropertyID) -> Bool {
-        lhs.sortString.localizedStandardCompare(rhs.sortString) == .orderedAscending
-    }
-}
-
-struct HashableBox<Value>: Hashable {
-    let id = UUID()
-    let value: Value
-
-    init(_ value: Value) {
-        self.value = value
-    }
-
-    static func == (lhs: HashableBox<Value>, rhs: HashableBox<Value>) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-}
-
-/// An enumeration that defines the behavior of property highlights in the PropertyInspector.
-///
-/// `PropertyInspectorHighlightBehavior` controls how properties are highlighted when the
-/// PropertyInspector is presented and dismissed.
-public enum PropertyInspectorHighlightBehavior: String, CaseIterable {
-    /// Highlights must be manually managed by the user.
-    ///
-    /// When using `manual`, any active highlights will remain active even after the inspector is dismissed.
-    /// This option gives you full control over the highlighting behavior.
-    case manual
-
-    /// Highlights are shown automatically when the inspector is presented and hidden when it is dismissed.
-    ///
-    /// When using `automatic`, all visible views that contain inspectable properties are highlighted
-    /// automatically when the inspector is presented. Any active highlights are hidden automatically
-    /// upon dismissal of the inspector.
-    case automatic
-
-    /// Highlights are hidden automatically upon dismissal of the inspector.
-    ///
-    /// When using `hideOnDismiss`, any active highlights are hidden when the inspector is dismissed.
-    /// This option ensures that highlights are automatically cleaned up when the inspector is no longer in view.
-    case hideOnDismiss
-
-    var label: LocalizedStringKey {
-        switch self {
-        case .manual:
-            "Manual"
-        case .automatic:
-            "Show / Hide Automatically"
-        case .hideOnDismiss:
-            "Hide Automatically"
-        }
-    }
-}
-
-/// `Property` encapsulates details about a specific property within a view or model, including its value, display metadata, and location.
-/// This struct is intended for internal use within the ``PropertyInspector`` framework to track and manage property information dynamically.
-final class Property: Identifiable, Comparable, Hashable, CustomStringConvertible {
-    /// A unique identifier for the property, ensuring that each instance is uniquely identifiable.
-    let id: PropertyID
-
-    /// The value of the property stored as `Any`, allowing it to accept any property type.
-    let value: PropertyValue
-
-    /// A binding to a Boolean that indicates whether the property is currently highlighted in the UI.
-    @Binding
-    var isHighlighted: Bool
-
-    /// Signal view updates
-    let token: AnyHashable
-
-    /// Returns the type of the value as a string, useful for dynamic type checks or displays.
-    var stringValueType: String {
-        String(describing: type(of: value.rawValue))
-    }
-
-    /// Returns the string representation of the property's value.
-    var stringValue: String {
-        String(describing: value.rawValue)
-    }
-
-    var description: String { stringValue }
-
-    /// Initializes a new `Property` with detailed information about its value and location.
-    /// - Parameters:
-    ///   - value: The value of the property.
-    ///   - isHighlighted: A binding to the Boolean indicating if the property is highlighted.
-    ///   - location: The location of the property in the source code.
-    ///   - offset: An offset used to uniquely sort the property when multiple properties share the same location.
-    init(
-        id: ID,
-        token: AnyHashable,
-        value: PropertyValue,
-        isHighlighted: Binding<Bool>
-    ) {
-        self.token = token
-        self.id = id
-        self.value = value
-        _isHighlighted = isHighlighted
-    }
-
-    /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
-    static func == (lhs: Property, rhs: Property) -> Bool {
-        lhs.id == rhs.id &&
-            lhs.stringValue == rhs.stringValue &&
-            lhs.token == rhs.token
-    }
-
-    /// Determines if one `Property` should precede another in a sorted list, based on a composite string that includes their location and value.
-    static func < (lhs: Property, rhs: Property) -> Bool {
-        lhs.id < rhs.id
-    }
-
-    /// Contributes to the hashability of the property, incorporating its unique identifier into the hash.
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(stringValue)
-        hasher.combine(token)
-    }
-}
-
-struct PropertyType: Identifiable {
-    let id: ObjectIdentifier
-    let rawValue: Any.Type
-
-    init<T>(_ subject: T) {
-        let start = Date()
-        let type: Any.Type
-        if T.self == Any.self {
-            // only use mirror as last resort
-            type = Mirror(reflecting: subject).subjectType
-            #if VERBOSE
-                let elapsedTime = (Date().timeIntervalSince(start) * 1000).formatted()
-                print(#function, "🐢", "Determined type \(type) in \(elapsedTime) ms")
-            #endif
-        } else {
-            type = T.self
-            #if VERBOSE
-                let elapsedTime = (Date().timeIntervalSince(start) * 1000).formatted()
-                print(#function, "🐰", "Determined type \(type) in \(elapsedTime) ms")
-            #endif
-        }
-        id = ObjectIdentifier(type)
-        rawValue = type
-    }
-}
-
-extension PropertyType: Comparable {
-    static func < (lhs: PropertyType, rhs: PropertyType) -> Bool {
-        lhs.description.localizedStandardCompare(rhs.description) == .orderedAscending
-    }
-}
-
-extension PropertyType: CustomDebugStringConvertible {
-    var debugDescription: String {
-        "<PropertyType: \(description)>"
-    }
-}
-
-extension PropertyType: CustomStringConvertible {
-    var description: String {
-        String(describing: rawValue)
-    }
-}
-
-extension PropertyType: Equatable {
-    static func == (lhs: RowViewBuilder.ID, rhs: RowViewBuilder.ID) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-extension PropertyType: Hashable {
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-}
-
-/// `PropertyLocation` provides detailed information about the source location of a property within the code.
-/// This includes the function, file, and line number where the property is used or modified, which is particularly useful for debugging and logging purposes.
-final class PropertyLocation: Identifiable, Comparable, CustomStringConvertible {
-    /// A unique identifier for the location, composed of the file path, line number, and function name.
-    let id: String
-
-    /// The name of the function where the location is recorded.
-    let function: String
-
-    /// The full path of the file where the location is recorded.
-    let file: String
-
-    /// The line number in the file where the location is recorded.
-    let line: Int
-
-    /// A human-readable description of the location, typically formatted as "filename:line".
-    let description: String
-
-    /// Initializes a new `PropertyLocation` with the specified source code location details.
-    /// - Parameters:
-    ///   - function: The name of the function encapsulating the location.
-    ///   - file: The full path of the source file.
-    ///   - line: The line number in the source file.
-    init(function: String, file: String, line: Int) {
-        let fileName = URL(string: file)?.lastPathComponent ?? file
-
-        id = "\(file):\(line):\(function)"
-        description = "\(fileName):\(line)"
-        self.function = function
-        self.file = file
-        self.line = line
-    }
-
-    /// Compares two `PropertyLocation` instances for ascending order based on their `id`.
-    /// - Returns: `true` if the identifier of the first location is less than the second, otherwise `false`.
-    static func < (lhs: PropertyLocation, rhs: PropertyLocation) -> Bool {
-        lhs.id.localizedStandardCompare(rhs.id) == .orderedAscending
-    }
-
-    /// Determines if two `PropertyLocation` instances are equal based on their identifiers.
-    /// - Returns: `true` if both locations have the same identifier, otherwise `false`.
-    static func == (lhs: PropertyLocation, rhs: PropertyLocation) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-struct RowViewBuilderRegistry: Hashable, CustomStringConvertible {
-    private var data: [PropertyType: RowViewBuilder]
-
-    private let cache = HashableDictionary<PropertyValueID, HashableBox<AnyView>>()
-
-    init(_ values: RowViewBuilder...) {
-        data = values.reduce(into: [:]) { partialResult, builder in
-            partialResult[builder.id] = builder
-        }
-    }
-
-    var description: String {
-        "\(Self.self)\(data.keys.map { "\n\t-\($0.rawValue)" }.joined())"
-    }
-
-    var isEmpty: Bool { data.isEmpty }
-
-    var identifiers: [PropertyType] {
-        Array(data.keys)
-    }
-
-    subscript(id: PropertyType) -> RowViewBuilder? {
-        get {
-            data[id]
-        }
-        set {
-            if data[id] != newValue {
-                data[id] = newValue
-            }
-        }
-    }
-
-    mutating func merge(_ other: RowViewBuilderRegistry) {
-        data.merge(other.data) { content, _ in
-            content
-        }
-    }
-
-    func merged(_ other: RowViewBuilderRegistry) -> Self {
-        var copy = self
-        copy.merge(other)
-        return copy
-    }
-
-    func makeBody(property: Property) -> AnyView? {
-        if let cached = resolveFromCache(property: property) {
-            #if VERBOSE
-                print("[PropertyInspector]", "♻️", property.stringValue, "resolved from cache")
-            #endif
-            return cached
-        } else if let body = createBody(property: property) {
-            #if VERBOSE
-                print("[PropertyInspector]", "🆕", property.stringValue, "created new view")
-            #endif
-            return body
-        }
-        return nil
-    }
-
-    private func resolveFromCache(property: Property) -> AnyView? {
-        if let cached = cache[property.value.id] {
-            return cached.value
-        }
-        return nil
-    }
-
-    #if DEBUG
-        private func createBody(property: Property) -> AnyView? {
-            var matches = [PropertyType: AnyView]()
-
-            for id in identifiers {
-                if let view = data[id]?.body(property) {
-                    matches[id] = view
-                }
-            }
-
-            if matches.keys.count > 1 {
-                let matchingTypes = matches.keys.map { String(describing: $0.rawValue) }
-                print(
-                    "[PropertyInspector]",
-                    "⚠️ Warning:",
-                    "Undefined behavior.",
-                    "Multiple row builders",
-                    "match '\(property.stringValueType)' declared in '\(property.id.location)':",
-                    matchingTypes.sorted().joined(separator: ", ")
-                )
-            }
-
-            if let match = matches.first {
-                cache[property.value.id] = HashableBox(match.value)
-                return match.value
-            }
-
-            return nil
-        }
-    #else
-        private func createBody(property: Property) -> AnyView? {
-            for id in identifiers {
-                if let view = data[id]?.body(property) {
-                    cache[property.value.id] = HashableBox(view)
-                    return view
-                }
-            }
-            return nil
-        }
-    #endif
-}
-
-final class HashableDictionary<Key, Value>: Hashable where Key: Hashable, Value: Hashable {
-    static func == (lhs: HashableDictionary<Key, Value>, rhs: HashableDictionary<Key, Value>) -> Bool {
-        lhs.data == rhs.data
-    }
-
-    private var data = [Key: Value]()
-
-    subscript(id: Key) -> Value? {
-        get { data[id] }
-        set { data[id] = newValue }
-    }
-
-    func hash(into hasher: inout Hasher) {
-        data.hash(into: &hasher)
-    }
-
-    func removeAll() {
-        data.removeAll(keepingCapacity: true)
-    }
-}
-
-public extension View {
-    /// Inspects the view itself.
-    func inspectSelf(
-        function: String = #function,
-        line: Int = #line,
-        file: String = #file
-    ) -> some View {
-        inspectProperty(self, function: function, line: line, file: file)
-    }
-
-    /**
-     Adds a modifier for inspecting properties with dynamic debugging capabilities.
-
-     This method allows developers to dynamically inspect values of properties within a SwiftUI view, useful for debugging and during development to ensure that view states are correctly managed.
-
-     - Parameters:
-       - values: A variadic list of properties whose values you want to inspect.
-       - function: The function from which the inspector is called, generally used for debugging purposes. Defaults to the name of the calling function.
-       - line: The line number in the source file from which the inspector is called, aiding in pinpointing where inspections are set. Defaults to the line number in the source file.
-       - file: The name of the source file from which the inspector is called, useful for tracing the call in larger projects. Defaults to the filename.
-
-     - Returns: A view modified to include property inspection capabilities, reflecting the current state of the provided properties.
-
-     ## Usage Example
-
-     ```swift
-     Text("Current Count: \(count)").inspectProperty(count)
-     ```
-
-     This can be particularly useful when paired with logging or during step-by-step debugging to monitor how and when your view's state changes.
-
-     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(function:line:file:)``
-     */
-    @_disfavoredOverload
-    func inspectProperty(
-        _ values: Any...,
-        function: String = #function,
-        line: Int = #line,
-        file: String = #file
-    ) -> some View {
-        modifier(
-            PropertyWriter(
-                data: values.map(PropertyValue.init),
-                location: .init(
-                    function: function,
-                    file: file,
-                    line: line
-                )
-            )
-        )
-    }
-
-    /**
-     Adds a modifier for inspecting properties with dynamic debugging capabilities.
-
-     This method allows developers to dynamically inspect values of properties within a SwiftUI view, useful for debugging and during development to ensure that view states are correctly managed.
-
-     - Parameters:
-     - values: A variadic list of properties whose values you want to inspect.
-     - function: The function from which the inspector is called, generally used for debugging purposes. Defaults to the name of the calling function.
-     - line: The line number in the source file from which the inspector is called, aiding in pinpointing where inspections are set. Defaults to the line number in the source file.
-     - file: The name of the source file from which the inspector is called, useful for tracing the call in larger projects. Defaults to the filename.
-
-     - Returns: A view modified to include property inspection capabilities, reflecting the current state of the provided properties.
-
-     ## Usage Example
-
-     ```swift
-     Text("Current Count: \(count)").inspectProperty(count)
-     ```
-
-     This can be particularly useful when paired with logging or during step-by-step debugging to monitor how and when your view's state changes.
-
-     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(function:line:file:)``
-     */
-    func inspectProperty<T>(
-        _ values: T...,
-        function: String = #function,
-        line: Int = #line,
-        file: String = #file
-    ) -> some View {
-        modifier(
-            PropertyWriter(
-                data: values.map {
-                    PropertyValue($0)
-                },
-                location: .init(
-                    function: function,
-                    file: file,
-                    line: line
-                )
-            )
-        )
-    }
-
-    /**
-     Hides the view from property inspection.
-
-     Use this method to unconditionally hide nodes from the property inspector, which can be useful in many ways.
-
-     - Returns: A view that no longer shows its properties in the property inspector, effectively hiding them from debugging tools.
-
-     ## Usage Example
-
-     ```swift
-     Text("Hello, World!").propertyInspectorHidden()
-     ```
-
-     This method can be used to safeguard sensitive information or simply to clean up the debugging output for views that no longer need inspection.
-
-     - seeAlso: <doc:/documentation/PropertyInspector/SwiftUI/View/inspectProperty(_:function:line:file:)-6jnxn>
-     */
-    func propertyInspectorHidden() -> some View {
-        environment(\.isInspectable, false)
-    }
-
-    /**
-     Applies a modifier to inspect properties with custom icons based on their data type.
-
-     This method allows you to define custom icons for different data types displayed in the property inspector, enhancing the visual differentiation and user experience.
-
-     - Parameter data: The type of data for which the icon is defined.
-     - Parameter icon: A closure that returns the icon to use for the given data type.
-
-     - Returns: A modified view with the custom icon configuration applied to relevant properties.
-
-     ## Usage Example
-
-     ```swift
-     Text("Example Property")
-         .propertyInspectorRowIcon(for: String.self) { _ in
-             Image(systemName: "text.quote")
-         }
-     ```
-
-     - seeAlso: ``propertyInspectorRowLabel(for:label:)``, ``propertyInspectorRowDetail(for:detail:)``
-     */
-    func propertyInspectorRowIcon<D, Icon: View>(
-        for _: D.Type = Any.self,
-        @ViewBuilder icon: @escaping (_ data: D) -> Icon
-    ) -> some View {
-        setPreference(RowIconPreferenceKey.self, body: icon)
-    }
-
-    /**
-     Defines a label for properties based on their data type within the property inspector.
-
-     Use this method to provide custom labels for different data types, which can help in categorizing and identifying properties more clearly in the UI.
-
-     - Parameter data: The type of data for which the label is defined.
-     - Parameter label: A closure that returns the label to use for the given data type.
-
-     - Returns: A modified view with the custom label configuration applied to relevant properties.
-
-     ## Usage Example
-
-     ```swift
-     Text("Example Property")
-         .propertyInspectorRowLabel(for: Int.self) { value in
-             Text("Integer: \(value)")
-         }
-     ```
-
-     - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowDetail(for:detail:)``
-     */
-    func propertyInspectorRowLabel<D, Label: View>(
-        for _: D.Type = Any.self,
-        @ViewBuilder label: @escaping (_ data: D) -> Label
-    ) -> some View {
-        setPreference(RowLabelPreferenceKey.self, body: label)
-    }
-
-    /**
-     Specifies detail views for properties based on their data type within the property inspector.
-
-     This method enables the display of detailed information for properties, tailored to the specific needs of the data type.
-
-     - Parameter data: The type of data for which the detail view is defined.
-     - Parameter detail: A closure that returns the detail view for the given data type.
-
-     - Returns: A modified view with the detail view configuration applied to relevant properties.
-
-     ## Usage Example
-
-     ```swift
-     Text("Example Property")
-         .propertyInspectorRowDetail(for: Date.self) { date in
-             Text("Date: \(date, formatter: dateFormatter)")
-         }
-     ```
-
-     - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowLabel(for:label:)``
-     */
-    func propertyInspectorRowDetail<D, Detail: View>(
-        for _: D.Type = Any.self,
-        @ViewBuilder detail: @escaping (_ data: D) -> Detail
-    ) -> some View {
-        setPreference(RowDetailPreferenceKey.self, body: detail)
-    }
-
-    /// Modifies the font used for the label text in a property inspector row.
-    ///
-    /// Use this modifier to specify a custom font for the label text within property inspector rows.
-    /// This customization allows for a consistent typographic hierarchy or to emphasize particular content.
-    ///
-    /// - Parameter font: The `Font` to apply to the label text.
-    ///   The default value, used when this modifier is not applied, is `callout`.
-    func propertyInspectorRowLabelFont(_ font: Font) -> some View {
-        environment(\.rowLabelFont, font)
-    }
-
-    /// Modifies the font used for the detail text in a property inspector row.
-    ///
-    /// Apply this modifier to a view to define the appearance of detail text,
-    /// which is typically used for additional information or numeric values associated with a property.
-    /// This modifier helps in maintaining visual consistency or in adjusting readability according to the design requirements.
-    ///
-    /// - Parameter font: The `Font` to use for the detail text.
-    ///   The default value, used when this modifier is not applied, is `caption`.
-    func propertyInspectorRowDetailFont(_ font: Font) -> some View {
-        environment(\.rowDetailFont, font)
-    }
-}
-
 extension Animation {
     static let inspectorDefault: Animation = .snappy(duration: 0.25)
 }
@@ -2159,3 +1509,694 @@ extension View {
         }
     }
 }
+
+struct ViewInspectabilityKey: EnvironmentKey {
+    static let defaultValue: Bool = true
+}
+
+struct RowDetailFontKey: EnvironmentKey {
+    static let defaultValue: Font = .caption
+}
+
+struct RowLabelFontKey: EnvironmentKey {
+    static let defaultValue: Font = .callout
+}
+
+extension EnvironmentValues {
+    var rowDetailFont: Font {
+        get { self[RowDetailFontKey.self] }
+        set { self[RowDetailFontKey.self] = newValue }
+    }
+
+    var rowLabelFont: Font {
+        get { self[RowLabelFontKey.self] }
+        set { self[RowLabelFontKey.self] = newValue }
+    }
+
+    var isInspectable: Bool {
+        get { self[ViewInspectabilityKey.self] }
+        set { self[ViewInspectabilityKey.self] = newValue }
+    }
+}
+
+struct PropertyPreferenceKey: PreferenceKey {
+    static var defaultValue = [PropertyType: Set<Property>]()
+    static func reduce(value: inout [PropertyType: Set<Property>], nextValue: () -> [PropertyType: Set<Property>]) {
+        value.merge(nextValue()) { lhs, rhs in
+            lhs.union(rhs)
+        }
+    }
+}
+
+struct TitlePreferenceKey: PreferenceKey {
+    static let defaultValue = LocalizedStringKey("Properties")
+    static func reduce(value _: inout LocalizedStringKey, nextValue _: () -> LocalizedStringKey) {}
+}
+
+struct RowDetailPreferenceKey: PreferenceKey {
+    static let defaultValue = RowViewBuilderRegistry()
+    static func reduce(value: inout RowViewBuilderRegistry, nextValue: () -> RowViewBuilderRegistry) {
+        value.merge(nextValue())
+    }
+}
+
+struct RowIconPreferenceKey: PreferenceKey {
+    static let defaultValue = RowViewBuilderRegistry()
+    static func reduce(value: inout RowViewBuilderRegistry, nextValue: () -> RowViewBuilderRegistry) {
+        value.merge(nextValue())
+    }
+}
+
+struct RowLabelPreferenceKey: PreferenceKey {
+    static let defaultValue = RowViewBuilderRegistry()
+    static func reduce(value: inout RowViewBuilderRegistry, nextValue: () -> RowViewBuilderRegistry) {
+        value.merge(nextValue())
+    }
+}
+// swiftformat:disable stripunusedargs
+
+public extension View {
+    /// Inspects the view itself.
+    func inspectSelf<S: Shape>(
+        shape: S = Rectangle(),
+        function: String = #function,
+        line: Int = #line,
+        file: String = #file
+    ) -> some View {
+        inspectProperty(
+            self,
+            shape: shape,
+            function: function,
+            line: line,
+            file: file
+        )
+    }
+
+    /**
+     Adds a modifier for inspecting properties with dynamic debugging capabilities.
+
+     This method allows developers to dynamically inspect values of properties within a SwiftUI view, useful for debugging and during development to ensure that view states are correctly managed.
+
+     - Parameters:
+       - values: A variadic list of properties whose values you want to inspect.
+       - shape: The shape of the highlight.
+       - function: The function from which the inspector is called, generally used for debugging purposes. Defaults to the name of the calling function.
+       - line: The line number in the source file from which the inspector is called, aiding in pinpointing where inspections are set. Defaults to the line number in the source file.
+       - file: The name of the source file from which the inspector is called, useful for tracing the call in larger projects. Defaults to the filename.
+
+     - Returns: A view modified to include property inspection capabilities, reflecting the current state of the provided properties.
+
+     ## Usage Example
+
+     ```swift
+     Text("Current Count: \(count)").inspectProperty(count)
+     ```
+
+     This can be particularly useful when paired with logging or during step-by-step debugging to monitor how and when your view's state changes.
+
+     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(shape:function:line:file:)``
+     */
+    @_disfavoredOverload
+    func inspectProperty<S: Shape>(
+        _ values: Any...,
+        shape: S = Rectangle(),
+        function: String = #function,
+        line: Int = #line,
+        file: String = #file
+    ) -> some View {
+        modifier(
+            PropertyWriter(
+                data: values.map(PropertyValue.init),
+                shape: shape,
+                location: .init(
+                    function: function,
+                    file: file,
+                    line: line
+                )
+            )
+        )
+    }
+
+    /**
+     Adds a modifier for inspecting properties with dynamic debugging capabilities.
+
+     This method allows developers to dynamically inspect values of properties within a SwiftUI view, useful for debugging and during development to ensure that view states are correctly managed.
+
+     - Parameters:
+       - values: A variadic list of properties whose values you want to inspect.
+       - shape: The shape of the highlight.
+       - function: The function from which the inspector is called, generally used for debugging purposes. Defaults to the name of the calling function.
+       - line: The line number in the source file from which the inspector is called, aiding in pinpointing where inspections are set. Defaults to the line number in the source file.
+       - file: The name of the source file from which the inspector is called, useful for tracing the call in larger projects. Defaults to the filename.
+
+     - Returns: A view modified to include property inspection capabilities, reflecting the current state of the provided properties.
+
+     ## Usage Example
+
+     ```swift
+     Text("Current Count: \(count)").inspectProperty(count)
+     ```
+
+     This can be particularly useful when paired with logging or during step-by-step debugging to monitor how and when your view's state changes.
+
+     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(shape:function:line:file:)``
+     */
+    func inspectProperty<T, S: Shape>(
+        _ values: T...,
+        shape: S = Rectangle(),
+        function: String = #function,
+        line: Int = #line,
+        file: String = #file
+    ) -> some View {
+        modifier(
+            PropertyWriter(
+                data: values.map {
+                    PropertyValue($0)
+                },
+                shape: shape,
+                location: .init(
+                    function: function,
+                    file: file,
+                    line: line
+                )
+            )
+        )
+    }
+
+    /**
+     Hides the view from property inspection.
+
+     Use this method to unconditionally hide nodes from the property inspector, which can be useful in many ways.
+
+     - Returns: A view that no longer shows its properties in the property inspector, effectively hiding them from debugging tools.
+
+     ## Usage Example
+
+     ```swift
+     Text("Hello, World!").propertyInspectorHidden()
+     ```
+
+     This method can be used to safeguard sensitive information or simply to clean up the debugging output for views that no longer need inspection.
+
+     - seeAlso: <doc:/documentation/PropertyInspector/SwiftUICore/View/inspectProperty(_:shape:function:line:file:)-7u3kz> and <doc:/documentation/PropertyInspector/SwiftUICore/View/inspectProperty(_:shape:function:line:file:)-4bprj>.
+     */
+    func propertyInspectorHidden() -> some View {
+        environment(\.isInspectable, false)
+    }
+
+    /**
+     Applies a modifier to inspect properties with custom icons based on their data type.
+
+     This method allows you to define custom icons for different data types displayed in the property inspector, enhancing the visual differentiation and user experience.
+
+     - Parameter data: The type of data for which the icon is defined.
+     - Parameter icon: A closure that returns the icon to use for the given data type.
+
+     - Returns: A modified view with the custom icon configuration applied to relevant properties.
+
+     ## Usage Example
+
+     ```swift
+     Text("Example Property")
+         .propertyInspectorRowIcon(for: String.self) { _ in
+             Image(systemName: "text.quote")
+         }
+     ```
+
+     - seeAlso: ``propertyInspectorRowLabel(for:label:)``, ``propertyInspectorRowDetail(for:detail:)``, ``propertyInspectorRowIcon(for:systemName:)``
+     */
+    func propertyInspectorRowIcon<D, Icon: View>(
+        for data: D.Type = Any.self,
+        @ViewBuilder icon: @escaping (_ data: D) -> Icon
+    ) -> some View {
+        setPreference(RowIconPreferenceKey.self, body: icon)
+    }
+
+    /**
+     Applies a modifier to inspect properties with custom icons based on their data type.
+
+     This method allows you to define custom icons for different data types displayed in the property inspector, enhancing the visual differentiation and user experience.
+
+     - Parameter data: The type of data for which the icon is defined.
+     - Parameter systemName: A closure that returns the icon to use for the given data type.
+
+     - Returns: A modified view with the custom icon configuration applied to relevant properties.
+
+     ## Usage Example
+
+     ```swift
+     Text("Example Property").propertyInspectorRowIcon(systemName: "text.quote")
+     ```
+
+     - seeAlso: ``propertyInspectorRowLabel(for:label:)``, ``propertyInspectorRowDetail(for:detail:)``, ``propertyInspectorRowIcon(for:icon:)``.
+     */
+    func propertyInspectorRowIcon<D>(
+        for data: D.Type = Any.self,
+        systemName: String
+    ) -> some View { // swiftformat:disable:this stripunusedargs
+        setPreference(RowIconPreferenceKey.self) { (_: D) in
+             Image(systemName: systemName)
+        }
+    }
+
+    /**
+     Defines a label for properties based on their data type within the property inspector.
+
+     Use this method to provide custom labels for different data types, which can help in categorizing and identifying properties more clearly in the UI.
+
+     - Parameter data: The type of data for which the label is defined.
+     - Parameter label: A closure that returns the label to use for the given data type.
+
+     - Returns: A modified view with the custom label configuration applied to relevant properties.
+
+     ## Usage Example
+
+     ```swift
+     Text("Example Property")
+         .propertyInspectorRowLabel(for: Int.self) { value in
+             Text("Integer: \(value)")
+         }
+     ```
+
+     - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowDetail(for:detail:)``
+     */
+    func propertyInspectorRowLabel<D, Label: View>(
+        for data: D.Type = Any.self,
+        @ViewBuilder label: @escaping (_ data: D) -> Label
+    ) -> some View {
+        setPreference(RowLabelPreferenceKey.self, body: label)
+    }
+
+    /**
+     Specifies detail views for properties based on their data type within the property inspector.
+
+     This method enables the display of detailed information for properties, tailored to the specific needs of the data type.
+
+     - Parameter data: The type of data for which the detail view is defined.
+     - Parameter detail: A closure that returns the detail view for the given data type.
+
+     - Returns: A modified view with the detail view configuration applied to relevant properties.
+
+     ## Usage Example
+
+     ```swift
+     Text("Example Property")
+         .propertyInspectorRowDetail(for: Date.self) { date in
+             Text("Date: \(date, formatter: dateFormatter)")
+         }
+     ```
+
+     - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowLabel(for:label:)``
+     */
+    func propertyInspectorRowDetail<D, Detail: View>(
+        for data: D.Type = Any.self,
+        @ViewBuilder detail: @escaping (_ data: D) -> Detail
+    ) -> some View {
+        setPreference(RowDetailPreferenceKey.self, body: detail)
+    }
+
+    /// Modifies the font used for the label text in a property inspector row.
+    ///
+    /// Use this modifier to specify a custom font for the label text within property inspector rows.
+    /// This customization allows for a consistent typographic hierarchy or to emphasize particular content.
+    ///
+    /// - Parameter font: The `Font` to apply to the label text.
+    ///   The default value, used when this modifier is not applied, is `callout`.
+    func propertyInspectorRowLabelFont(_ font: Font) -> some View {
+        environment(\.rowLabelFont, font)
+    }
+
+    /// Modifies the font used for the detail text in a property inspector row.
+    ///
+    /// Apply this modifier to a view to define the appearance of detail text,
+    /// which is typically used for additional information or numeric values associated with a property.
+    /// This modifier helps in maintaining visual consistency or in adjusting readability according to the design requirements.
+    ///
+    /// - Parameter font: The `Font` to use for the detail text.
+    ///   The default value, used when this modifier is not applied, is `caption`.
+    func propertyInspectorRowDetailFont(_ font: Font) -> some View {
+        environment(\.rowDetailFont, font)
+    }
+}
+
+struct PropertyLocationView: View {
+    var data: PropertyLocation
+
+    var body: some View {
+        text
+            .lineLimit(1)
+            .truncationMode(.head)
+            .foregroundStyle(.secondary)
+    }
+
+    var text: some View {
+        Text(verbatim: data.function) +
+            Text(verbatim: " — ").bold().ios17_quinaryForegroundStyle() +
+            Text(verbatim: data.description)
+    }
+}
+
+private extension Text {
+    func ios17_quinaryForegroundStyle() -> Text {
+        if #available(iOS 17.0, *) {
+            self.foregroundStyle(.quinary)
+        } else {
+            // Fallback on earlier versions
+            self
+        }
+    }
+}
+
+struct PropertyInspectorHeader: View {
+    var data: LocalizedStringKey
+
+    init?(data: LocalizedStringKey?) {
+        guard let data else { return nil }
+        self.data = data
+    }
+
+    @EnvironmentObject
+    private var context: Context.Data
+
+    var body: some View {
+        VStack(spacing: 4) {
+            title()
+            let filters = context.filters.sorted()
+
+            if !filters.isEmpty {
+                PropertyInspectorFilters(
+                    data: filters,
+                    toggleAll: context.toggleAllFilters,
+                    title: \.wrappedValue.description,
+                    isOn: context.toggleFilter(_:)
+                )
+            }
+        }
+        .multilineTextAlignment(.leading)
+        .environment(\.textCase, nil)
+        .foregroundStyle(.primary)
+    }
+
+    private var accessoryTitle: String {
+        if context.properties.isEmpty {
+            return ""
+        }
+        let count = context.properties.count
+        let allCount = context.allProperties.count
+        if count != allCount {
+            return "\(count) of \(allCount) items"
+        }
+        return "\(count) items"
+    }
+
+    @ViewBuilder
+    private func title() -> some View {
+        let formattedText = Text(data)
+            .font(.title.weight(.medium))
+            .lineLimit(1)
+
+        if #available(iOS 16.0, *), !context.properties.isEmpty {
+            Toggle(sources: context.properties, isOn: \.$isHighlighted) {
+                HStack(alignment: .firstTextBaseline) {
+                    formattedText
+
+                    Text(accessoryTitle)
+                        .contentTransition(.numericText())
+                        .font(.footnote.bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .foregroundStyle(.secondary)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8).fill(.ultraThickMaterial)
+                        )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .toggleStyle(
+                PropertyToggleStyle(
+                    alignment: .firstTextBaseline,
+                    symbolName: { _ in
+                        "arrow.triangle.2.circlepath.circle.fill"
+                    }
+                )
+            )
+        } else {
+            formattedText.frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+struct PropertyInspectorRows: View {
+    @EnvironmentObject
+    private var context: Context.Data
+
+    var body: some View {
+        #if VERBOSE
+        printChanges()
+        #endif
+        if context.properties.isEmpty {
+            Text(emptyMessage)
+                .foregroundStyle(.tertiary)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .multilineTextAlignment(.center)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: 50,
+                    alignment: .bottom
+                )
+                .padding()
+        }
+        ForEach(context.properties) { property in
+            PropertyInspectorRow(
+                id: property.hashValue,
+                isOn: property.$isHighlighted,
+                hideIcon: context.iconRegistry.isEmpty,
+                icon: icon(for: property),
+                label: label(for: property),
+                detail: detail(for: property)
+            )
+            .equatable()
+        }
+    }
+
+    #if VERBOSE
+    private func printChanges() -> EmptyView {
+        Self._printChanges()
+        return EmptyView()
+    }
+    #endif
+
+    private var emptyMessage: String {
+        context.searchQuery.isEmpty ?
+            "Nothing to inspect" :
+            "No results for '\(context.searchQuery)'"
+    }
+
+    @ViewBuilder
+    private func icon(for property: Property) -> some View {
+        if let icon = context.iconRegistry.makeBody(property: property) {
+            icon
+        } else if !context.iconRegistry.isEmpty {
+            Image(systemName: "info.circle.fill")
+        }
+    }
+
+    @ViewBuilder
+    private func label(for property: Property) -> some View {
+        if let label = context.labelRegistry.makeBody(property: property) {
+            label
+        } else {
+            Text(verbatim: property.stringValue)
+        }
+    }
+
+    @ViewBuilder
+    private func detail(for property: Property) -> some View {
+        VStack(alignment: .leading) {
+            context.detailRegistry.makeBody(property: property)
+            Text(verbatim: property.id.location.description).opacity(2 / 3)
+        }
+    }
+}
+
+struct PropertyInspectorFilters<Filter>: View where Filter: Hashable {
+    var data: [Filter]
+
+    @Binding
+
+    var toggleAll: Bool
+
+    var title: KeyPath<Filter, String>
+
+    var isOn: (_ data: Filter) -> Binding<Bool>
+
+    @EnvironmentObject
+    private var context: Context.Data
+
+    var body: some View {
+        HStack(spacing: .zero) {
+            toggleAllButton
+            filterList
+        }
+        .font(.caption.bold())
+        .toggleStyle(.button)
+        .controlSize(.mini)
+        .tint(.secondary)
+        .padding(.vertical, 5)
+    }
+
+    private var toggleAllicon: String {
+        "line.3.horizontal.decrease\(toggleAll ? ".circle.fill" : "")"
+    }
+
+    private var toggleAllAccessibilityLabel: Text {
+        Text(toggleAll ? "Deselect All Filters" : "Select All Filters")
+    }
+
+    private var toggleAllButton: some View {
+        Toggle(
+            isOn: $toggleAll,
+            label: {
+                ZStack {
+                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                        .font(.title2)
+                        .opacity(toggleAll ? 1 : 0)
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .font(.subheadline)
+                        .padding(.top, 1)
+                        .opacity(toggleAll ? 0 : 1)
+                }
+                .accessibilityElement()
+                .accessibilityLabel(toggleAllAccessibilityLabel)
+            }
+        )
+        .buttonStyle(.plain)
+        .tint(.primary)
+        .symbolRenderingMode(.hierarchical)
+    }
+
+    private var filterList: some View {
+        ScrollView(.horizontal) {
+            LazyHStack {
+                ForEach(data, id: \.self) { element in
+                    Toggle(element[keyPath: title], isOn: isOn(element))
+                }
+            }
+            .padding(
+                EdgeInsets(
+                    top: 2,
+                    leading: 10,
+                    bottom: 2,
+                    trailing: 0
+                )
+            )
+
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.trailing, 20)
+        }
+        .mask {
+            LinearGradient(
+                colors: [.clear, .black],
+                startPoint: .leading,
+                endPoint: .init(x: 0.04, y: 0.5)
+            )
+        }
+        .padding(.trailing, -20)
+        .animation(.inspectorDefault, value: data)
+        .ios16_hideScrollIndicators()
+    }
+}
+
+#Preview {
+    FilterDemo()
+}
+
+private struct FilterDemo: View {
+    @State var toggleAll = false
+    var body: some View {
+        PropertyInspectorFilters(
+            data: ["test1", "test2", "test3", "test4"],
+            toggleAll: $toggleAll,
+            title: \.self,
+            isOn: { _ in $toggleAll }
+        )
+    }
+}
+
+struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equatable {
+    static func == (lhs: PropertyInspectorRow<Icon, Label, Detail>, rhs: PropertyInspectorRow<Icon, Label, Detail>) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    var id: Int
+    @Binding
+    var isOn: Bool
+    var hideIcon: Bool
+    var icon: Icon
+    var label: Label
+    var detail: Detail
+
+    @Environment(\.rowLabelFont)
+    private var labelFont
+
+    @Environment(\.rowDetailFont)
+    private var detailFont
+
+    var body: some View {
+        #if VERBOSE
+            PropertyInspectorRow._printChanges()
+        #endif
+        return Toggle(isOn: $isOn, label: content).toggleStyle(
+            PropertyToggleStyle()
+        )
+        .foregroundStyle(.secondary)
+        .padding(.vertical, 1)
+        .listRowBackground(
+            isOn ? Color(uiColor: .tertiarySystemBackground) : .clear
+        )
+    }
+
+    private func content() -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            label.foregroundStyle(.primary)
+            detail.font(detailFont)
+        }
+        .allowsTightening(true)
+        .multilineTextAlignment(.leading)
+        .contentShape(Rectangle())
+        .safeAreaInset(edge: .leading, alignment: .firstTextBaseline) {
+            if !hideIcon {
+                icon.scaledToFit().frame(width: 25)
+            }
+        }
+        .font(labelFont)
+    }
+}
+
+#Preview {
+    PropertyInspectorRow(
+        id: 0,
+        isOn: .constant(true),
+        hideIcon: false,
+        icon: Image(systemName: "circle"),
+        label: Text(verbatim: "Some text"),
+        detail: Text(verbatim: "Some detail")
+    )
+}
+
+#Preview {
+    PropertyInspectorRow(
+        id: 0,
+        isOn: .constant(true),
+        hideIcon: true,
+        icon: Image(systemName: "circle"),
+        label: Text(verbatim: "Some text"),
+        detail: Text(verbatim: "Some detail")
+    )
+}
+
+/**
+ Customizes the appearance and behavior of ``PropertyInspector`` components. This protocol adheres to `ViewModifier`, enabling it to modify the view of a ``PropertyInspector`` to match specific design requirements.
+ */
+public protocol _PropertyInspectorStyle: ViewModifier {}
