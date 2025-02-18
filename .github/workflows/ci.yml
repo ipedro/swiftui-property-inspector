@@ -1,4 +1,4 @@
-name: Concatenate Files on Merge
+name: CI
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   merge-sources:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
     - name: Checkout repository
@@ -22,29 +22,24 @@ jobs:
       run: |
         rm -rf output
         mkdir -p output
-      shell: bash
 
     - name: Concatenate files
       run: |
-        find Development -type f -name '*.swift' -exec cat {} + > PropertyInspector.swift
-      shell: bash
+        find Development -type f -name '*.swift' | sort | xargs cat > PropertyInspector.swift
 
     - name: Remove SwiftLint commands
       run: |
         sed '/\/\/ swiftlint:/d' PropertyInspector.swift > temp && mv temp PropertyInspector.swift
-      shell: bash
 
     - name: Prepare LICENSE content
       run: |
         # Prepend "// " to each line in LICENSE and save it to a temp file
         sed 's/^/\/\/ /' LICENSE > license_commented.txt
-      shell: bash
     
     - name: Add newlines between LICENSE and imports
       run: |
         # Create a file with newline
         echo -e "\n// auto-generated file, do not edit directly\n" > newlines.txt
-      shell: bash
 
     - name: Reorder, sort, and remove duplicate imports
       run: |
@@ -56,13 +51,11 @@ jobs:
 
         # Concatenate sorted and unique imports with the rest of the file
         cat sorted_unique_imports.txt code_without_imports.txt > code_with_sorted_imports.txt
-      shell: bash
 
     - name: Combine LICENSE, newlines, imports, and remaining content
       run: |
         # Concatenate LICENSE content with two newlines, imports, and the rest of the file
         cat license_commented.txt newlines.txt code_with_sorted_imports.txt > PropertyInspector.swift
-      shell: bash
       
     - name: Commit changes
       run: |
