@@ -9,10 +9,10 @@ import SwiftUI
  This style organizes properties within a customizable list, using specified list styles and row backgrounds, making it ideal for detailed inspections in a modal sheet format.
 
  - Parameters:
-   - `isPresented`: A binding to a Boolean value that indicates whether the property inspector sheet is presented.
-   - `listStyle`: The style of the list used within the sheet, conforming to `ListStyle`.
-   - `listRowBackground`: The view used as the background for each row in the list, conforming to `View`.
-   - `title`: An optional title for the sheet; if not provided, defaults to `nil`.
+   - isPresented: A binding to a Boolean value that indicates whether the property inspector sheet is presented.
+   - listStyle: The style of the list used within the sheet, conforming to `ListStyle`.
+   - listRowBackground: The view used as the background for each row in the list, conforming to `View`.
+   - title: An optional title for the sheet; if not provided, defaults to `nil`.
 
  - Returns: A view modifier that configures the appearance and behavior of a property inspector using the specified sheet style.
 
