@@ -35,6 +35,7 @@ jobs:
       - name: Build DocC
         run: |
           xcodebuild docbuild -scheme PropertyInspector \
+            -skipPackagePluginValidation \
             -derivedDataPath /tmp/docbuild \
             -destination 'generic/platform=iOS';
           $(xcrun --find docc) process-archive \

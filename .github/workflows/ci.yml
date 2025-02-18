@@ -59,10 +59,14 @@ jobs:
       
     - name: Commit changes
       run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git add PropertyInspector.swift
-        git commit -m "Generated PropertyInspector.swift"
-        git push origin HEAD:main
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          if [[ -n "$(git status --porcelain PropertyInspector.swift)" ]]; then
+            git add PropertyInspector.swift
+            git commit -m "Generated PropertyInspector.swift"
+            git push origin HEAD:main
+          else
+            echo "No changes to commit"
+          fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
