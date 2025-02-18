@@ -1,14 +1,15 @@
 import SwiftUI
 
-struct PropertyHiglighter: ViewModifier {
+struct PropertyHiglighter<S: Shape>: ViewModifier {
     @Binding var isOn: Bool
+    var shape: S
 
     func body(content: Content) -> some View {
         content
             .zIndex(isOn ? 999 : 0)
             .overlay {
                 if isOn {
-                    Rectangle()
+                    shape
                         .stroke(lineWidth: 1.5)
                         .fill(.cyan.opacity(isOn ? 1 : 0))
                         .transition(

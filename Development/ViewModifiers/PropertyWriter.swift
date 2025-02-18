@@ -1,12 +1,14 @@
 import Foundation
 import SwiftUI
 
-struct PropertyWriter: ViewModifier {
+struct PropertyWriter<S: Shape>: ViewModifier {
     var data: [PropertyValue]
     var location: PropertyLocation
+    var shape: S
 
-    init(data: [PropertyValue], location: PropertyLocation) {
+    init(data: [PropertyValue], shape: S, location: PropertyLocation) {
         self.data = data
+        self.shape = shape
         self.location = location
         _ids = State(initialValue: (0 ..< data.count).map { offset in
             PropertyID(
@@ -34,7 +36,7 @@ struct PropertyWriter: ViewModifier {
             PropertyPreferenceKey.self, value: properties
         )
         .modifier(
-            PropertyHiglighter(isOn: $isHighlighted)
+            PropertyHiglighter(isOn: $isHighlighted, shape: shape)
         )
     }
 

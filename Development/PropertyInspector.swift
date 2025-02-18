@@ -63,7 +63,7 @@ import SwiftUI
  }
  ```
 
-  - seeAlso: ``inspectProperty(_:function:line:file:)``, ``propertyInspectorHidden()``, and ``inspectSelf(function:line:file:)``
+ - seeAlso: ``inspectProperty(_:shape:function:line:file:)-5quvs``, ``propertyInspectorHidden()``, and ``inspectSelf(shape:function:line:file:)``
   */
 public struct PropertyInspector<Label: View, Style: _PropertyInspectorStyle>: View {
     var label: Label
@@ -90,8 +90,6 @@ public extension PropertyInspector {
         - title: An optional title for the sheet; if not provided, defaults to `nil`.
         - isPresented: A binding to a Boolean value that controls the presentation state of the sheet.
         - label: A closure that returns the content to be displayed within the sheet.
-
-      - Returns: An instance of `PropertyInspector` configured to display as a sheet with plain list style and translucent background material.
 
       ## Usage Example
 
@@ -251,7 +249,6 @@ public extension PropertyInspector {
      This initializer is designed for cases where property inspection needs to be seamlessly integrated within the flow of existing content, rather than displayed as a separate list or modal. It is particularly useful in contexts where minimal disruption to the user interface is desired.
 
      - Parameters:
-       - title: An optional title for the inline inspector; if not provided, defaults to `nil`. This title can be used to provide a heading or context for the inspected properties.
        - label: A closure that returns the content to be displayed directly in line with other UI elements. This allows for dynamic creation of content based on current state or other conditions.
 
      ## Usage Example

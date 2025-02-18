@@ -1,13 +1,21 @@
 import SwiftUI
+// swiftformat:disable stripunusedargs
 
 public extension View {
     /// Inspects the view itself.
-    func inspectSelf(
+    func inspectSelf<S: Shape>(
+        shape: S = Rectangle(),
         function: String = #function,
         line: Int = #line,
         file: String = #file
     ) -> some View {
-        inspectProperty(self, function: function, line: line, file: file)
+        inspectProperty(
+            self,
+            shape: shape,
+            function: function,
+            line: line,
+            file: file
+        )
     }
 
     /**
@@ -17,6 +25,7 @@ public extension View {
 
      - Parameters:
        - values: A variadic list of properties whose values you want to inspect.
+       - shape: The shape of the highlight.
        - function: The function from which the inspector is called, generally used for debugging purposes. Defaults to the name of the calling function.
        - line: The line number in the source file from which the inspector is called, aiding in pinpointing where inspections are set. Defaults to the line number in the source file.
        - file: The name of the source file from which the inspector is called, useful for tracing the call in larger projects. Defaults to the filename.
@@ -31,11 +40,12 @@ public extension View {
 
      This can be particularly useful when paired with logging or during step-by-step debugging to monitor how and when your view's state changes.
 
-     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(function:line:file:)``
+     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(shape:function:line:file:)``
      */
     @_disfavoredOverload
-    func inspectProperty(
+    func inspectProperty<S: Shape>(
         _ values: Any...,
+        shape: S = Rectangle(),
         function: String = #function,
         line: Int = #line,
         file: String = #file
@@ -43,6 +53,7 @@ public extension View {
         modifier(
             PropertyWriter(
                 data: values.map(PropertyValue.init),
+                shape: shape,
                 location: .init(
                     function: function,
                     file: file,
@@ -58,10 +69,11 @@ public extension View {
      This method allows developers to dynamically inspect values of properties within a SwiftUI view, useful for debugging and during development to ensure that view states are correctly managed.
 
      - Parameters:
-     - values: A variadic list of properties whose values you want to inspect.
-     - function: The function from which the inspector is called, generally used for debugging purposes. Defaults to the name of the calling function.
-     - line: The line number in the source file from which the inspector is called, aiding in pinpointing where inspections are set. Defaults to the line number in the source file.
-     - file: The name of the source file from which the inspector is called, useful for tracing the call in larger projects. Defaults to the filename.
+       - values: A variadic list of properties whose values you want to inspect.
+       - shape: The shape of the highlight.
+       - function: The function from which the inspector is called, generally used for debugging purposes. Defaults to the name of the calling function.
+       - line: The line number in the source file from which the inspector is called, aiding in pinpointing where inspections are set. Defaults to the line number in the source file.
+       - file: The name of the source file from which the inspector is called, useful for tracing the call in larger projects. Defaults to the filename.
 
      - Returns: A view modified to include property inspection capabilities, reflecting the current state of the provided properties.
 
@@ -73,10 +85,11 @@ public extension View {
 
      This can be particularly useful when paired with logging or during step-by-step debugging to monitor how and when your view's state changes.
 
-     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(function:line:file:)``
+     - seeAlso: ``propertyInspectorHidden()`` and ``inspectSelf(shape:function:line:file:)``
      */
-    func inspectProperty<T>(
+    func inspectProperty<T, S: Shape>(
         _ values: T...,
+        shape: S = Rectangle(),
         function: String = #function,
         line: Int = #line,
         file: String = #file
@@ -86,6 +99,7 @@ public extension View {
                 data: values.map {
                     PropertyValue($0)
                 },
+                shape: shape,
                 location: .init(
                     function: function,
                     file: file,
@@ -110,7 +124,7 @@ public extension View {
 
      This method can be used to safeguard sensitive information or simply to clean up the debugging output for views that no longer need inspection.
 
-     - seeAlso: <doc:/documentation/PropertyInspector/SwiftUI/View/inspectProperty(_:function:line:file:)-6jnxn>
+     - seeAlso: <doc:/documentation/PropertyInspector/SwiftUICore/View/inspectProperty(_:shape:function:line:file:)-7u3kz> and <doc:/documentation/PropertyInspector/SwiftUICore/View/inspectProperty(_:shape:function:line:file:)-4bprj>.
      */
     func propertyInspectorHidden() -> some View {
         environment(\.isInspectable, false)
@@ -135,13 +149,40 @@ public extension View {
          }
      ```
 
-     - seeAlso: ``propertyInspectorRowLabel(for:label:)``, ``propertyInspectorRowDetail(for:detail:)``
+     - seeAlso: ``propertyInspectorRowLabel(for:label:)``, ``propertyInspectorRowDetail(for:detail:)``, ``propertyInspectorRowIcon(for:systemName:)``
      */
     func propertyInspectorRowIcon<D, Icon: View>(
-        for _: D.Type = Any.self,
+        for data: D.Type = Any.self,
         @ViewBuilder icon: @escaping (_ data: D) -> Icon
     ) -> some View {
         setPreference(RowIconPreferenceKey.self, body: icon)
+    }
+
+    /**
+     Applies a modifier to inspect properties with custom icons based on their data type.
+
+     This method allows you to define custom icons for different data types displayed in the property inspector, enhancing the visual differentiation and user experience.
+
+     - Parameter data: The type of data for which the icon is defined.
+     - Parameter systemName: A closure that returns the icon to use for the given data type.
+
+     - Returns: A modified view with the custom icon configuration applied to relevant properties.
+
+     ## Usage Example
+
+     ```swift
+     Text("Example Property").propertyInspectorRowIcon(systemName: "text.quote")
+     ```
+
+     - seeAlso: ``propertyInspectorRowLabel(for:label:)``, ``propertyInspectorRowDetail(for:detail:)``, ``propertyInspectorRowIcon(for:icon:)``.
+     */
+    func propertyInspectorRowIcon<D>(
+        for data: D.Type = Any.self,
+        systemName: String
+    ) -> some View { // swiftformat:disable:this stripunusedargs
+        setPreference(RowIconPreferenceKey.self) { (_: D) in
+             Image(systemName: systemName)
+        }
     }
 
     /**
@@ -166,7 +207,7 @@ public extension View {
      - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowDetail(for:detail:)``
      */
     func propertyInspectorRowLabel<D, Label: View>(
-        for _: D.Type = Any.self,
+        for data: D.Type = Any.self,
         @ViewBuilder label: @escaping (_ data: D) -> Label
     ) -> some View {
         setPreference(RowLabelPreferenceKey.self, body: label)
@@ -194,7 +235,7 @@ public extension View {
      - seeAlso: ``propertyInspectorRowIcon(for:icon:)``, ``propertyInspectorRowLabel(for:label:)``
      */
     func propertyInspectorRowDetail<D, Detail: View>(
-        for _: D.Type = Any.self,
+        for data: D.Type = Any.self,
         @ViewBuilder detail: @escaping (_ data: D) -> Detail
     ) -> some View {
         setPreference(RowDetailPreferenceKey.self, body: detail)
