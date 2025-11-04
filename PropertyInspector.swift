@@ -25,6 +25,7 @@
 import Combine
 import Foundation
 import SwiftUI
+import UIKit
 
 struct ViewInspectabilityKey: EnvironmentKey {
     static let defaultValue: Bool = true
@@ -56,7 +57,7 @@ extension EnvironmentValues {
 }
 
 struct PropertyPreferenceKey: PreferenceKey {
-    static var defaultValue = [PropertyType: Set<Property>]()
+    nonisolated(unsafe) static var defaultValue = [PropertyType: Set<Property>]()
     static func reduce(value: inout [PropertyType: Set<Property>], nextValue: () -> [PropertyType: Set<Property>]) {
         value.merge(nextValue()) { lhs, rhs in
             lhs.union(rhs)
@@ -65,26 +66,26 @@ struct PropertyPreferenceKey: PreferenceKey {
 }
 
 struct TitlePreferenceKey: PreferenceKey {
-    static let defaultValue = LocalizedStringKey("Properties")
+    nonisolated(unsafe) static let defaultValue = LocalizedStringKey("Properties")
     static func reduce(value _: inout LocalizedStringKey, nextValue _: () -> LocalizedStringKey) {}
 }
 
 struct RowDetailPreferenceKey: PreferenceKey {
-    static let defaultValue = RowViewBuilderRegistry()
+    nonisolated(unsafe) static let defaultValue = RowViewBuilderRegistry()
     static func reduce(value: inout RowViewBuilderRegistry, nextValue: () -> RowViewBuilderRegistry) {
         value.merge(nextValue())
     }
 }
 
 struct RowIconPreferenceKey: PreferenceKey {
-    static let defaultValue = RowViewBuilderRegistry()
+    nonisolated(unsafe) static let defaultValue = RowViewBuilderRegistry()
     static func reduce(value: inout RowViewBuilderRegistry, nextValue: () -> RowViewBuilderRegistry) {
         value.merge(nextValue())
     }
 }
 
 struct RowLabelPreferenceKey: PreferenceKey {
-    static let defaultValue = RowViewBuilderRegistry()
+    nonisolated(unsafe) static let defaultValue = RowViewBuilderRegistry()
     static func reduce(value: inout RowViewBuilderRegistry, nextValue: () -> RowViewBuilderRegistry) {
         value.merge(nextValue())
     }
@@ -97,7 +98,7 @@ extension Animation {
 extension View {
     @ViewBuilder
     func ios16_scrollBounceBehaviorBasedOnSize() -> some View {
-        if #available(iOS 16.4, *) {
+        if #available(iOS 16.4, macOS 13.3, *) {
             scrollBounceBehavior(.basedOnSize)
         } else {
             self
@@ -106,7 +107,7 @@ extension View {
 
     @ViewBuilder
     func ios16_hideScrollIndicators(_ hide: Bool = true) -> some View {
-        if #available(iOS 16.0, *) {
+        if #available(iOS 16.0, macOS 13.0, *) {
             scrollIndicators(hide ? .hidden : .automatic)
         } else {
             self
@@ -115,9 +116,9 @@ extension View {
 
     @ViewBuilder
     func ios17_interpolateSymbolEffect() -> some View {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 17.0, macOS 14.0, *) {
             contentTransition(.symbolEffect(.automatic, options: .speed(2)))
-        } else if #available(iOS 16.0, *) {
+        } else if #available(iOS 16.0, macOS 13.0, *) {
             contentTransition(.interpolate)
         } else {
             self
@@ -131,7 +132,8 @@ extension Context {
 
         private var _allObjects = [PropertyType: Set<Property>]()
 
-        private var _searchQuery = ""
+        @Published
+        var searchQuery = ""
 
         var allProperties = [Property]()
 
@@ -181,15 +183,6 @@ extension Context {
             set {
                 guard _allObjects != newValue else { return }
                 _allObjects = newValue
-                makeProperties()
-            }
-        }
-
-        var searchQuery: String {
-            get { _searchQuery }
-            set {
-                guard _searchQuery != newValue else { return }
-                _searchQuery = newValue
                 makeProperties()
             }
         }
@@ -244,12 +237,12 @@ extension Context {
         }
 
         private func setupDebouncing() {
-            Just(_searchQuery)
+            $searchQuery
+                .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
                 .removeDuplicates()
-                .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
-                .sink(receiveValue: { [unowned self] _ in
-                    makeProperties()
-                })
+                .sink { [weak self] _ in
+                    self?.makeProperties()
+                }
                 .store(in: &cancellables)
         }
 
@@ -287,11 +280,11 @@ extension Context {
         }
 
         private func search(in properties: Set<Property>) -> Set<Property> {
-            guard !_searchQuery.isEmpty else {
+            guard !searchQuery.isEmpty else {
                 return properties
             }
 
-            let query = _searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
 
             guard query.count > 1 else {
                 return properties
@@ -907,7 +900,7 @@ public extension PropertyInspector {
 
       - seeAlso: ``PropertyInspector/init(_:isPresented:listStyle:listRowBackground:label:)`` for more customized sheet styles.
      */
-    @available(iOS 16.4, *)
+    @available(iOS 16.4, macOS 13.3, *)
     init(
         _ title: LocalizedStringKey? = nil,
         isPresented: Binding<Bool>,
@@ -951,7 +944,7 @@ public extension PropertyInspector {
      ```
      - seeAlso: ``init(_:isPresented:label:)`` for a simpler, default styling setup, or ``init(_:isPresented:listStyle:listRowBackground:label:)`` for variations with more specific list styles.
      */
-    @available(iOS 16.4, *)
+    @available(iOS 16.4, macOS 13.3, *)
     init<L: ListStyle>(
         _ title: LocalizedStringKey? = nil,
         isPresented: Binding<Bool>,
@@ -1456,6 +1449,8 @@ public struct _ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
         .ios16_scrollBounceBehaviorBasedOnSize()
     }
 }
+#if canImport(UIKit)
+#endif
 
 // MARK: - Sheet Style
 
@@ -1500,7 +1495,7 @@ public struct _ListPropertyInspector<Style: ListStyle, RowBackground: View>: _Pr
 
  - seeAlso: ``_ListPropertyInspector`` and ``_InlinePropertyInspector``.
  */
-@available(iOS 16.4, *)
+@available(iOS 16.4, macOS 13.3, *)
 public struct _SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
     var title: LocalizedStringKey?
 
@@ -1567,7 +1562,7 @@ public struct _SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _P
     }
 }
 
-@available(iOS 16.4, *)
+@available(iOS 16.4, macOS 13.0, *)
 private struct SheetPresentationModifier<Label: View>: ViewModifier {
     @Binding
     var isPresented: Bool
@@ -1590,22 +1585,45 @@ private struct SheetPresentationModifier<Label: View>: ViewModifier {
     func body(content: Content) -> some View {
         content.overlay {
             Spacer().sheet(isPresented: $isPresented) {
-                label
-                    .scrollContentBackground(.hidden)
-                    .presentationBackgroundInteraction(.enabled)
-                    .presentationContentInteraction(.scrolls)
-                    .presentationCornerRadius(20)
-                    .presentationBackground(Material.thinMaterial)
-                    .presentationDetents(Set(SheetPresentationModifier.detents), selection: $selection)
-                    .background(GeometryReader { geometry in
-                        Color.clear.onChange(of: geometry.frame(in: .global).minY) { minY in
-                            let screenHeight = UIScreen.main.bounds.height
-                            let newInset = max(0, round(screenHeight - minY))
-                            if height != newInset {
-                                height = newInset
+                if #available(macOS 13.3, *) {
+                    label
+                        .scrollContentBackground(.hidden)
+                        .presentationBackgroundInteraction(.enabled)
+                        .presentationContentInteraction(.scrolls)
+                        .presentationCornerRadius(20)
+                        .presentationBackground(Material.thinMaterial)
+                        .presentationDetents(Set(SheetPresentationModifier.detents), selection: $selection)
+                        .background(GeometryReader { geometry in
+                            Color.clear.onChange(of: geometry.frame(in: .global).minY) { minY in
+                                #if canImport(UIKit)
+                                let screenHeight = UIScreen.main.bounds.height
+                                #else
+                                let screenHeight = NSScreen.main?.frame.height ?? 1000
+                                #endif
+                                let newInset = max(0, round(screenHeight - minY))
+                                if height != newInset {
+                                    height = newInset
+                                }
                             }
-                        }
-                    })
+                        })
+                } else {
+                    label
+                        .scrollContentBackground(.hidden)
+                        .presentationDetents(Set(SheetPresentationModifier.detents), selection: $selection)
+                        .background(GeometryReader { geometry in
+                            Color.clear.onChange(of: geometry.frame(in: .global).minY) { minY in
+                                #if canImport(UIKit)
+                                let screenHeight = UIScreen.main.bounds.height
+                                #else
+                                let screenHeight = NSScreen.main?.frame.height ?? 1000
+                                #endif
+                                let newInset = max(0, round(screenHeight - minY))
+                                if height != newInset {
+                                    height = newInset
+                                }
+                            }
+                        })
+                }
             }
         }
     }
@@ -1620,7 +1638,9 @@ private struct SheetToolbarContent: View {
 
     var body: some View {
         Button {
+            #if canImport(UIKit)
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            #endif
             withAnimation(.snappy(duration: 0.35)) {
                 isPresented.toggle()
             }
@@ -1642,7 +1662,9 @@ private struct SheetToolbarContent: View {
         Picker(title, selection: $highlight) {
             ForEach(PropertyInspectorHighlightBehavior.allCases, id: \.hashValue) { behavior in
                 Button(behavior.label) {
+                    #if canImport(UIKit)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    #endif
                     highlight = behavior
                 }
                 .tag(behavior)
@@ -1650,6 +1672,8 @@ private struct SheetToolbarContent: View {
         }
     }
 }
+#if canImport(UIKit)
+#endif
 
 struct PropertyToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
@@ -1664,11 +1688,15 @@ struct PropertyToggleStyle: ToggleStyle {
         }
     }
 
+    #if canImport(UIKit)
     private let feedback = UISelectionFeedbackGenerator()
+    #endif
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
+            #if canImport(UIKit)
             feedback.selectionChanged()
+            #endif
             withAnimation(.inspectorDefault) {
                 configuration.isOn.toggle()
             }
@@ -1996,7 +2024,7 @@ struct PropertyInspectorHeader: View {
             .font(.title.weight(.medium))
             .lineLimit(1)
 
-        if #available(iOS 16.0, *), !context.properties.isEmpty {
+        if #available(iOS 16.0, macOS 13.0, *), !context.properties.isEmpty {
             Toggle(sources: context.properties, isOn: \.$isHighlighted) {
                 HStack(alignment: .firstTextBaseline) {
                     formattedText
@@ -2027,8 +2055,9 @@ struct PropertyInspectorHeader: View {
     }
 }
 
+@MainActor
 struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equatable {
-    static func == (lhs: PropertyInspectorRow<Icon, Label, Detail>, rhs: PropertyInspectorRow<Icon, Label, Detail>) -> Bool {
+    nonisolated static func == (lhs: PropertyInspectorRow<Icon, Label, Detail>, rhs: PropertyInspectorRow<Icon, Label, Detail>) -> Bool {
         lhs.id == rhs.id
     }
 
@@ -2056,7 +2085,7 @@ struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equata
         .foregroundStyle(.secondary)
         .padding(.vertical, 1)
         .listRowBackground(
-            isOn ? Color(uiColor: .tertiarySystemBackground) : .clear
+            isOn ? Color(white: 0.95).opacity(0.5) : .clear
         )
     }
 
@@ -2111,7 +2140,7 @@ struct PropertyInspectorRows: View {
             Text(emptyMessage)
                 .foregroundStyle(.tertiary)
                 .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .modifier(HideListRowSeparatorModifier())
                 .multilineTextAlignment(.center)
                 .frame(
                     maxWidth: .infinity,
@@ -2173,6 +2202,16 @@ struct PropertyInspectorRows: View {
     }
 }
 
+private struct HideListRowSeparatorModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 15.0, macOS 13.0, *) {
+            content.listRowSeparator(.hidden)
+        } else {
+            content
+        }
+    }
+}
+
 struct PropertyLocationView: View {
     var data: PropertyLocation
 
@@ -2192,7 +2231,7 @@ struct PropertyLocationView: View {
 
 private extension Text {
     func ios17_quinaryForegroundStyle() -> Text {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 17.0, macOS 14.0, *) {
             self.foregroundStyle(.quinary)
         } else {
             // Fallback on earlier versions
