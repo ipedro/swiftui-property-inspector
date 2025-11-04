@@ -6,13 +6,20 @@ import SwiftUI
 /// 
 /// Verifies that PropertyCache correctly reuses Property objects instead of recreating them
 /// on every view body update, following Apple's pattern from WWDC2025-306.
+///
+/// **Updated:** Now tests the global @MainActor singleton pattern
 @MainActor
 final class Fix2_PropertyCachingTests: XCTestCase {
+    
+    override func setUp() async throws {
+        // Clear cache before each test to ensure isolation
+        PropertyCache.shared.clearAll()
+    }
     
     // MARK: - Property Reuse Tests
     
     func testPropertyCache_ReusesInstanceForSameID() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let value = PropertyValue( 42)
         let isHighlighted = Binding.constant(false)
@@ -25,7 +32,7 @@ final class Fix2_PropertyCachingTests: XCTestCase {
     }
     
     func testPropertyCache_CreatesNewInstanceForDifferentID() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id1 = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let id2 = PropertyID(offset: 1, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let value = PropertyValue( 42)
@@ -39,7 +46,7 @@ final class Fix2_PropertyCachingTests: XCTestCase {
     }
     
     func testPropertyCache_CreatesNewInstanceForDifferentToken() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let value1 = PropertyValue( 42)
         let value2 = PropertyValue( 100)
@@ -55,7 +62,7 @@ final class Fix2_PropertyCachingTests: XCTestCase {
     // MARK: - Property Updates Tests
     
     func testPropertyCache_UpdatesValueWhenTokenChanges() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let value1 = PropertyValue( 42)
         let value2 = PropertyValue( 100)
@@ -70,7 +77,7 @@ final class Fix2_PropertyCachingTests: XCTestCase {
     }
     
     func testPropertyCache_MaintainsValueWhenTokenSame() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let value = PropertyValue( 42)
         let isHighlighted = Binding.constant(false)
@@ -92,7 +99,7 @@ final class Fix2_PropertyCachingTests: XCTestCase {
     // MARK: - Multiple Properties Tests
     
     func testPropertyCache_ManagesMultipleProperties() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let location = PropertyLocation(function: "test", file: "test", line: 1)
         let isHighlighted = Binding.constant(false)
         
@@ -124,7 +131,7 @@ final class Fix2_PropertyCachingTests: XCTestCase {
     // MARK: - Highlight Binding Tests
     
     func testPropertyCache_SharesHighlightBinding() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let value = PropertyValue( 42)
         let isHighlighted = Binding.constant(false)
@@ -140,7 +147,7 @@ final class Fix2_PropertyCachingTests: XCTestCase {
     // MARK: - Thread Safety Tests
     
     func testPropertyCache_ThreadSafe() async {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let location = PropertyLocation(function: "test", file: "test", line: 1)
         let isHighlighted = Binding.constant(false)
         
@@ -162,7 +169,7 @@ final class Fix2_PropertyCachingTests: XCTestCase {
     // MARK: - Expected Behavior Tests
     
     func testExpected_CacheReducesPropertyCreation() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let value = PropertyValue( 42)
         let isHighlighted = Binding.constant(false)
@@ -184,7 +191,7 @@ final class Fix2_PropertyCachingTests: XCTestCase {
     }
     
     func testExpected_TokenBasedInvalidation() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let isHighlighted = Binding.constant(false)
         

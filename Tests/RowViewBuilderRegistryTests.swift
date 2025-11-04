@@ -7,11 +7,14 @@ final class RowViewBuilderRegistryTests: XCTestCase {
     var sut: RowViewBuilderRegistry!
     
     override func setUp() async throws {
+        // Clear global cache for test isolation
+        PropertyCache.shared.clearAll()
         sut = RowViewBuilderRegistry()
     }
     
     override func tearDown() async throws {
         sut = nil
+        PropertyCache.shared.clearAll()
     }
     
     // MARK: - Builder Registration Tests

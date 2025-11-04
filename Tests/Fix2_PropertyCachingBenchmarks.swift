@@ -8,8 +8,15 @@ import SwiftUI
 /// instead of recreating them on every view body update.
 /// Baseline: Without caching (creating new Property objects each time)
 /// Optimized: With PropertyCache (reusing cached instances)
+///
+/// **Updated:** Now benchmarks the global @MainActor singleton pattern
 @MainActor
 final class Fix2_PropertyCachingBenchmarks: XCTestCase {
+    
+    override func setUp() async throws {
+        // Clear cache before each benchmark
+        PropertyCache.shared.clearAll()
+    }
     
     // MARK: - Single Property Benchmarks
     
@@ -27,7 +34,7 @@ final class Fix2_PropertyCachingBenchmarks: XCTestCase {
     }
     
     func testOptimized_SinglePropertyWithCache() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let value = PropertyValue( 42)
         let isHighlighted = Binding.constant(false)
@@ -59,7 +66,7 @@ final class Fix2_PropertyCachingBenchmarks: XCTestCase {
     }
     
     func testOptimized_MultiplePropertiesWithCache() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let location = PropertyLocation(function: "test", file: "test", line: 1)
         let isHighlighted = Binding.constant(false)
         
@@ -95,7 +102,7 @@ final class Fix2_PropertyCachingBenchmarks: XCTestCase {
     }
     
     func testOptimized_RealisticViewUpdatesWithCache() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let location = PropertyLocation(function: "testView", file: "TestView.swift", line: 10)
         let isHighlighted = Binding.constant(false)
         
@@ -128,7 +135,7 @@ final class Fix2_PropertyCachingBenchmarks: XCTestCase {
     }
     
     func testOptimized_FrequentValueChangesWithCache() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let id = PropertyID(offset: 0, createdAt: Date(), location: PropertyLocation(function: "test", file: "test", line: 1))
         let isHighlighted = Binding.constant(false)
         
@@ -170,7 +177,7 @@ final class Fix2_PropertyCachingBenchmarks: XCTestCase {
     }
     
     func testOptimized_MixedStableAndChangingWithCache() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let location = PropertyLocation(function: "test", file: "test", line: 1)
         let isHighlighted = Binding.constant(false)
         
@@ -216,7 +223,7 @@ final class Fix2_PropertyCachingBenchmarks: XCTestCase {
     }
     
     func testOptimized_LargePropertyCollectionWithCache() {
-        let cache = PropertyCache()
+        let cache = PropertyCache.shared
         let location = PropertyLocation(function: "test", file: "test", line: 1)
         let isHighlighted = Binding.constant(false)
         

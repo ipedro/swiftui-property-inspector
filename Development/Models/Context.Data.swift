@@ -2,6 +2,7 @@ import Combine
 import SwiftUI
 
 extension Context {
+    @MainActor
     final class Data: ObservableObject {
         private var cancellables = Set<AnyCancellable>()
 
@@ -58,8 +59,18 @@ extension Context {
             set {
                 guard _allObjects != newValue else { return }
                 _allObjects = newValue
+                
+                // ✅ Prune stale cache entries when properties are updated
+                // This prevents unbounded cache growth as views appear/disappear
+                pruneCache(for: newValue)
+                
                 makeProperties()
             }
+        }
+        
+        private func pruneCache(for objects: [PropertyType: Set<Property>]) {
+            let activeIDs = Set(objects.values.flatMap { $0.map(\.id) })
+            PropertyCache.shared.prune(keeping: activeIDs)
         }
 
         init() {

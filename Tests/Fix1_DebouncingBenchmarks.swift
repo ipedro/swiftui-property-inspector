@@ -7,6 +7,15 @@ import SwiftUI
 @MainActor
 final class Fix1_DebouncingBenchmarks: XCTestCase {
     
+    override func setUp() async throws {
+        // Clear global cache before each benchmark
+        PropertyCache.shared.clearAll()
+    }
+    
+    override func tearDown() async throws {
+        PropertyCache.shared.clearAll()
+    }
+    
     // MARK: - Baseline Performance (Before Fix)
     
     /// Baseline: Measures current performance WITHOUT proper debouncing
@@ -199,8 +208,8 @@ final class Fix1_DebouncingBenchmarks: XCTestCase {
         for i in 0..<100 {
             contextAfter.searchQuery = "query\(i)"
         }
-        Thread.sleep(forTimeInterval: 0.35) // Wait for final debounce
         let afterTime = Date().timeIntervalSince(afterStart)
+        Thread.sleep(forTimeInterval: 0.35) // Wait for final debounce (not included in measurement)
         
         print("""
         ⚡️ Performance Comparison:

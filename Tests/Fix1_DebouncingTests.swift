@@ -11,6 +11,8 @@ final class Fix1_DebouncingTests: XCTestCase {
     var cancellables: Set<AnyCancellable>!
     
     override func setUp() async throws {
+        // Clear global cache before each test
+        PropertyCache.shared.clearAll()
         sut = Context.Data()
         cancellables = []
     }
@@ -19,6 +21,7 @@ final class Fix1_DebouncingTests: XCTestCase {
         cancellables?.removeAll()
         cancellables = nil
         sut = nil
+        PropertyCache.shared.clearAll()
     }
     
     // MARK: - Debouncing Behavior Tests (After Fix #1)

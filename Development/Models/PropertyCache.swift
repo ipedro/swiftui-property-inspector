@@ -1,18 +1,28 @@
 import Foundation
 import SwiftUI
 
-/// Centralized property cache to avoid recreating Property objects on every view body update.
+/// Global property cache to avoid recreating Property objects on every view body update.
 ///
-/// Pattern based on Apple's LocationFinder caching example from WWDC2025-306 (timestamp 12:13).
-/// Instead of recreating Property objects on every view update, we cache them by their PropertyID
-/// and only create new instances when the value actually changes (detected via token).
-/// This reduces allocation overhead by ~99% for stable property values.
+/// **Design Pattern:** Global @MainActor singleton (Apple's recommended pattern for SwiftUI state)
+/// - All SwiftUI views execute on MainActor, so no manual locking needed
+/// - Shared across all views in the app for maximum cache efficiency
+/// - Token-based invalidation: only creates new Property when value changes
+///
+/// **Performance:** ~99% reduction in Property allocations for stable values
+///
+/// **Reference:** WWDC2025-306 @ 12:13 - LocationFinder caching pattern
 ///
 /// See: https://developer.apple.com/videos/play/wwdc2025/306/
+@MainActor
 final class PropertyCache {
-    /// Thread-safe cache of properties by their unique identifier
+    /// Global shared instance - all views use the same cache
+    static let shared = PropertyCache()
+    
+    /// Private initializer enforces singleton pattern
+    private init() {}
+    
+    /// Cache dictionary - no locks needed (@MainActor serializes access)
     private var cache: [PropertyID: Property] = [:]
-    private let lock = NSLock()
     
     /// Retrieves a cached property or creates a new one if the value has changed.
     /// Uses token-based invalidation: if the token matches, returns cached instance.
@@ -30,9 +40,6 @@ final class PropertyCache {
         value: PropertyValue,
         isHighlighted: Binding<Bool>
     ) -> Property {
-        lock.lock()
-        defer { lock.unlock() }
-        
         // Check if we have a cached property with matching token
         if let cached = cache[id], cached.token == token {
             // ✅ Token matches = value unchanged, return cached instance
@@ -48,38 +55,51 @@ final class PropertyCache {
             isHighlighted: isHighlighted
         )
         cache[id] = new
+        
+        #if VERBOSE
+        print("[PropertyCache] Created property \(id) (cache size: \(cache.count))")
+        #endif
+        
         return new
     }
     
-    /// Clears all cached properties. Useful for testing or memory management.
-    func clearCache() {
-        lock.lock()
-        defer { lock.unlock() }
-        cache.removeAll()
-    }
-    
-    /// Returns the number of cached properties. Useful for debugging and performance monitoring.
-    var cacheSize: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return cache.count
-    }
-    
-    /// Removes stale properties that are no longer referenced
-    /// Call periodically to prevent unbounded cache growth
-    func pruneStaleEntries(keeping activeIDs: Set<PropertyID>) {
-        lock.lock()
-        defer { lock.unlock() }
-        
+    /// Removes stale properties that are no longer referenced.
+    /// Call when properties are updated to prevent unbounded cache growth.
+    ///
+    /// - Parameter activeIDs: Set of PropertyIDs currently in use
+    func prune(keeping activeIDs: Set<PropertyID>) {
         let staleKeys = cache.keys.filter { !activeIDs.contains($0) }
+        
+        guard !staleKeys.isEmpty else { return }
+        
         for key in staleKeys {
             cache.removeValue(forKey: key)
         }
         
         #if VERBOSE
-        if !staleKeys.isEmpty {
-            print("[PropertyCache] Pruned \(staleKeys.count) stale entries, \(cache.count) remaining")
-        }
+        print("[PropertyCache] Pruned \(staleKeys.count) stale entries, \(cache.count) remaining")
         #endif
     }
+    
+    // MARK: - Debug Helpers
+    
+    #if DEBUG
+    /// Clears all cached properties. Use in tests to reset state between test cases.
+    func clearAll() {
+        cache.removeAll()
+        #if VERBOSE
+        print("[PropertyCache] Cleared all entries")
+        #endif
+    }
+    
+    /// Returns the number of cached properties. Useful for debugging and performance monitoring.
+    var cacheSize: Int {
+        cache.count
+    }
+    
+    /// Returns all cached PropertyIDs. Useful for debugging.
+    var cachedIDs: Set<PropertyID> {
+        Set(cache.keys)
+    }
+    #endif
 }

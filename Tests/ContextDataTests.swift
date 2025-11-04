@@ -9,6 +9,8 @@ final class ContextDataTests: XCTestCase {
     var cancellables: Set<AnyCancellable>!
     
     override func setUp() async throws {
+        // Clear global cache before each test to ensure isolation
+        PropertyCache.shared.clearAll()
         sut = Context.Data()
         cancellables = []
     }
@@ -16,6 +18,8 @@ final class ContextDataTests: XCTestCase {
     override func tearDown() async throws {
         cancellables = nil
         sut = nil
+        // Clear cache after test as well
+        PropertyCache.shared.clearAll()
     }
     
     // MARK: - Search Debouncing Tests
@@ -66,25 +70,57 @@ final class ContextDataTests: XCTestCase {
         XCTAssertEqual(sut.properties.count, 5)
     }
     
-    func testSearchWithMultipleCharacters() {
+    func testSearchWithMultipleCharacters() async throws {
         let mockProperties = createMockPropertiesWithValues(values: ["apple", "banana", "cherry"])
         sut.allObjects = mockProperties
         
+        let expectation = XCTestExpectation(description: "Search completes")
+        var propertiesUpdated = false
+        
+        sut.$properties
+            .dropFirst() // Skip initial value
+            .sink { _ in
+                if !propertiesUpdated {
+                    propertiesUpdated = true
+                    expectation.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+        
         sut.searchQuery = "app"
         
+        await fulfillment(of: [expectation], timeout: 1.0)
         XCTAssertEqual(sut.properties.count, 1, "Should find 'apple'")
     }
     
     // MARK: - Filter Tests
     
-    func testFilterToggle() {
+    func testFilterToggle() async throws {
         let mockProperties = createMockPropertiesWithTypes(types: ["String", "Int"])
+        
+        let expectation = XCTestExpectation(description: "Filters created")
+        var filtersUpdated = false
+        
+        sut.$properties
+            .dropFirst()
+            .sink { _ in
+                if !filtersUpdated && self.sut.filters.count == 2 {
+                    filtersUpdated = true
+                    expectation.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+        
         sut.allObjects = mockProperties
         
+        await fulfillment(of: [expectation], timeout: 1.0)
         XCTAssertEqual(sut.filters.count, 2, "Should have 2 filters")
         
-        let stringFilter = sut.filters.first { String(describing: $0.wrappedValue.rawValue) == "String" }
-        XCTAssertNotNil(stringFilter)
+        // PropertyType.rawValue contains the metatype (e.g., "String.Type" not "String")
+        let stringFilter = sut.filters.first { filter in
+            String(describing: filter.wrappedValue.rawValue).contains("String")
+        }
+        XCTAssertNotNil(stringFilter, "String filter should exist")
         
         if let filter = stringFilter {
             let binding = sut.toggleFilter(filter)
