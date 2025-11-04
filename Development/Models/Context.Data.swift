@@ -7,7 +7,8 @@ extension Context {
 
         private var _allObjects = [PropertyType: Set<Property>]()
 
-        private var _searchQuery = ""
+        @Published
+        var searchQuery = ""
 
         var allProperties = [Property]()
 
@@ -57,15 +58,6 @@ extension Context {
             set {
                 guard _allObjects != newValue else { return }
                 _allObjects = newValue
-                makeProperties()
-            }
-        }
-
-        var searchQuery: String {
-            get { _searchQuery }
-            set {
-                guard _searchQuery != newValue else { return }
-                _searchQuery = newValue
                 makeProperties()
             }
         }
@@ -120,12 +112,12 @@ extension Context {
         }
 
         private func setupDebouncing() {
-            Just(_searchQuery)
+            $searchQuery
+                .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
                 .removeDuplicates()
-                .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
-                .sink(receiveValue: { [unowned self] _ in
-                    makeProperties()
-                })
+                .sink { [weak self] _ in
+                    self?.makeProperties()
+                }
                 .store(in: &cancellables)
         }
 
@@ -163,11 +155,11 @@ extension Context {
         }
 
         private func search(in properties: Set<Property>) -> Set<Property> {
-            guard !_searchQuery.isEmpty else {
+            guard !searchQuery.isEmpty else {
                 return properties
             }
 
-            let query = _searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
 
             guard query.count > 1 else {
                 return properties

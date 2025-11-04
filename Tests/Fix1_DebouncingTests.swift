@@ -21,10 +21,10 @@ final class Fix1_DebouncingTests: XCTestCase {
         sut = nil
     }
     
-    // MARK: - Baseline Tests (Current Broken Behavior)
+    // MARK: - Debouncing Behavior Tests (After Fix #1)
     
-    /// Baseline: Current implementation calls makeProperties() on EVERY searchQuery change
-    func testBaseline_SearchTriggersImmediateUpdate() async throws {
+    /// After Fix #1: searchQuery changes are properly debounced
+    func testSearchQueryDebounces() async throws {
         var updateCount = 0
         
         sut.$properties
@@ -34,19 +34,25 @@ final class Fix1_DebouncingTests: XCTestCase {
             }
             .store(in: &cancellables)
         
-        // Rapid changes - each should trigger update immediately
+        // Rapid changes - should be debounced to single update
         sut.searchQuery = "a"
         sut.searchQuery = "ab"
         sut.searchQuery = "abc"
         
-        // Wait briefly
+        // Wait briefly (less than debounce interval)
         try await Task.sleep(for: .milliseconds(50))
         
-        // Current broken behavior: All 3 updates happen
-        XCTAssertEqual(updateCount, 3, "Baseline: No debouncing - all updates fire")
+        // No updates yet (debouncing in effect)
+        XCTAssertEqual(updateCount, 0, "Should debounce - no immediate updates")
+        
+        // Wait for debounce to complete (300ms + buffer)
+        try await Task.sleep(for: .milliseconds(350))
+        
+        // Only 1 update after debounce
+        XCTAssertEqual(updateCount, 1, "Should fire once after debounce interval")
     }
     
-    // MARK: - Expected Behavior Tests (After Fix)
+    // MARK: - Expected Behavior Tests
     
     /// After fix: Should debounce rapid changes and only fire once
     func testExpected_SearchDebounces() async throws {
