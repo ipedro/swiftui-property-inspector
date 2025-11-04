@@ -17,15 +17,13 @@ final class Property: Identifiable, Comparable, Hashable, CustomStringConvertibl
     /// Signal view updates
     let token: AnyHashable
 
-    /// Returns the type of the value as a string, useful for dynamic type checks or displays.
-    var stringValueType: String {
-        String(describing: type(of: value.rawValue))
-    }
-
-    /// Returns the string representation of the property's value.
-    var stringValue: String {
-        String(describing: value.rawValue)
-    }
+    /// Cached string representation of the property's value.
+    /// Computed once during initialization to avoid repeated string conversions.
+    let stringValue: String
+    
+    /// Cached type name as a string.
+    /// Computed once during initialization for efficient type display.
+    let stringValueType: String
 
     var description: String { stringValue }
 
@@ -45,6 +43,11 @@ final class Property: Identifiable, Comparable, Hashable, CustomStringConvertibl
         self.id = id
         self.value = value
         _isHighlighted = isHighlighted
+        
+        // ✅ Cache string conversions at initialization for performance
+        // Avoids recomputing on every access during search, display, and hashing
+        self.stringValue = String(describing: value.rawValue)
+        self.stringValueType = String(describing: type(of: value.rawValue))
     }
 
     /// Compares two `Property` instances for equality, considering both their unique identifiers and highlight states.
