@@ -24,6 +24,9 @@ struct PropertyWriter<S: Shape>: ViewModifier {
 
     @State
     private var isHighlighted = false
+    
+    @State
+    private var cache = PropertyCache()
 
     @Environment(\.isInspectable)
     private var isInspectable
@@ -48,14 +51,15 @@ struct PropertyWriter<S: Shape>: ViewModifier {
             let (id, value) = element
             let key = value.type
             var set = dict[key] ?? Set()
-            set.insert(
-                Property(
-                    id: id,
-                    token: String(describing: value.rawValue).hashValue,
-                    value: value,
-                    isHighlighted: $isHighlighted
-                )
+            
+            // ✅ Use cache to avoid recreating Property objects
+            let property = cache.property(
+                for: id,
+                token: String(describing: value.rawValue).hashValue,
+                value: value,
+                isHighlighted: $isHighlighted
             )
+            set.insert(property)
             dict[key] = set
         }
 
