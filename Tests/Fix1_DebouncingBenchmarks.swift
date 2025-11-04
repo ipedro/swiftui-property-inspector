@@ -188,38 +188,27 @@ final class Fix1_DebouncingBenchmarks: XCTestCase {
     // MARK: - Comparison Metrics
     
     /// Direct comparison: Before vs After fix
-    func testComparison_BeforeAfterFix() {
-        let contextBefore = Context.Data()
-        let contextAfter = Context.Data()
+    /// ⚠️ DISABLED: Test is fundamentally flawed - measures synchronous assignment speed,
+    /// not actual debounced work. Real debouncing benefits are shown in other benchmarks.
+    /// The "before" and "after" times are nearly identical because neither waits for makeProperties().
+    func testComparison_BeforeAfterFix() throws {
+        throw XCTSkip("Flaky test - measures assignment time, not debounced work performance")
         
-        let properties = createLargePropertySet(count: 500)
-        contextBefore.allObjects = properties
-        contextAfter.allObjects = properties
-        
-        // Measure current (broken) implementation
-        let beforeStart = Date()
-        for i in 0..<100 {
-            contextBefore.searchQuery = "query\(i)"
-        }
-        let beforeTime = Date().timeIntervalSince(beforeStart)
-        
-        // Measure after fix (with debouncing)
-        let afterStart = Date()
-        for i in 0..<100 {
-            contextAfter.searchQuery = "query\(i)"
-        }
-        let afterTime = Date().timeIntervalSince(afterStart)
-        Thread.sleep(forTimeInterval: 0.35) // Wait for final debounce (not included in measurement)
-        
-        print("""
-        ⚡️ Performance Comparison:
-        Before fix: \(String(format: "%.2f", beforeTime * 1000))ms
-        After fix:  \(String(format: "%.2f", afterTime * 1000))ms
-        Improvement: \(String(format: "%.1f", (beforeTime / afterTime)))x faster
-        """)
-        
-        // After fix should be significantly faster
-        XCTAssertLessThan(afterTime, beforeTime * 0.5, "After fix should be at least 2x faster")
+        // ORIGINAL TEST BODY REMOVED - kept only for documentation:
+        // This test attempted to compare "before fix" vs "after fix" performance by
+        // measuring how fast we could assign 100 search queries in a tight loop.
+        // However, this doesn't measure the actual performance benefit of debouncing:
+        //
+        // - "Before fix": No debouncing, but also no time to do the work!
+        // - "After fix": Debouncing delays the work, but test doesn't wait for it
+        //
+        // Result: Both take ~0.2ms because we're just measuring property assignment,
+        // not the expensive makeProperties() work that debouncing prevents.
+        //
+        // Real debouncing benefits are demonstrated in:
+        // - testBaseline_RapidSearchUpdates (shows cost without debouncing)
+        // - testOptimized_RapidSearchUpdates (shows savings with debouncing)
+        // - testOptimized_RealisticTyping (shows real-world typing scenario)
     }
     
     // MARK: - Helper Methods
