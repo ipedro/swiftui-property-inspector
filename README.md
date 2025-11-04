@@ -1,7 +1,8 @@
 # SwiftUI Property Inspector
 
+[![Tests](https://github.com/ipedro/swiftui-property-inspector/actions/workflows/tests.yml/badge.svg)](https://github.com/ipedro/swiftui-property-inspector/actions/workflows/tests.yml)
+[![Documentation](https://github.com/ipedro/swiftui-property-inspector/actions/workflows/generate-documentation.yml/badge.svg)](https://github.com/ipedro/swiftui-property-inspector/actions/workflows/generate-documentation.yml)
 ![Swift Version](https://img.shields.io/badge/swift-5.7-orange.svg)
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![SPM Compatible](https://img.shields.io/badge/Swift_Package_Manager-compatible-brightgreen.svg)
 

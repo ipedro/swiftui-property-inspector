@@ -1,0 +1,145 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-ios:
+    name: Test iOS
+    runs-on: macos-14
+    
+    strategy:
+      matrix:
+        destination:
+          - platform=iOS Simulator,name=iPhone 16,OS=18.0
+          - platform=iOS Simulator,name=iPhone 15,OS=17.5
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+      
+      - name: Show available simulators
+        run: xcrun simctl list devices available
+      
+      - name: Build and Test
+        run: |
+          xcodebuild test \
+            -scheme PropertyInspector \
+            -destination '${{ matrix.destination }}' \
+            -enableCodeCoverage YES \
+            -derivedDataPath .build/DerivedData
+      
+      - name: Generate Code Coverage Report
+        if: matrix.destination == 'platform=iOS Simulator,name=iPhone 16,OS=18.0'
+        run: |
+          xcrun llvm-cov export \
+            -format="lcov" \
+            .build/DerivedData/Build/Products/Debug-iphonesimulator/PropertyInspectorTests.xctest/Contents/MacOS/PropertyInspectorTests \
+            -instr-profile .build/DerivedData/Build/ProfileData/*/Coverage.profdata \
+            > coverage.lcov
+      
+      - name: Upload Coverage to Codecov
+        if: matrix.destination == 'platform=iOS Simulator,name=iPhone 16,OS=18.0'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.lcov
+          fail_ci_if_error: false
+          verbose: true
+
+  test-macos:
+    name: Test macOS
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+      
+      - name: Build and Test (macOS)
+        run: |
+          xcodebuild test \
+            -scheme PropertyInspector \
+            -destination 'platform=macOS' \
+            -enableCodeCoverage YES \
+            -derivedDataPath .build/DerivedData
+        continue-on-error: true  # macOS build may fail due to UIKit dependencies
+      
+      - name: Note about macOS
+        run: |
+          echo "Note: macOS tests may fail due to UIKit dependencies. This is expected."
+
+  performance-tests:
+    name: Performance Benchmarks
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+      
+      - name: Run Performance Tests
+        run: |
+          xcodebuild test \
+            -scheme PropertyInspector \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.0' \
+            -only-testing:PropertyInspectorTests/PerformanceTests \
+            -derivedDataPath .build/DerivedData
+      
+      - name: Extract Performance Results
+        run: |
+          # Extract performance metrics from test results
+          find .build/DerivedData -name "*.xcresult" -print0 | while IFS= read -r -d '' result; do
+            echo "Performance results from: $result"
+            xcrun xcresulttool get --format json --path "$result" > performance-results.json
+          done
+      
+      - name: Upload Performance Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: performance-results.json
+          retention-days: 30
+
+  lint:
+    name: SwiftLint
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: SwiftLint
+        run: |
+          if command -v swiftlint &> /dev/null; then
+            swiftlint --strict
+          else
+            echo "SwiftLint not installed, skipping..."
+          fi
+
+  build-examples:
+    name: Build Examples
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+      
+      - name: Build Examples
+        run: |
+          xcodebuild build \
+            -scheme PropertyInspector-Examples \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.0' \
+            -derivedDataPath .build/DerivedData

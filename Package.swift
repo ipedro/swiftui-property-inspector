@@ -24,6 +24,13 @@ if isDevelopment {
             ]
         )
     )
+    targets.append(
+        .testTarget(
+            name: "PropertyInspectorTests",
+            dependencies: ["PropertyInspector"],
+            path: "Tests"
+        )
+    )
 } else {
     targets.append(
         .target(

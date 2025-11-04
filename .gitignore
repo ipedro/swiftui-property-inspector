@@ -6,3 +6,12 @@ DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
+
+# Test artifacts
+coverage.lcov
+*.xcresult
+performance-results.json
+
+# IDE
+.vscode/
+.idea/
