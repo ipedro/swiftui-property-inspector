@@ -111,16 +111,18 @@ extension PropertyWriter {
         if !true { // isInspectable check - simplified for testing
             return [:]
         }
-        let result: [PropertyType: Set<Property>] = zip(ids, data).reduce(into: [:]) { dict, element in
+        let idsArray = Array(ids)
+        let result: [PropertyType: Set<Property>] = zip(idsArray, data).reduce(into: [:]) { dict, element in
             let (id, value) = element
             let key = value.type
             var set = dict[key] ?? Set()
+            @State var highlighted = false
             set.insert(
                 Property(
                     id: id,
                     token: String(describing: value.rawValue).hashValue,
                     value: value,
-                    isHighlighted: $isHighlighted
+                    isHighlighted: $highlighted
                 )
             )
             dict[key] = set

@@ -1,8 +1,9 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equatable {
-    static func == (lhs: PropertyInspectorRow<Icon, Label, Detail>, rhs: PropertyInspectorRow<Icon, Label, Detail>) -> Bool {
+    nonisolated static func == (lhs: PropertyInspectorRow<Icon, Label, Detail>, rhs: PropertyInspectorRow<Icon, Label, Detail>) -> Bool {
         lhs.id == rhs.id
     }
 
@@ -30,7 +31,7 @@ struct PropertyInspectorRow<Icon: View, Label: View, Detail: View>: View, Equata
         .foregroundStyle(.secondary)
         .padding(.vertical, 1)
         .listRowBackground(
-            isOn ? Color(uiColor: .tertiarySystemBackground) : .clear
+            isOn ? Color(white: 0.95).opacity(0.5) : .clear
         )
     }
 

@@ -19,7 +19,7 @@ struct PropertyLocationView: View {
 
 private extension Text {
     func ios17_quinaryForegroundStyle() -> Text {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 17.0, macOS 14.0, *) {
             self.foregroundStyle(.quinary)
         } else {
             // Fallback on earlier versions

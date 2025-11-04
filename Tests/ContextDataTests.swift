@@ -83,7 +83,7 @@ final class ContextDataTests: XCTestCase {
         
         XCTAssertEqual(sut.filters.count, 2, "Should have 2 filters")
         
-        let stringFilter = sut.filters.first { $0.wrappedValue.rawValue == "String" }
+        let stringFilter = sut.filters.first { String(describing: $0.wrappedValue.rawValue) == "String" }
         XCTAssertNotNil(stringFilter)
         
         if let filter = stringFilter {

@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Sheet Style
 
@@ -44,7 +47,7 @@ import SwiftUI
 
  - seeAlso: ``_ListPropertyInspector`` and ``_InlinePropertyInspector``.
  */
-@available(iOS 16.4, *)
+@available(iOS 16.4, macOS 13.3, *)
 public struct _SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _PropertyInspectorStyle {
     var title: LocalizedStringKey?
 
@@ -111,7 +114,7 @@ public struct _SheetPropertyInspector<Style: ListStyle, RowBackground: View>: _P
     }
 }
 
-@available(iOS 16.4, *)
+@available(iOS 16.4, macOS 13.0, *)
 private struct SheetPresentationModifier<Label: View>: ViewModifier {
     @Binding
     var isPresented: Bool
@@ -134,22 +137,45 @@ private struct SheetPresentationModifier<Label: View>: ViewModifier {
     func body(content: Content) -> some View {
         content.overlay {
             Spacer().sheet(isPresented: $isPresented) {
-                label
-                    .scrollContentBackground(.hidden)
-                    .presentationBackgroundInteraction(.enabled)
-                    .presentationContentInteraction(.scrolls)
-                    .presentationCornerRadius(20)
-                    .presentationBackground(Material.thinMaterial)
-                    .presentationDetents(Set(SheetPresentationModifier.detents), selection: $selection)
-                    .background(GeometryReader { geometry in
-                        Color.clear.onChange(of: geometry.frame(in: .global).minY) { minY in
-                            let screenHeight = UIScreen.main.bounds.height
-                            let newInset = max(0, round(screenHeight - minY))
-                            if height != newInset {
-                                height = newInset
+                if #available(macOS 13.3, *) {
+                    label
+                        .scrollContentBackground(.hidden)
+                        .presentationBackgroundInteraction(.enabled)
+                        .presentationContentInteraction(.scrolls)
+                        .presentationCornerRadius(20)
+                        .presentationBackground(Material.thinMaterial)
+                        .presentationDetents(Set(SheetPresentationModifier.detents), selection: $selection)
+                        .background(GeometryReader { geometry in
+                            Color.clear.onChange(of: geometry.frame(in: .global).minY) { minY in
+                                #if canImport(UIKit)
+                                let screenHeight = UIScreen.main.bounds.height
+                                #else
+                                let screenHeight = NSScreen.main?.frame.height ?? 1000
+                                #endif
+                                let newInset = max(0, round(screenHeight - minY))
+                                if height != newInset {
+                                    height = newInset
+                                }
                             }
-                        }
-                    })
+                        })
+                } else {
+                    label
+                        .scrollContentBackground(.hidden)
+                        .presentationDetents(Set(SheetPresentationModifier.detents), selection: $selection)
+                        .background(GeometryReader { geometry in
+                            Color.clear.onChange(of: geometry.frame(in: .global).minY) { minY in
+                                #if canImport(UIKit)
+                                let screenHeight = UIScreen.main.bounds.height
+                                #else
+                                let screenHeight = NSScreen.main?.frame.height ?? 1000
+                                #endif
+                                let newInset = max(0, round(screenHeight - minY))
+                                if height != newInset {
+                                    height = newInset
+                                }
+                            }
+                        })
+                }
             }
         }
     }
@@ -164,7 +190,9 @@ private struct SheetToolbarContent: View {
 
     var body: some View {
         Button {
+            #if canImport(UIKit)
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            #endif
             withAnimation(.snappy(duration: 0.35)) {
                 isPresented.toggle()
             }
@@ -186,7 +214,9 @@ private struct SheetToolbarContent: View {
         Picker(title, selection: $highlight) {
             ForEach(PropertyInspectorHighlightBehavior.allCases, id: \.hashValue) { behavior in
                 Button(behavior.label) {
+                    #if canImport(UIKit)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    #endif
                     highlight = behavior
                 }
                 .tag(behavior)

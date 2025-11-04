@@ -215,9 +215,10 @@ final class Fix1_DebouncingTests: XCTestCase {
             )
             let value = PropertyValue(i)
             let property = Property(
-                id: PropertyID(location: location, type: value.type),
+                id: PropertyID(offset: i, createdAt: Date(), location: location),
+                token: "\(i)",
                 value: value,
-                location: location
+                isHighlighted: .constant(false)
             )
             
             if result[value.type] == nil {

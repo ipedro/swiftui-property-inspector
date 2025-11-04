@@ -12,7 +12,7 @@ struct PropertyInspectorRows: View {
             Text(emptyMessage)
                 .foregroundStyle(.tertiary)
                 .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .modifier(HideListRowSeparatorModifier())
                 .multilineTextAlignment(.center)
                 .frame(
                     maxWidth: .infinity,
@@ -70,6 +70,16 @@ struct PropertyInspectorRows: View {
         VStack(alignment: .leading) {
             context.detailRegistry.makeBody(property: property)
             Text(verbatim: property.id.location.description).opacity(2 / 3)
+        }
+    }
+}
+
+private struct HideListRowSeparatorModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 15.0, macOS 13.0, *) {
+            content.listRowSeparator(.hidden)
+        } else {
+            content
         }
     }
 }

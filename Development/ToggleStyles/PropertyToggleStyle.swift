@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct PropertyToggleStyle: ToggleStyle {
     var alignment: VerticalAlignment = .center
@@ -14,11 +17,15 @@ struct PropertyToggleStyle: ToggleStyle {
         }
     }
 
+    #if canImport(UIKit)
     private let feedback = UISelectionFeedbackGenerator()
+    #endif
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
+            #if canImport(UIKit)
             feedback.selectionChanged()
+            #endif
             withAnimation(.inspectorDefault) {
                 configuration.isOn.toggle()
             }

@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import PropertyInspector
 
 /// Performance benchmarks for Fix #1: Debouncing
@@ -234,9 +235,10 @@ final class Fix1_DebouncingBenchmarks: XCTestCase {
             let value = PropertyValue(typeValue)
             
             let property = Property(
-                id: PropertyID(location: location, type: value.type),
+                id: PropertyID(offset: i, createdAt: Date(), location: location),
+                token: "\(i)",
                 value: value,
-                location: location
+                isHighlighted: .constant(false)
             )
             
             if result[value.type] == nil {

@@ -106,7 +106,7 @@ public extension PropertyInspector {
 
       - seeAlso: ``PropertyInspector/init(_:isPresented:listStyle:listRowBackground:label:)`` for more customized sheet styles.
      */
-    @available(iOS 16.4, *)
+    @available(iOS 16.4, macOS 13.3, *)
     init(
         _ title: LocalizedStringKey? = nil,
         isPresented: Binding<Bool>,
@@ -150,7 +150,7 @@ public extension PropertyInspector {
      ```
      - seeAlso: ``init(_:isPresented:label:)`` for a simpler, default styling setup, or ``init(_:isPresented:listStyle:listRowBackground:label:)`` for variations with more specific list styles.
      */
-    @available(iOS 16.4, *)
+    @available(iOS 16.4, macOS 13.3, *)
     init<L: ListStyle>(
         _ title: LocalizedStringKey? = nil,
         isPresented: Binding<Bool>,

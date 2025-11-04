@@ -48,7 +48,7 @@ struct PropertyInspectorHeader: View {
             .font(.title.weight(.medium))
             .lineLimit(1)
 
-        if #available(iOS 16.0, *), !context.properties.isEmpty {
+        if #available(iOS 16.0, macOS 13.0, *), !context.properties.isEmpty {
             Toggle(sources: context.properties, isOn: \.$isHighlighted) {
                 HStack(alignment: .firstTextBaseline) {
                     formattedText
