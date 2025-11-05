@@ -121,9 +121,51 @@ Uses `#if VERBOSE` extensively for debug logging in development:
 ```
 
 ### Performance Considerations
+
+#### ⚠️ CRITICAL: SwiftUI View Lifecycle
+**SwiftUI views are structs - they are initialized and destroyed A LOT.**
+
+- **View init()**: Called frequently (on every state change, parent update, etc.)
+- **View body**: Only recomputed when dependencies actually change
+- **Performance Rule**: Heavy computation should happen in `body`, NOT in `init` or stored properties
+
+**Example - WRONG (computed in init):**
+```swift
+struct MyView: View {
+    @State private var randomValue = Double.random()  // ❌ Recomputed on every init!
+    
+    var body: some View {
+        Text("\(randomValue)")
+    }
+}
+```
+
+**Example - CORRECT (computed in body):**
+```swift
+struct MyView: View {
+    var body: some View {
+        let randomValue = Double.random()  // ✅ Only computed when body runs
+        return Text("\(randomValue)")
+    }
+}
+```
+
+**Real Example from PropertyHiglighter:**
+```swift
+func body(content: Content) -> some View {
+    // ✅ Generate random animation values in body
+    // View struct may be init'd/destroyed 100x, but body only runs when isOn changes
+    let insertionScale = Double.random(in: 2...2.5)
+    let removalScale = Double.random(in: 1.1...1.4)
+    // ... use these values
+}
+```
+
+#### Other Performance Patterns
 - `PropertyInspectorRow` uses `.equatable()` for optimization
 - Context uses debouncing for search queries (see `Context.Data.setupDebouncing()`)
 - Preference keys use `reduce()` to merge child values efficiently
+- String conversions cached at Property initialization (computed once, not per-access)
 
 ### Environment Customization
 - `isInspectable` - globally disable inspection
