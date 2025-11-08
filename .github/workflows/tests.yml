@@ -33,6 +33,7 @@ jobs:
             -scheme PropertyInspector \
             -destination '${{ matrix.destination }}' \
             -enableCodeCoverage YES \
+            -skipPackagePluginValidation \
             -derivedDataPath .build/DerivedData
       
       - name: Generate Code Coverage Report
@@ -69,6 +70,7 @@ jobs:
             -scheme PropertyInspector \
             -destination 'platform=macOS' \
             -enableCodeCoverage YES \
+            -skipPackagePluginValidation \
             -derivedDataPath .build/DerivedData
         continue-on-error: true  # macOS build may fail due to UIKit dependencies
       
@@ -93,6 +95,7 @@ jobs:
             -scheme PropertyInspector \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.0' \
             -only-testing:PropertyInspectorTests/PerformanceTests \
+            -skipPackagePluginValidation \
             -derivedDataPath .build/DerivedData
       
       - name: Extract Performance Results
@@ -142,4 +145,5 @@ jobs:
           xcodebuild build \
             -scheme PropertyInspector-Examples \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.0' \
+            -skipPackagePluginValidation \
             -derivedDataPath .build/DerivedData
